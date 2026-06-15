@@ -37,23 +37,25 @@ export function parsePlantUml(text: string): IRDiagram {
     let diagramType: 'sequence' | 'class' | 'deployment' | 'unknown' = 'unknown';
     
     const sequenceOnlyKeywords = [
-        'participant', 'actor', 'boundary', 'control', 'entity',
-        'autonumber', 'newpage', 'box', 'alt', 'opt', 'loop', 'par', 'break', 'critical', 'group'
+        'participant', 'autonumber', 'newpage', 'box', 'alt', 'opt', 'loop', 
+        'par', 'break', 'critical', 'group', 'activate', 'deactivate', 'destroy', 'return'
     ];
     
     const sharedKeywords = [
-        'database', 'collections', 'queue', 'stack'
+        'actor', 'boundary', 'control', 'entity', 'database', 'collections', 'queue', 'stack', 'together'
     ];
     
     const classKeywords = [
-        'class', 'interface', 'enum', 'struct', 'annotation', 'abstract'
+        'class', 'interface', 'enum', 'struct', 'annotation', 'abstract',
+        'object', 'circle', 'diamond', 'exception', 'metaclass', 'protocol', 
+        'record', 'stereotype', 'dataclass'
     ];
     
     const deploymentKeywords = [
         'artifact', 'cloud', 'component', 'node', 'storage', 
         'rectangle', 'card', 'file', 'hexagon', 'person', 'process', 
         'agent', 'label', 'usecase', 'action', 'map', 'state',
-        'frame', 'rect', 'package', 'namespace', 'folder'
+        'frame', 'rect', 'package', 'namespace', 'folder', 'json'
     ];
 
     let scores = {
@@ -69,14 +71,14 @@ export function parsePlantUml(text: string): IRDiagram {
             if (statement.type === 'node') {
                 const node = statement as IRNode;
                 if (sequenceOnlyKeywords.includes(node.shape)) {
-                    scores.sequence += 30;
+                    scores.sequence += 50;
                 } else if (sharedKeywords.includes(node.shape)) {
-                    scores.sequence += 10;
-                    scores.deployment += 5;
+                    scores.sequence += 20;
+                    scores.deployment += 10;
                 } else if (classKeywords.includes(node.shape)) {
-                    scores.class += 30;
+                    scores.class += 50;
                 } else if (deploymentKeywords.includes(node.shape)) {
-                    scores.deployment += 30;
+                    scores.deployment += 50;
                 }
                 
                 if (node.members && node.members.length > 0) {
@@ -86,22 +88,22 @@ export function parsePlantUml(text: string): IRDiagram {
                     scores.class += 40;
                 }
                 if (node.isCreation) {
-                    scores.sequence += 30;
+                    scores.sequence += 50;
                 }
                 if (node.name.includes('()')) {
-                    scores.sequence += 10;
+                    scores.sequence += 20;
                 }
             } else if (statement.type === 'container') {
                 const container = statement as IRContainer;
                 if (sequenceOnlyKeywords.includes(container.keyword)) {
-                    scores.sequence += 30;
+                    scores.sequence += 50;
                 } else if (sharedKeywords.includes(container.keyword)) {
-                    scores.sequence += 10;
-                    scores.deployment += 5;
+                    scores.sequence += 20;
+                    scores.deployment += 10;
                 } else if (classKeywords.includes(container.keyword)) {
-                    scores.class += 30;
+                    scores.class += 50;
                 } else if (deploymentKeywords.includes(container.keyword)) {
-                    scores.deployment += 30;
+                    scores.deployment += 50;
                 }
                 checkType(container.statements);
             } else if (statement.type === 'edge') {
@@ -130,15 +132,19 @@ export function parsePlantUml(text: string): IRDiagram {
                 const hasColor = arrow.includes('#');
 
                 if (isClassSpecific) {
-                    scores.class += 30;
-                } else if (isSequenceSpecific) {
-                    scores.sequence += 30;
-                } else if (hasDirection) {
+                    scores.class += 50;
+                } 
+                
+                if (isSequenceSpecific) {
+                    scores.sequence += 50;
+                } 
+
+                if (hasDirection) {
                     if (scores.deployment > scores.class) scores.deployment += 40;
                     else scores.class += 40;
                 } else if (hasBracketStyle) {
                     if (hasColor) {
-                        scores.sequence += 15;
+                        scores.sequence += 25;
                     } else {
                         if (scores.deployment > scores.class) scores.deployment += 40;
                         else scores.class += 40;
@@ -149,54 +155,54 @@ export function parsePlantUml(text: string): IRDiagram {
                         scores.sequence += 40;
 
                         // But also could be deployment if we already have deployment shapes
-                        if (scores.deployment > 0) scores.deployment += 20;
-                        if (scores.class > 0) scores.class += 10;
+                        if (scores.deployment > 0) scores.deployment += 40;
+                        if (scores.class > 0) scores.class += 20;
                     }
                     else {
                         if (scores.class > 0 || scores.deployment > 0) {
-                            if (scores.deployment > scores.class) scores.deployment += 10;
-                            else scores.class += 10;
+                            if (scores.deployment > scores.class) scores.deployment += 20;
+                            else scores.class += 20;
                         } else {
-                            scores.sequence += 5;
+                            scores.sequence += 10;
                         }
                     }
                 }
  else if (arrow === '--' || arrow === '..' || arrow.includes('|')) {
                     if (edge.label) {
-                        if (scores.deployment > 0) scores.deployment += 25;
-                        else scores.class += 20;
+                        if (scores.deployment > 0) scores.deployment += 30;
+                        else scores.class += 30;
                     }
                     else {
-                        if (scores.deployment > 0) scores.deployment += 15;
-                        else scores.class += 15;
+                        if (scores.deployment > 0) scores.deployment += 20;
+                        else scores.class += 20;
                     }
                 }
 
                 if (edge.fromLabel || edge.toLabel) {
-                    scores.class += 40;
+                    scores.class += 50;
                 }
                 if (edge.isCreation || edge.isDeletion) {
-                    scores.sequence += 40;
+                    scores.sequence += 50;
                 }
             } else if (['activation', 'return', 'autoactivate', 'autonumber', 'divider', 'delay', 'ref'].includes(statement.type)) {
-                scores.sequence += 30;
+                scores.sequence += 50;
             } else if (statement.type === 'group') {
                 const group = statement as any;
                 if (['alt', 'opt', 'loop', 'par', 'group', 'box'].includes(group.keyword)) {
-                    scores.sequence += 30;
+                    scores.sequence += 50;
                 }
             } else if (statement.type === 'note') {
                 const note = statement as any;
                 if (note.placement === 'over' || note.placement === 'across' || 
                     note.placement === 'left of' || note.placement === 'right of') {
-                    scores.sequence += 25;
+                    scores.sequence += 30;
                 } else if (note.placement === 'on link') {
-                    scores.class += 30;
-                    scores.deployment += 20;
+                    scores.class += 40;
+                    scores.deployment += 30;
                 } else {
-                    if (scores.class > 0) scores.class += 10;
-                    else if (scores.deployment > 0) scores.deployment += 10;
-                    else scores.sequence += 5;
+                    if (scores.class > 0) scores.class += 20;
+                    else if (scores.deployment > 0) scores.deployment += 20;
+                    else scores.sequence += 10;
                 }
             }
         }
@@ -206,23 +212,38 @@ export function parsePlantUml(text: string): IRDiagram {
     
     // Check for sequence specific top-level markers
     const lowerText = unescapedText.toLowerCase();
+    
+    // Explicit type markers
+    const startMatch = lowerText.match(/@startuml[ \t]+([a-z]+)/);
+    if (startMatch) {
+        const type = startMatch[1];
+        if (type === 'sequence') scores.sequence += 100;
+        else if (type === 'class') scores.class += 100;
+        else if (type === 'deployment' || type === 'component' || type === 'usecase') scores.deployment += 100;
+    }
+
+    if (lowerText.includes('allow_mixing') || lowerText.includes('allowmixing')) {
+        scores.class += 50;
+        scores.deployment += 50;
+    }
+
     if (lowerText.includes('header') || lowerText.includes('footer') || lowerText.includes('title')) {
         if (scores.sequence > 0 || (scores.class === 0 && scores.deployment === 0)) {
             scores.sequence += 10;
         }
     }
     if (lowerText.includes('skinparam') || lowerText.includes('left to right direction')) {
-        if (scores.class > 0) scores.class += 10;
-        if (scores.deployment > 0) scores.deployment += 10;
+        if (scores.class > 0) scores.class += 20;
+        if (scores.deployment > 0) scores.deployment += 20;
     }
 
     // Final decision based on scores
-    if (scores.sequence >= scores.class && scores.sequence >= scores.deployment && scores.sequence > 0) {
-        diagramType = 'sequence';
-    } else if (scores.class >= scores.deployment && scores.class > 0) {
-        diagramType = 'class';
-    } else if (scores.deployment > 0) {
+    if (scores.deployment >= scores.sequence && scores.deployment >= scores.class && scores.deployment > 0) {
         diagramType = 'deployment';
+    } else if (scores.class >= scores.sequence && scores.class > 0) {
+        diagramType = 'class';
+    } else if (scores.sequence > 0) {
+        diagramType = 'sequence';
     }
 
     ast.diagramType = diagramType;

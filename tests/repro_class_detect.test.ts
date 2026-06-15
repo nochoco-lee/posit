@@ -37,7 +37,7 @@ Alice -> Bob: hello
         const puml = `
 @startuml
 class A
-A -> B: message
+A ->> B: message
 @enduml
 `;
         const ast = parsePlantUml(puml);
