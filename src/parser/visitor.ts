@@ -225,6 +225,7 @@ export class SequenceAstVisitor extends BaseVisitor {
         const nameToken = this.visit(ctx.name[0]);
         let name = nameToken.image;
         if (nameToken.tokenType && nameToken.tokenType.name === "StringLiteral") name = this.unquoteString(name);
+        
         let layout: { x: number; y: number } | undefined = undefined;
         let layoutStart: number | undefined;
         let layoutEnd: number | undefined;
@@ -234,6 +235,7 @@ export class SequenceAstVisitor extends BaseVisitor {
             layoutEnd = layoutToken.endOffset;
             layout = this.parsePosComment(layoutToken.image);
         }
+
         const members: IRMember[] = [];
         if (ctx.classMember) ctx.classMember.forEach((cm: any) => { members.push(this.visit(cm)); });
         
@@ -241,15 +243,19 @@ export class SequenceAstVisitor extends BaseVisitor {
             const memberLabelCtx = ctx.member[0].children;
             let allTokens: IToken[] = [];
             if (memberLabelCtx.anyToken) allTokens = memberLabelCtx.anyToken.map((at: any) => this.visit(at));
-            
-            // Re-use logic from classMember or call a helper
             members.push(this.processMemberFromTokens(allTokens));
         }
 
         const parents: string[] = [];
         if (ctx.parents) ctx.parents.forEach((p: any) => { parents.push(this.visit(p).image); });
+        
         const startToken = ctx.Visibility ? ctx.Visibility[0] : (ctx.Class ? ctx.Class[0] : ctx.Interface ? ctx.Interface[0] : ctx.Enum ? ctx.Enum[0] : ctx.Struct ? ctx.Struct[0] : ctx.Annotation ? ctx.Annotation[0] : ctx.Abstract ? ctx.Abstract[0] : ctx.Circle ? ctx.Circle[0] : ctx.Diamond ? ctx.Diamond[0] : ctx.Exception ? ctx.Exception[0] : ctx.Metaclass ? ctx.Metaclass[0] : ctx.Protocol ? ctx.Protocol[0] : ctx.Record ? ctx.Record[0] : ctx.Stereotype ? ctx.Stereotype[0] : ctx.Dataclass ? ctx.Dataclass[0] : ctx.ObjectKeyword ? ctx.ObjectKeyword[0] : ctx.LParen ? ctx.LParen[0] : ctx.DiamondShort ? ctx.DiamondShort[0] : nameToken);
-        const endToken = ctx.RBrace ? ctx.RBrace[0] : (ctx.layout ? ctx.layout[0] : nameToken);
+        
+        let endToken = ctx.RBrace ? ctx.RBrace[0] : (ctx.layout ? ctx.layout[0] : nameToken);
+        if (ctx.parents && ctx.parents.length > 0 && !ctx.RBrace && !ctx.layout) {
+             endToken = this.visit(ctx.parents[ctx.parents.length - 1]);
+        }
+
         return {
             type: "node", shape, name, members, parents, layout, visibility,
             offset: { start: startToken.startOffset, end: endToken.endOffset, layoutStart, layoutEnd }
