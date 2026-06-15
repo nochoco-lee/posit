@@ -138,7 +138,7 @@ export const Arrow = createToken({
 
 // Delimiters & Symbols
 export const Divider = createToken({ name: "Divider", pattern: /==+.*==+/ });
-export const Delay = createToken({ name: "Delay", pattern: /\.\.\./ });
+export const Delay = createToken({ name: "Delay", pattern: /\.\.\.[^.\n]*\.\.\.|\.\.\./ });
 
 export const Dot = createToken({ name: "Dot", pattern: /\./, longer_alt: [Arrow, Delay] });
 

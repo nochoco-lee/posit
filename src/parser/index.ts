@@ -79,13 +79,11 @@ export function parsePlantUml(text: string): IRDiagram {
             if (statement.type === 'node') {
                 const node = statement as IRNode;
                 if (deploymentKeywords.includes(node.shape)) {
-                    if (diagramType === 'unknown' || diagramType === 'sequence') {
-                         diagramType = 'deployment';
-                    }
+                    diagramType = 'deployment';
                 } else if (node.shape === 'class' || node.shape === 'interface') {
                     if (diagramType === 'unknown') diagramType = 'class';
                 } else if (node.shape === 'participant' || node.shape === 'actor') {
-                    if (diagramType === 'unknown' || diagramType === 'class') diagramType = 'sequence';
+                    diagramType = 'sequence';
                 }
             } else if (statement.type === 'container') {
                 const container = statement as IRContainer;
@@ -97,9 +95,31 @@ export function parsePlantUml(text: string): IRDiagram {
                 checkType(container.statements);
             } else if (statement.type === 'edge') {
                 const edge = statement as IREdge;
-                if (edge.arrow.includes('>') || edge.arrow.includes('<') || edge.arrow.includes('\\\\') || edge.arrow.includes('/')) {
-                    diagramType = 'sequence'; // Definite sequence arrow
-                } else if (edge.arrow === '--' || edge.arrow === '..' || edge.arrow.includes('|')) {
+                const arrow = edge.arrow;
+                
+                const isClassSpecific = arrow.includes('<|') || arrow.includes('|>') || 
+                                     arrow.includes('*--') || arrow.includes('--*') || 
+                                     arrow.includes('o--') || arrow.includes('--o') ||
+                                     arrow.includes('+--') || arrow.includes('--+') ||
+                                     arrow.includes('#--') || arrow.includes('--#');
+                
+                const isSequenceSpecific = arrow.includes('//') || arrow.includes('\\\\') || 
+                                         arrow.includes('->>') || arrow.includes('<<-') ||
+                                         arrow.includes('->x') || arrow.includes('x<-') ||
+                                         arrow.includes('->?') || arrow.includes('?<-') ||
+                                         arrow.includes('[->') || arrow.includes('<-]');
+
+                if (isClassSpecific) {
+                    diagramType = 'class';
+                } else if (isSequenceSpecific) {
+                    diagramType = 'sequence';
+                } else if (arrow.includes('>') || arrow.includes('<')) {
+                    // Generic arrows like -> or <--
+                    if (diagramType === 'unknown') {
+                        // Default to sequence for ambiguous arrows like -> or <--
+                        diagramType = 'sequence';
+                    }
+                } else if (arrow === '--' || arrow === '..' || arrow.includes('|')) {
                     if (diagramType === 'unknown') diagramType = 'class';
                 }
             } else if (['activation', 'group', 'return', 'autoactivate'].includes(statement.type)) {

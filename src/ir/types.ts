@@ -92,6 +92,28 @@ export interface IRAutoactivate extends IRStatement {
     value: boolean;
 }
 
+export interface IRAutonumber extends IRStatement {
+    type: 'autonumber';
+    start?: number;
+    step?: number;
+    format?: string;
+}
+
+export interface IRDivider extends IRStatement {
+    type: 'divider';
+    label: string;
+}
+
+export interface IRDelay extends IRStatement {
+    type: 'delay';
+}
+
+export interface IRRef extends IRStatement {
+    type: 'ref';
+    targets: string[];
+    text: string;
+}
+
 export interface IRMainframe extends IRStatement {
     type: 'mainframe';
     label: string;

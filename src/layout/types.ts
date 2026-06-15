@@ -29,6 +29,7 @@ export interface LayoutConnection {
     toLabel?: string;
     type: string; // arrow type e.g. "->", "*--"
     label: string | null | undefined;
+    number?: string; // Autonumber
     position: Position | null; // Optional waypoint /pos metadata
     calculatedY?: number; // Internal calculated Y for sequence diagrams
 }
@@ -41,6 +42,7 @@ export interface LayoutActivation {
     startMessageIndex?: number;
     endMessageIndex?: number;
     isDestroy?: boolean;
+    depth?: number;
 }
 
 export interface LayoutNote {
@@ -68,6 +70,13 @@ export interface LayoutGroup {
     color?: string;
 }
 
+export interface LayoutDivider {
+    type: 'divider';
+    label: string;
+    position: Position;
+    size: Size;
+}
+
 export interface LayoutMap {
     diagramType: 'sequence' | 'class' | 'deployment' | 'unknown';
     nodes: Record<string, LayoutNode>;
@@ -75,6 +84,7 @@ export interface LayoutMap {
     notes: LayoutNote[];
     groups: LayoutGroup[];
     activations?: LayoutActivation[];
+    dividers?: LayoutDivider[];
 }
 
 export const DEFAULTS = {
@@ -98,5 +108,6 @@ export const DEFAULTS = {
     CLASS_PADDING_Y: 150,
     NOTE_PADDING_Y: 30,
     SEQUENCE_MIN_Y_GAP: 40,
-    SEQUENCE_DEFAULT_Y_STEP: 60
+    SEQUENCE_DEFAULT_Y_STEP: 60,
+    DIVIDER_HEIGHT: 30
 };
