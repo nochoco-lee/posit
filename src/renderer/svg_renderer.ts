@@ -117,15 +117,29 @@ export class LayoutPumlSvgRenderer {
 
         // 1. Groups (background)
         map.groups.forEach(g => {
-            svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${g.size.width}" height="${g.size.height}" fill="${g.color || 'none'}" fill-opacity="0.1" stroke="${g.color || '#A80036'}" stroke-width="2" stroke-dasharray="5,5" />\n`;
-            
-            // Measure keyword to size its box
-            const keywordWidth = g.keyword.length * 8 + 10;
-            svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${keywordWidth}" height="18" fill="#EEEEEE" stroke="${g.color || '#A80036'}" stroke-width="1" />\n`;
-            svg += `<text x="${g.position.x + 5}" y="${g.position.y + 13}" font-family="sans-serif" font-size="11" font-weight="bold" fill="black">${g.keyword}</text>\n`;
-            
-            if (g.label) {
-                svg += `<text x="${g.position.x + keywordWidth + 5}" y="${g.position.y + 13}" font-family="sans-serif" font-size="11" font-weight="bold" fill="${g.color || '#A80036'}">[${g.label}]</text>\n`;
+            if (g.keyword === 'package' || g.keyword === 'namespace' || g.keyword === 'folder') {
+                // Classic package shape with a tab
+                const tabWidth = Math.min(g.size.width * 0.4, 100);
+                const tabHeight = 20;
+                svg += `<path d="M ${g.position.x} ${g.position.y} 
+                           L ${g.position.x + tabWidth} ${g.position.y} 
+                           L ${g.position.x + tabWidth + 5} ${g.position.y + tabHeight} 
+                           L ${g.position.x + g.size.width} ${g.position.y + tabHeight} 
+                           L ${g.position.x + g.size.width} ${g.position.y + g.size.height} 
+                           L ${g.position.x} ${g.position.y + g.size.height} Z" 
+                           fill="${g.color || 'white'}" fill-opacity="0.1" stroke="${g.color || '#A80036'}" stroke-width="2" />\n`;
+                svg += this.renderText(g.position.x + tabWidth/2, g.position.y + 14, g.label || "", 11, "middle", g.color || '#A80036');
+            } else {
+                svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${g.size.width}" height="${g.size.height}" fill="${g.color || 'none'}" fill-opacity="0.1" stroke="${g.color || '#A80036'}" stroke-width="2" stroke-dasharray="5,5" />\n`;
+                
+                // Measure keyword to size its box
+                const keywordWidth = g.keyword.length * 8 + 10;
+                svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${keywordWidth}" height="18" fill="#EEEEEE" stroke="${g.color || '#A80036'}" stroke-width="1" />\n`;
+                svg += `<text x="${g.position.x + 5}" y="${g.position.y + 13}" font-family="sans-serif" font-size="11" font-weight="bold" fill="black">${g.keyword}</text>\n`;
+                
+                if (g.label) {
+                    svg += `<text x="${g.position.x + keywordWidth + 5}" y="${g.position.y + 13}" font-family="sans-serif" font-size="11" font-weight="bold" fill="${g.color || '#A80036'}">[${g.label}]</text>\n`;
+                }
             }
             g.dividerYs?.forEach(dy => {
                 svg += `<line x1="${g.position.x}" y1="${dy}" x2="${g.position.x + g.size.width}" y2="${dy}" stroke="${g.color || '#A80036'}" stroke-width="1" stroke-dasharray="5,5" />\n`;
@@ -170,6 +184,38 @@ export class LayoutPumlSvgRenderer {
                 svg += `<line x1="${centerX + 10}" y1="${headY + headRadius + 35}" x2="${centerX}" y2="${headY + headRadius + 20}" stroke="#A80036" stroke-width="2" />\n`;
                 const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
                 svg += this.renderText(centerX, headY + headRadius + 50, text, 14);
+            } else if (n.type === 'node') {
+                // 3D Cube for Node
+                const offset = 10;
+                const w = n.size.width - offset;
+                const h = n.size.height - offset;
+                const x = n.position.x;
+                const y = n.position.y + offset;
+                
+                svg += `<path d="M ${x} ${y} L ${x+w} ${y} L ${x+w} ${y+h} L ${x} ${y+h} Z" fill="#E2E2F0" stroke="#A80036" stroke-width="1.5" />\n`;
+                svg += `<path d="M ${x} ${y} L ${x+offset} ${y-offset} L ${x+w+offset} ${y-offset} L ${x+w} ${y} Z" fill="#F2F2FF" stroke="#A80036" stroke-width="1.5" />\n`;
+                svg += `<path d="M ${x+w} ${y} L ${x+w+offset} ${y-offset} L ${x+w+offset} ${y+h-offset} L ${x+w} ${y+h} Z" fill="#D2D2E0" stroke="#A80036" stroke-width="1.5" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(x + w/2, y + h/2 + 5, text, 14);
+            } else if (n.type === 'cloud') {
+                const x = n.position.x;
+                const y = n.position.y;
+                const w = n.size.width;
+                const h = n.size.height;
+                const cx = x + w/2;
+                const cy = y + h/2;
+                const r = Math.min(w, h) / 3;
+                
+                svg += `<path d="M ${cx - r*1.5} ${cy} 
+                           A ${r} ${r} 0 0 1 ${cx - r*0.5} ${cy - r}
+                           A ${r} ${r} 0 0 1 ${cx + r*0.5} ${cy - r}
+                           A ${r} ${r} 0 0 1 ${cx + r*1.5} ${cy}
+                           A ${r} ${r} 0 0 1 ${cx + r*0.5} ${cy + r}
+                           A ${r} ${r} 0 0 1 ${cx - r*0.5} ${cy + r}
+                           A ${r} ${r} 0 0 1 ${cx - r*1.5} ${cy} Z" 
+                           fill="#E2E2F0" stroke="#A80036" stroke-width="1.5" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(cx, cy + 5, text, 14);
             } else {
                 const isClass = n.type === 'class' || n.type === 'interface' || n.type === 'enum' || n.type === 'struct';
                 const fill = isClass ? '#FEFECE' : '#E2E2F0';
