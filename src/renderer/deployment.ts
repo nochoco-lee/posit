@@ -125,15 +125,24 @@ export class DeploymentRenderer {
             case 'namespace':
                 // Folder shape with tab
                 const folderBody = new Konva.Rect({
-                    x: 0, y: 10, width: width, height: height - 10,
+                    x: 0, y: 15, width: width, height: height - 15,
                     fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
                 });
                 const folderTab = new Konva.Line({
-                    points: [0, 10, 0, 0, width * 0.4, 0, width * 0.5, 10],
+                    points: [0, 15, 0, 0, width * 0.4, 0, width * 0.5, 15],
                     closed: true, fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
                 });
                 g.add(folderBody); g.add(folderTab);
                 return g;
+
+            case 'card':
+                return new Konva.Rect({
+                    width: width,
+                    height: height,
+                    fill: colors.fill,
+                    stroke: colors.stroke,
+                    strokeWidth: colors.strokeWidth,
+                });
 
             case 'frame':
                 // Frame shape with top-left tab
@@ -155,8 +164,8 @@ export class DeploymentRenderer {
                     fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
                 });
                 const docIcon = new Konva.Path({
-                    x: width - 25, y: 5,
-                    data: 'M 0 0 L 15 0 L 20 5 L 20 20 L 0 20 Z M 15 0 L 15 5 L 20 5',
+                    x: width - 20, y: 5,
+                    data: 'M 0 0 L 10 0 L 15 5 L 15 18 L 0 18 Z M 10 0 L 10 5 L 15 5',
                     stroke: colors.stroke, strokeWidth: 1
                 });
                 g.add(artBody); g.add(docIcon);
@@ -167,15 +176,20 @@ export class DeploymentRenderer {
                     width: width, height: height,
                     fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
                 });
-                const smallRect1 = new Konva.Rect({
-                    x: -10, y: 10, width: 20, height: 10,
-                    fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                // Small component icon in top right
+                const compIconBase = new Konva.Rect({
+                    x: width - 22, y: 5, width: 15, height: 12,
+                    fill: colors.fill, stroke: colors.stroke, strokeWidth: 1
                 });
-                const smallRect2 = new Konva.Rect({
-                    x: -10, y: height - 20, width: 20, height: 10,
-                    fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                const compIconPart1 = new Konva.Rect({
+                    x: width - 25, y: 7, width: 6, height: 3,
+                    fill: colors.fill, stroke: colors.stroke, strokeWidth: 1
                 });
-                g.add(compRect); g.add(smallRect1); g.add(smallRect2);
+                const compIconPart2 = new Konva.Rect({
+                    x: width - 25, y: 12, width: 6, height: 3,
+                    fill: colors.fill, stroke: colors.stroke, strokeWidth: 1
+                });
+                g.add(compRect); g.add(compIconBase); g.add(compIconPart1); g.add(compIconPart2);
                 return g;
 
             case 'usecase':

@@ -31,6 +31,10 @@ export class DeploymentLayoutManager {
             case 'database':
             case 'storage':
                 return { width: 100, height: 80 };
+            case 'folder':
+                return { width: 120, height: 90 };
+            case 'card':
+                return { width: 120, height: 70 };
             case 'cloud':
                 return { width: 150, height: 80 };
             case 'hexagon':
