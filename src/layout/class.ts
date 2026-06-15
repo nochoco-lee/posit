@@ -19,10 +19,15 @@ export class ClassLayoutManager {
         };
     }
 
+    private nodesByRow = new Map<number, string[]>();
+    private rowInfo = new Map<number, {startX: number, baseY: number}>();
+
     public process(ir: IRDiagram): LayoutMap {
         this.edges = [];
         this.nodeRanks.clear();
         this.rowOccupancy.clear();
+        this.nodesByRow.clear();
+        this.rowInfo.clear();
         this.currentClassY = DEFAULTS.CLASS_START_Y;
 
         // Pass 0: Collect all edges for layout hints
@@ -33,6 +38,9 @@ export class ClassLayoutManager {
 
         // Pass 1: Setup all nodes (explicit and implicit) and groups/containers
         this.processStatementsPass1(ir.statements, DEFAULTS.CLASS_START_X);
+
+        // Pass 1.5: Center nodes
+        this.applyCentering();
 
         // Pass 2: Setup connections, notes
         this.processStatementsPass2(ir.statements);
@@ -76,14 +84,22 @@ export class ClassLayoutManager {
                     let tail = edge.to;
                     
                     // Heuristic: determine which node is "above"
-                    // If arrow points to 'to' (e.g. A --|> B), B is head (above)
-                    // If arrow points to 'from' (e.g. A <|-- B), A is head (above)
-                    if (edge.arrow.includes('|>' ) || edge.arrow.endsWith('>') || edge.arrow.endsWith(')')) {
+                    if (edge.arrow.includes('|>' )) {
+                        // Inheritance: parent is above
                         head = edge.to;
                         tail = edge.from;
-                    } else if (edge.arrow.startsWith('<|') || edge.arrow.startsWith('<') || edge.arrow.startsWith('(')) {
+                    } else if (edge.arrow.startsWith('<|')) {
+                        // Reverse inheritance: parent is above
                         head = edge.from;
                         tail = edge.to;
+                    } else if (edge.arrow.endsWith('>') || edge.arrow.endsWith(')')) {
+                        // Regular arrow: source is above
+                        head = edge.from;
+                        tail = edge.to;
+                    } else if (edge.arrow.startsWith('<') || edge.arrow.startsWith('(')) {
+                        // Reverse regular arrow: source is above
+                        head = edge.to;
+                        tail = edge.from;
                     }
 
                     const rh = this.nodeRanks.get(head)!;
@@ -256,6 +272,13 @@ export class ClassLayoutManager {
             const currentX = this.rowOccupancy.get(targetY) || x;
             position = { x: currentX, y: targetY };
             this.rowOccupancy.set(targetY, currentX + size.width + 100);
+
+            // Record for centering
+            if (!this.nodesByRow.has(targetY)) {
+                this.nodesByRow.set(targetY, []);
+                this.rowInfo.set(targetY, { startX: x, baseY });
+            }
+            this.nodesByRow.get(targetY)!.push(id);
         }
 
         const layoutNode: LayoutNode = {
@@ -269,6 +292,48 @@ export class ClassLayoutManager {
 
         this.map.nodes[id] = layoutNode;
         this.currentClassY = Math.max(this.currentClassY, position.y + size.height + 50);
+    }
+
+    private applyCentering() {
+        const levels = new Map<string, number[]>(); // key: "startX,baseY", value: list of targetYs
+        this.rowInfo.forEach((info, targetY) => {
+            const key = `${info.startX},${info.baseY}`;
+            if (!levels.has(key)) levels.set(key, []);
+            levels.get(key)!.push(targetY);
+        });
+
+        levels.forEach((targetYs, key) => {
+            const [startXStr, baseYStr] = key.split(',');
+            const startX = parseInt(startXStr);
+
+            let maxWidth = 0;
+            const rowWidths = new Map<number, number>();
+
+            targetYs.forEach(targetY => {
+                const nodeIds = this.nodesByRow.get(targetY) || [];
+                let width = 0;
+                nodeIds.forEach((id, index) => {
+                    const node = this.map.nodes[id];
+                    width += node.size.width;
+                    if (index < nodeIds.length - 1) width += 100; // Gap
+                });
+                rowWidths.set(targetY, width);
+                if (width > maxWidth) maxWidth = width;
+            });
+
+            targetYs.forEach(targetY => {
+                const nodeIds = this.nodesByRow.get(targetY) || [];
+                const rowWidth = rowWidths.get(targetY)!;
+                const offset = (maxWidth - rowWidth) / 2;
+                
+                let currentX = startX + offset;
+                nodeIds.forEach(id => {
+                    const node = this.map.nodes[id];
+                    node.position.x = currentX;
+                    currentX += node.size.width + 100;
+                });
+            });
+        });
     }
 
     private processConnection(conn: IREdge) {

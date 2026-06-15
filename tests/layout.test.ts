@@ -92,4 +92,39 @@ A -> B : Hello
         // DEFAULTS.SEQUENCE_START_Y (100) + 150 = 250
         expect(conn.calculatedY).toBe(250);
     });
+
+    it("should center a single top-level class over multiple bottom-level classes", () => {
+        const puml = `
+@startuml
+class Aaa
+class Factory
+class Entry
+class Parent
+Aaa --> Factory
+Aaa --> Entry
+Aaa --> Parent
+@enduml
+`;
+        const ast = parsePlantUml(puml);
+        const layout = new LayoutManager().process(ast);
+        const nodes = layout.nodes;
+
+        const aaa = nodes["Aaa"];
+        const factory = nodes["Factory"];
+        const entry = nodes["Entry"];
+        const parent = nodes["Parent"];
+
+        // Factory, Entry, Parent should be on the same Y
+        expect(factory.position.y).toBe(entry.position.y);
+        expect(entry.position.y).toBe(parent.position.y);
+
+        // Calculate expected centering
+        const row1Xs = [factory.position.x, entry.position.x, parent.position.x].sort((a, b) => a - b);
+        const row1MinX = row1Xs[0];
+        const row1MaxX = row1Xs[2] + nodes["Parent"].size.width;
+        const row1MidX = (row1MinX + row1MaxX) / 2;
+        
+        const aaaMidX = aaa.position.x + aaa.size.width / 2;
+        expect(aaaMidX).toBeCloseTo(row1MidX, 1);
+    });
 });
