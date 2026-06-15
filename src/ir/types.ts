@@ -118,6 +118,7 @@ export interface IRDivider extends IRStatement {
 
 export interface IRDelay extends IRStatement {
     type: 'delay';
+    text?: string;
 }
 
 export interface IRRef extends IRStatement {

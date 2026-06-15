@@ -129,6 +129,7 @@ export class LayoutPumlSvgRenderer {
                 }
             });
             if (map.dividers) map.dividers.forEach(d => updateBounds(d.position.x, d.position.y, d.size.width, d.size.height));
+            if (map.delays) map.delays.forEach(d => updateBounds(d.position.x, d.position.y, 100, 40));
         }
 
         // Add padding
@@ -643,14 +644,15 @@ export class LayoutPumlSvgRenderer {
         });
 
         // 8. Delays (dots)
-        if ((map as any).delays) {
-            (map as any).delays.forEach((delay: any) => {
-                const midX = (minX + maxX) / 2;
-                for (let i = 0; i < 3; i++) {
-                    svg += `<circle cx="${midX}" cy="${delay.position.y + i * 10}" r="2" fill="#A80036" />\n`;
-                }
-            });
-        }
+        map.delays?.forEach(delay => {
+            const midX = (minX + maxX) / 2;
+            for (let i = 0; i < 3; i++) {
+                svg += `<circle cx="${midX}" cy="${delay.position.y + i * 10}" r="2" fill="#A80036" />\n`;
+            }
+            if (delay.text) {
+                svg += this.renderText(midX + 15, delay.position.y + 15, delay.text, 12, "start", "#A80036", true);
+            }
+        });
 
         svg += '</svg>';
         return svg;

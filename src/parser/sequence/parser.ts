@@ -20,10 +20,7 @@ export class SequenceParser extends CstParser {
 
     public anyToken = this.RULE("anyToken", () => {
         this.OR([
-            { ALT: () => this.CONSUME(common.Identifier) },
-            { ALT: () => this.CONSUME(common.NumberToken) },
-            { ALT: () => this.CONSUME(common.StringLiteral) },
-            { ALT: () => this.CONSUME(common.Color) },
+            { ALT: () => this.CONSUME(common.IdentifierLike) },
             { ALT: () => this.CONSUME(lexer.Arrow) },
             { ALT: () => this.CONSUME(common.Comma) },
             { ALT: () => this.CONSUME(common.LParen) },
@@ -44,65 +41,12 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(common.RAngle) },
             { ALT: () => this.CONSUME(lexer.Delay) },
             { ALT: () => this.CONSUME(lexer.Divider) },
-            { ALT: () => this.CONSUME(common.Skinparam) },
-            { ALT: () => this.CONSUME(lexer.Participant) },
-            { ALT: () => this.CONSUME(lexer.Actor) },
-            { ALT: () => this.CONSUME(lexer.Boundary) },
-            { ALT: () => this.CONSUME(lexer.Control) },
-            { ALT: () => this.CONSUME(lexer.Entity) },
-            { ALT: () => this.CONSUME(lexer.Database) },
-            { ALT: () => this.CONSUME(lexer.Collections) },
-            { ALT: () => this.CONSUME(lexer.Queue) },
-            { ALT: () => this.CONSUME(lexer.Alt) },
-            { ALT: () => this.CONSUME(lexer.Else) },
-            { ALT: () => this.CONSUME(lexer.Opt) },
-            { ALT: () => this.CONSUME(lexer.Loop) },
-            { ALT: () => this.CONSUME(lexer.Par) },
-            { ALT: () => this.CONSUME(lexer.Group) },
-            { ALT: () => this.CONSUME(lexer.Box) },
-            { ALT: () => this.CONSUME(lexer.End) },
-            { ALT: () => this.CONSUME(lexer.Note) },
-            { ALT: () => this.CONSUME(lexer.Ref) },
-            { ALT: () => this.CONSUME(lexer.Autonumber) },
-            { ALT: () => this.CONSUME(lexer.Newpage) },
-            { ALT: () => this.CONSUME(lexer.Activate) },
-            { ALT: () => this.CONSUME(lexer.Deactivate) },
-            { ALT: () => this.CONSUME(lexer.Destroy) },
-            { ALT: () => this.CONSUME(lexer.Autoactivate) },
-            { ALT: () => this.CONSUME(lexer.Return) },
-            { ALT: () => this.CONSUME(lexer.Create) },
-            { ALT: () => this.CONSUME(lexer.As) },
-            { ALT: () => this.CONSUME(lexer.Left) },
-            { ALT: () => this.CONSUME(lexer.Right) },
-            { ALT: () => this.CONSUME(lexer.Over) },
-            { ALT: () => this.CONSUME(lexer.Of) },
-            { ALT: () => this.CONSUME(lexer.On) },
-            { ALT: () => this.CONSUME(lexer.Across) },
-            { ALT: () => this.CONSUME(lexer.Off) },
-            { ALT: () => this.CONSUME(common.Hide) },
-            { ALT: () => this.CONSUME(common.Show) },
-            { ALT: () => this.CONSUME(common.Page) },
-            { ALT: () => this.CONSUME(common.Header) },
-            { ALT: () => this.CONSUME(common.Footer) },
-            { ALT: () => this.CONSUME(common.Title) }
+            { ALT: () => this.CONSUME(common.StringLiteral) },
+            { ALT: () => this.CONSUME(common.Color) }
         ]);
     });
 
-    public nodeIdentifier = this.RULE("nodeIdentifier", () => {
-        this.OR([
-            { ALT: () => this.CONSUME(common.Identifier) },
-            { ALT: () => this.CONSUME(common.NumberToken) },
-            { ALT: () => this.CONSUME(lexer.Participant) },
-            { ALT: () => this.CONSUME(lexer.Actor) },
-            { ALT: () => this.CONSUME(lexer.Boundary) },
-            { ALT: () => this.CONSUME(lexer.Control) },
-            { ALT: () => this.CONSUME(lexer.Entity) },
-            { ALT: () => this.CONSUME(lexer.Database) },
-            { ALT: () => this.CONSUME(lexer.Collections) },
-            { ALT: () => this.CONSUME(lexer.Queue) }
-        ]);
-    });
-
+    public nodeIdentifier = this.RULE("nodeIdentifier", () => { this.CONSUME(common.IdentifierLike); });
     public namePart = this.RULE("namePart", () => { this.OR([{ ALT: () => this.SUBRULE(this.nodeIdentifier) }, { ALT: () => this.CONSUME(common.StringLiteral) }]); });
 
     public name = this.RULE("name", () => {
@@ -146,7 +90,7 @@ export class SequenceParser extends CstParser {
         this.MANY(() => {
             this.OR1([
                 { ALT: () => { this.CONSUME(lexer.As); this.SUBRULE1(this.name, { LABEL: "alias" }); }},
-                { GATE: () => { const next = this.LA(1).tokenType; return next === common.Identifier || next === common.StringLiteral || next === common.NumberToken; }, ALT: () => this.SUBRULE2(this.name, { LABEL: "alias" }) },
+                { GATE: () => { const next = this.LA(1).tokenType; return next === common.Identifier || next === common.StringLiteral || next === common.NumberToken || next === common.IdentifierLike; }, ALT: () => this.SUBRULE2(this.name, { LABEL: "alias" }) },
                 { ALT: () => this.CONSUME(common.Color, { LABEL: "color" }) },
                 { ALT: () => { this.CONSUME(lexer.Order); this.CONSUME(common.NumberToken, { LABEL: "order" }); } }
             ]);
@@ -159,7 +103,7 @@ export class SequenceParser extends CstParser {
         this.CONSUME(lexer.Arrow, { LABEL: "arrow" });
         this.SUBRULE1(this.name, { LABEL: "to" });
         this.OPTION(() => { this.SUBRULE(this.payload); });
-        this.OPTION1(() => { this.CONSUME(common.PosComment, { LABEL: "layout" }); });
+        this.OPTION1(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
     });
 
     public noteDeclaration = this.RULE("noteDeclaration", () => {
@@ -246,9 +190,25 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(common.Page) },
             { ALT: () => this.CONSUME(common.Header) },
             { ALT: () => this.CONSUME(common.Footer) },
-            { ALT: () => this.CONSUME(common.Title) }
+            { ALT: () => this.CONSUME(common.Title) },
+            { ALT: () => this.CONSUME(lexer.Autoactivate) },
+            { ALT: () => this.CONSUME(lexer.Newpage) }
         ]);
-        this.MANY(() => this.SUBRULE(this.anyToken));
+        this.MANY({
+             GATE: () => this.LA(1).tokenType !== common.Newline && this.LA(1).tokenType !== common.LBrace && this.LA(1).tokenType !== common.EndUml,
+             DEF: () => this.SUBRULE(this.anyToken)
+        });
+        this.OPTION(() => {
+            this.CONSUME(common.LBrace);
+            this.MANY1({
+                GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== common.EndUml && this.LA(1).tokenType !== EOF,
+                DEF: () => this.OR1([
+                    { ALT: () => this.CONSUME(common.Newline) },
+                    { ALT: () => this.SUBRULE1(this.anyToken) }
+                ])
+            });
+            this.CONSUME(common.RBrace);
+        });
     });
 
     public statement = this.RULE("statement", () => {
@@ -262,13 +222,15 @@ export class SequenceParser extends CstParser {
             { ALT: () => { this.CONSUME(lexer.Activate); this.SUBRULE(this.name, { LABEL: "activeNode" }); } },
             { ALT: () => { this.CONSUME(lexer.Deactivate); this.SUBRULE1(this.name, { LABEL: "activeNode" }); } },
             { ALT: () => { this.CONSUME(lexer.Destroy); this.SUBRULE2(this.name, { LABEL: "activeNode" }); } },
-            { ALT: () => this.CONSUME(lexer.Return) }
+            { ALT: () => this.CONSUME(lexer.Return) },
+            { ALT: () => this.CONSUME(lexer.Delay) },
+            { ALT: () => this.CONSUME(lexer.Divider) }
         ]);
     });
 
     private isIgnored(): boolean {
         const tok = this.LA(1).tokenType;
-        return tok === common.Skinparam || tok === common.Hide || tok === common.Show || tok === common.Page || tok === common.Header || tok === common.Footer || tok === common.Title;
+        return tok === common.Skinparam || tok === common.Hide || tok === common.Show || tok === common.Page || tok === common.Header || tok === common.Footer || tok === common.Title || tok === lexer.Autoactivate || tok === lexer.Newpage;
     }
 
     private isConnection(): boolean {
@@ -287,6 +249,7 @@ export class SequenceParser extends CstParser {
             this.OR([
                 { ALT: () => this.CONSUME(common.Newline) },
                 { ALT: () => this.CONSUME(common.StartUml) },
+                { ALT: () => this.CONSUME(common.PosComment) },
                 { ALT: () => this.SUBRULE(this.statement) },
                 { ALT: () => this.CONSUME(common.EndUml) }
             ]);

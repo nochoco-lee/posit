@@ -78,6 +78,12 @@ export interface LayoutDivider {
     size: Size;
 }
 
+export interface LayoutDelay {
+    type: 'delay';
+    text?: string;
+    position: Position;
+}
+
 export interface LayoutMap {
     diagramType: 'sequence' | 'class' | 'deployment' | 'unknown';
     nodes: Record<string, LayoutNode>;
@@ -86,6 +92,7 @@ export interface LayoutMap {
     groups: LayoutGroup[];
     activations?: LayoutActivation[];
     dividers?: LayoutDivider[];
+    delays?: LayoutDelay[];
 }
 
 export const DEFAULTS = {

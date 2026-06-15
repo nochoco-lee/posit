@@ -1,5 +1,5 @@
 import { CstNode, IToken } from "chevrotain";
-import { IRDiagram, IREdge, IRNode, IRStatement, IRContainer, IRGroup, IRNote } from "../../ir/types";
+import { IRDiagram, IREdge, IRNode, IRStatement, IRContainer, IRGroup, IRNote, IROffset } from "../../ir/types";
 import { ClassParser } from "./parser";
 
 const parser = new ClassParser();
@@ -9,6 +9,41 @@ export class ClassAstVisitor extends BaseVisitor {
     constructor() {
         super();
         this.validateVisitor();
+    }
+
+    private getOffsets(ctx: any, layoutTokens?: IToken[]): IROffset {
+        const allTokens: IToken[] = [];
+        const collectTokens = (obj: any) => {
+            if (!obj) return;
+            if (Array.isArray(obj)) {
+                obj.forEach(collectTokens);
+            } else if (obj.image) {
+                allTokens.push(obj);
+            } else if (obj.children) {
+                Object.values(obj.children).forEach(collectTokens);
+            } else {
+                // Handle the case where obj is the children object itself
+                Object.values(obj).forEach(collectTokens);
+            }
+        };
+        collectTokens(ctx);
+        
+        if (allTokens.length === 0) return { start: 0, end: 0 };
+        
+        allTokens.sort((a, b) => a.startOffset - b.startOffset);
+        const start = allTokens[0].startOffset;
+        const end = (allTokens[allTokens.length - 1].endOffset !== undefined ? allTokens[allTokens.length - 1].endOffset! + 1 : allTokens[allTokens.length - 1].startOffset + (allTokens[allTokens.length - 1].image?.length || 0));
+
+        let layoutStart: number | undefined = undefined;
+        let layoutEnd: number | undefined = undefined;
+        
+        if (layoutTokens && layoutTokens.length > 0) {
+            layoutTokens.sort((a, b) => a.startOffset - b.startOffset);
+            layoutStart = layoutTokens[0].startOffset;
+            layoutEnd = (layoutTokens[layoutTokens.length - 1].endOffset !== undefined ? layoutTokens[layoutTokens.length - 1].endOffset! + 1 : layoutTokens[layoutTokens.length - 1].startOffset + (layoutTokens[layoutTokens.length - 1].image?.length || 0));
+        }
+
+        return { start, end, layoutStart, layoutEnd };
     }
 
     diagram(ctx: any): IRDiagram {
@@ -72,8 +107,8 @@ export class ClassAstVisitor extends BaseVisitor {
 
         let layout: any = undefined;
         if (ctx.layout) {
-            const comment = ctx.layout[0].image;
-            const match = comment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
+            const firstComment = ctx.layout[0].image;
+            const match = firstComment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
             if (match) layout = { x: parseInt(match[1]), y: parseInt(match[2]) };
         }
 
@@ -85,7 +120,7 @@ export class ClassAstVisitor extends BaseVisitor {
             members,
             color,
             layout,
-            offset: { start: 0, end: 0 }
+            offset: this.getOffsets(ctx, ctx.layout)
         };
 
         if (ctx.parents) {
@@ -96,7 +131,7 @@ export class ClassAstVisitor extends BaseVisitor {
                     from: name,
                     to: this.visit(p),
                     arrow: "<|--",
-                    offset: { start: 0, end: 0 }
+                    offset: this.getOffsets(ctx, ctx.layout)
                 } as any);
             });
             return results;
@@ -155,8 +190,8 @@ export class ClassAstVisitor extends BaseVisitor {
 
         let layout: any = undefined;
         if (ctx.layout) {
-            const comment = ctx.layout[0].image;
-            const match = comment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
+            const firstComment = ctx.layout[0].image;
+            const match = firstComment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
             if (match) layout = { x: parseInt(match[1]), y: parseInt(match[2]) };
         }
 
@@ -167,7 +202,7 @@ export class ClassAstVisitor extends BaseVisitor {
             arrow,
             label: ctx.payload ? this.visit(ctx.payload[0]) : undefined,
             layout,
-            offset: { start: 0, end: 0 }
+            offset: this.getOffsets(ctx, ctx.layout)
         };
     }
 

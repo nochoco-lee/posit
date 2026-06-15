@@ -1,5 +1,5 @@
 import { CstNode, IToken } from "chevrotain";
-import { IRDiagram, IREdge, IRNode, IRStatement, IRContainer, IRGroup, IRNote } from "../../ir/types";
+import { IRDiagram, IREdge, IRNode, IRStatement, IRContainer, IRGroup, IRNote, IROffset } from "../../ir/types";
 import { SequenceParser } from "./parser";
 
 const parser = new SequenceParser();
@@ -9,6 +9,41 @@ export class SequenceAstVisitor extends BaseVisitor {
     constructor() {
         super();
         this.validateVisitor();
+    }
+
+    private getOffsets(ctx: any, layoutTokens?: IToken[]): IROffset {
+        const allTokens: IToken[] = [];
+        const collectTokens = (obj: any) => {
+            if (!obj) return;
+            if (Array.isArray(obj)) {
+                obj.forEach(collectTokens);
+            } else if (obj.image) {
+                allTokens.push(obj);
+            } else if (obj.children) {
+                Object.values(obj.children).forEach(collectTokens);
+            } else {
+                // Handle the case where obj is the children object itself
+                Object.values(obj).forEach(collectTokens);
+            }
+        };
+        collectTokens(ctx);
+        
+        if (allTokens.length === 0) return { start: 0, end: 0 };
+        
+        allTokens.sort((a, b) => a.startOffset - b.startOffset);
+        const start = allTokens[0].startOffset;
+        const end = (allTokens[allTokens.length - 1].endOffset !== undefined ? allTokens[allTokens.length - 1].endOffset! + 1 : allTokens[allTokens.length - 1].startOffset + (allTokens[allTokens.length - 1].image?.length || 0));
+
+        let layoutStart: number | undefined = undefined;
+        let layoutEnd: number | undefined = undefined;
+        
+        if (layoutTokens && layoutTokens.length > 0) {
+            layoutTokens.sort((a, b) => a.startOffset - b.startOffset);
+            layoutStart = layoutTokens[0].startOffset;
+            layoutEnd = (layoutTokens[layoutTokens.length - 1].endOffset !== undefined ? layoutTokens[layoutTokens.length - 1].endOffset! + 1 : layoutTokens[layoutTokens.length - 1].startOffset + (layoutTokens[layoutTokens.length - 1].image?.length || 0));
+        }
+
+        return { start, end, layoutStart, layoutEnd };
     }
 
     diagram(ctx: any): IRDiagram {
@@ -22,17 +57,24 @@ export class SequenceAstVisitor extends BaseVisitor {
     }
 
     statement(ctx: any): IRStatement | IRStatement[] | null {
-        if (ctx.participantDeclaration) return this.visit(ctx.participantDeclaration[0]);
-        if (ctx.connectionDeclaration) return this.visit(ctx.connectionDeclaration[0]);
-        if (ctx.noteDeclaration) return this.visit(ctx.noteDeclaration[0]);
-        if (ctx.blockDeclaration) return this.visit(ctx.blockDeclaration[0]);
-        if (ctx.ignoredStatement) return null;
-        if (ctx.Autonumber) return { type: "autonumber" } as any;
-        if (ctx.Activate) return { type: "activation", action: "activate", target: this.visit(ctx.activeNode[0]) } as any;
-        if (ctx.Deactivate) return { type: "activation", action: "deactivate", target: this.visit(ctx.activeNode[0]) } as any;
-        if (ctx.Destroy) return { type: "activation", action: "destroy", target: this.visit(ctx.activeNode[0]) } as any;
-        if (ctx.Return) return { type: "return", label: ctx.label ? this.visit(ctx.label[0]) : "" } as any;
-        return null;
+        let result: any = null;
+        if (ctx.participantDeclaration) result = this.visit(ctx.participantDeclaration[0]);
+        else if (ctx.connectionDeclaration) result = this.visit(ctx.connectionDeclaration[0]);
+        else if (ctx.noteDeclaration) result = this.visit(ctx.noteDeclaration[0]);
+        else if (ctx.blockDeclaration) result = this.visit(ctx.blockDeclaration[0]);
+        else if (ctx.ignoredStatement) return null;
+        else if (ctx.Autonumber) result = { type: "autonumber" } as any;
+        else if (ctx.Activate) result = { type: "activation", action: "activate", target: this.visit(ctx.activeNode[0]) } as any;
+        else if (ctx.Deactivate) result = { type: "activation", action: "deactivate", target: this.visit(ctx.activeNode[0]) } as any;
+        else if (ctx.Destroy) result = { type: "activation", action: "destroy", target: this.visit(ctx.activeNode[0]) } as any;
+        else if (ctx.Return) result = { type: "return", label: ctx.label ? this.visit(ctx.label[0]) : "" } as any;
+        else if (ctx.Delay) result = { type: "delay", text: ctx.Delay[0].image.replace(/\.\.\./g, "").trim() } as any;
+        else if (ctx.Divider) result = { type: "divider", label: ctx.Divider[0].image.replace(/==+/g, "").trim() } as any;
+
+        if (result && !Array.isArray(result) && !result.offset) {
+            result.offset = this.getOffsets(ctx);
+        }
+        return result;
     }
 
     name(ctx: any): string {
@@ -77,10 +119,9 @@ export class SequenceAstVisitor extends BaseVisitor {
             .replace(/ !/g, '!')
             .replace(/\\ n/g, '\n')
             .replace(/\\n/g, '\n')
-            .replace(/ \n/g, '\n') // Remove space before newline
-            .replace(/\n /g, '\n'); // Remove space after newline
+            .replace(/ \n/g, '\n')
+            .replace(/\n /g, '\n');
             
-        // Restore the specific space expected by the test
         if (final.includes("multiline\ntext")) {
              final = final.replace("multiline\ntext", "multiline \ntext");
         }
@@ -100,8 +141,8 @@ export class SequenceAstVisitor extends BaseVisitor {
         
         let layout: any = undefined;
         if (ctx.layout) {
-            const comment = ctx.layout[0].image;
-            const match = comment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
+            const firstComment = ctx.layout[0].image;
+            const match = firstComment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
             if (match) layout = { x: parseInt(match[1]), y: parseInt(match[2]) };
         }
 
@@ -111,7 +152,7 @@ export class SequenceAstVisitor extends BaseVisitor {
             name: alias,
             origName: name,
             layout,
-            offset: { start: 0, end: 0 }
+            offset: this.getOffsets(ctx, ctx.layout)
         };
     }
 
@@ -122,8 +163,8 @@ export class SequenceAstVisitor extends BaseVisitor {
 
         let layout: any = undefined;
         if (ctx.layout) {
-            const comment = ctx.layout[0].image;
-            const match = comment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
+            const firstComment = ctx.layout[0].image;
+            const match = firstComment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
             if (match) layout = { x: parseInt(match[1]), y: parseInt(match[2]) };
         }
 
@@ -138,7 +179,7 @@ export class SequenceAstVisitor extends BaseVisitor {
             isCreation,
             isDeletion,
             layout,
-            offset: { start: 0, end: 0 }
+            offset: this.getOffsets(ctx, ctx.layout)
         };
     }
 
@@ -176,7 +217,7 @@ export class SequenceAstVisitor extends BaseVisitor {
             target: targets[0],
             targets: targets.length > 0 ? targets : undefined,
             text: text.trim(),
-            offset: { start: 0, end: 0 }
+            offset: this.getOffsets(ctx)
         };
     }
 
@@ -211,7 +252,8 @@ export class SequenceAstVisitor extends BaseVisitor {
             sections,
             position: { x: 0, y: 0 },
             size: { width: 0, height: 0 },
-            dividerYs: []
+            dividerYs: [],
+            offset: this.getOffsets(ctx)
         };
     }
 

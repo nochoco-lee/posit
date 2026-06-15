@@ -24,7 +24,7 @@ export class PlantUmlScanner {
         if (/\b(?:participant|actor|boundary|control|entity|database|collections|queue|autonumber|newpage|box|activate|deactivate|destroy|return)\b/i.test(text)) scores.sequence += 50;
         if (/\b(?:alt|opt|loop|par|break|critical|group)\b/i.test(text)) scores.sequence += 40;
         if (/->>|<<-|->x|x<-|->\?|\?<-|\[->|<-]|->\+|-->-|->\*|!->/.test(text)) scores.sequence += 60;
-        if (/->|<-|-->>|<<--/.test(text)) scores.sequence += 20; // Common arrows
+        if (/(?<!-)>(?!-)|(?<!-)<(?!-)/.test(text)) scores.sequence += 20; // Single arrows like -> or <-
         if (/\balice\b|\bbob\b/i.test(text)) scores.sequence += 10; // Common sequence names
 
         // Class indicators
@@ -36,11 +36,16 @@ export class PlantUmlScanner {
         if (/\b(?:artifact|cloud|component|node|storage|rectangle|card|file|hexagon|person|process|agent|label|usecase|action|frame|rect|package|namespace|folder)\b/i.test(text)) scores.deployment += 50;
         if (/\b(?:database|collections|queue|stack)\b/i.test(text)) scores.deployment += 30;
         if (/-up-|-down-|-left-|-right-/.test(text)) scores.deployment += 40;
-        if (/\[/.test(text) && /]/.test(text) && !scores.sequence) scores.deployment += 20; // [Component] style
+        if (/\[/.test(text) && /]/.test(text)) {
+            // Check if brackets are for components [A] or colored arrows -[#red]>
+            if (!/-\[/.test(text)) scores.deployment += 40;
+            else scores.deployment += 10; // Weak indicator if it's only colored arrows
+        }
 
-        // Tie-breakers and special cases
-        if (lowerText.includes('allow_mixing') || lowerText.includes('allowmixing')) {
-            scores.class += 10;
+        // Skinparam keywords
+        if (/skinparam\s+(?:component|node|database|class|interface|actor|usecase|package|folder|frame|rectangle|cloud|artifact|storage|card|file|hexagon|person|process|agent|label|action)\b/i.test(text)) {
+             if (/class|interface/i.test(text)) scores.class += 30;
+             else scores.deployment += 30;
         }
 
         // Final decision

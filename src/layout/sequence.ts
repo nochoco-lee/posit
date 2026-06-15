@@ -25,7 +25,8 @@ export class SequenceLayoutManager {
             notes: [],
             groups: [],
             activations: [],
-            dividers: []
+            dividers: [],
+            delays: []
         };
     }
 
@@ -179,6 +180,18 @@ export class SequenceLayoutManager {
     }
 
     private processDelay(delay: IRDelay) {
+        const nodes = Object.values(this.map.nodes);
+        let x = 400;
+        if (nodes.length > 0) {
+            const minX = Math.min(...nodes.map(n => n.position.x + n.size.width / 2));
+            const maxX = Math.max(...nodes.map(n => n.position.x + n.size.width / 2));
+            x = (minX + maxX) / 2;
+        }
+        this.map.delays!.push({
+            type: 'delay',
+            text: delay.text,
+            position: { x, y: this.currentSequenceY }
+        });
         this.currentSequenceY += 40;
     }
 

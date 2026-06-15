@@ -20,10 +20,7 @@ export class DeploymentParser extends CstParser {
 
     public anyToken = this.RULE("anyToken", () => {
         this.OR([
-            { ALT: () => this.CONSUME(common.Identifier) },
-            { ALT: () => this.CONSUME(common.NumberToken) },
-            { ALT: () => this.CONSUME(common.StringLiteral) },
-            { ALT: () => this.CONSUME(common.Color) },
+            { ALT: () => this.CONSUME(common.IdentifierLike) },
             { ALT: () => this.CONSUME(lexer.Arrow) },
             { ALT: () => this.CONSUME(common.Comma) },
             { ALT: () => this.CONSUME(common.LParen) },
@@ -41,18 +38,44 @@ export class DeploymentParser extends CstParser {
             { ALT: () => this.CONSUME(common.Exclamation) },
             { ALT: () => this.CONSUME(common.QuestionMark) },
             { ALT: () => this.CONSUME(common.LAngle) },
-            { ALT: () => this.CONSUME(common.RAngle) }
+            { ALT: () => this.CONSUME(common.RAngle) },
+            { ALT: () => this.CONSUME(common.StringLiteral) },
+            { ALT: () => this.CONSUME(common.Color) },
+            { ALT: () => this.CONSUME(lexer.Stereotype) }
         ]);
     });
 
-    public nodeIdentifier = this.RULE("nodeIdentifier", () => { this.OR([{ ALT: () => this.CONSUME(common.Identifier) }, { ALT: () => this.CONSUME(common.NumberToken) }]); });
-    public namePart = this.RULE("namePart", () => { this.OR([{ ALT: () => this.SUBRULE(this.nodeIdentifier) }, { ALT: () => this.CONSUME(common.StringLiteral) }]); });
+    public nodeIdentifier = this.RULE("nodeIdentifier", () => { this.CONSUME(common.IdentifierLike); });
+    public namePart = this.RULE("namePart", () => { 
+        this.OR([
+            { ALT: () => this.SUBRULE(this.nodeIdentifier) },
+            { ALT: () => this.CONSUME(common.StringLiteral) },
+            { ALT: () => {
+                this.CONSUME(common.LBracket);
+                this.SUBRULE1(this.namePart);
+                this.CONSUME(common.RBracket);
+            }},
+            { ALT: () => {
+                this.CONSUME(common.LParen);
+                this.SUBRULE2(this.namePart);
+                this.CONSUME(common.RParen);
+            }}
+        ]); 
+    });
 
     public name = this.RULE("name", () => {
         this.SUBRULE(this.namePart, { LABEL: "part" });
         this.MANY(() => {
             this.CONSUME(common.Dot, { LABEL: "sep" });
             this.SUBRULE1(this.namePart, { LABEL: "part" });
+        });
+    });
+
+    public payload = this.RULE("payload", () => {
+        this.CONSUME(common.Colon);
+        this.MANY({ 
+            GATE: () => { const next = this.LA(1).tokenType; return next !== common.EndUml && next !== common.Newline; }, 
+            DEF: () => this.SUBRULE(this.anyToken) 
         });
     });
 
@@ -81,13 +104,18 @@ export class DeploymentParser extends CstParser {
         this.SUBRULE(this.name, { LABEL: "name" });
         this.MANY(() => {
             this.OR1([
+                { ALT: () => { this.CONSUME(lexer.As); this.SUBRULE1(this.name, { LABEL: "alias" }); }},
                 { ALT: () => this.CONSUME(lexer.Stereotype, { LABEL: "stereo" }) },
                 { ALT: () => this.CONSUME(common.Color, { LABEL: "color" }) }
             ]);
         });
-        this.OPTION(() => {
+        this.OPTION(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
+        this.OPTION1(() => {
             this.CONSUME(common.LBrace);
-            this.MANY1(() => { this.OR2([ { ALT: () => this.CONSUME(common.Newline) }, { ALT: () => this.SUBRULE(this.statement) } ]); });
+            this.MANY1({
+                GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== common.EndUml,
+                DEF: () => this.OR2([ { ALT: () => this.CONSUME(common.Newline) }, { ALT: () => this.SUBRULE(this.statement) } ])
+            });
             this.CONSUME(common.RBrace);
         });
     });
@@ -96,6 +124,8 @@ export class DeploymentParser extends CstParser {
         this.SUBRULE1(this.name, { LABEL: "from" });
         this.CONSUME(lexer.Arrow, { LABEL: "arrow" });
         this.SUBRULE2(this.name, { LABEL: "to" });
+        this.OPTION(() => this.SUBRULE(this.payload));
+        this.OPTION1(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
     });
 
     public ignoredStatement = this.RULE("ignoredStatement", () => {
@@ -108,7 +138,21 @@ export class DeploymentParser extends CstParser {
             { ALT: () => this.CONSUME(common.Footer) },
             { ALT: () => this.CONSUME(common.Title) }
         ]);
-        this.MANY(() => this.SUBRULE(this.anyToken));
+        this.MANY({
+             GATE: () => this.LA(1).tokenType !== common.Newline && this.LA(1).tokenType !== common.LBrace && this.LA(1).tokenType !== common.EndUml,
+             DEF: () => this.SUBRULE(this.anyToken)
+        });
+        this.OPTION(() => {
+            this.CONSUME(common.LBrace);
+            this.MANY1({
+                GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== common.EndUml && this.LA(1).tokenType !== EOF,
+                DEF: () => this.OR1([
+                    { ALT: () => this.CONSUME(common.Newline) },
+                    { ALT: () => this.SUBRULE1(this.anyToken) }
+                ])
+            });
+            this.CONSUME(common.RBrace);
+        });
     });
 
     public statement = this.RULE("statement", () => {
@@ -140,6 +184,7 @@ export class DeploymentParser extends CstParser {
             this.OR([
                 { ALT: () => this.CONSUME(common.Newline) },
                 { ALT: () => this.CONSUME(common.StartUml) },
+                { ALT: () => this.CONSUME(common.PosComment) },
                 { ALT: () => this.SUBRULE(this.statement) },
                 { ALT: () => this.CONSUME(common.EndUml) }
             ]);

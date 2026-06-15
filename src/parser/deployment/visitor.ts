@@ -1,5 +1,5 @@
 import { CstNode, IToken } from "chevrotain";
-import { IRDiagram, IREdge, IRNode, IRStatement, IRContainer, IRGroup, IRNote } from "../../ir/types";
+import { IRDiagram, IREdge, IRNode, IRStatement, IRContainer, IRGroup, IRNote, IROffset } from "../../ir/types";
 import { DeploymentParser } from "./parser";
 
 const parser = new DeploymentParser();
@@ -9,6 +9,41 @@ export class DeploymentAstVisitor extends BaseVisitor {
     constructor() {
         super();
         this.validateVisitor();
+    }
+
+    private getOffsets(ctx: any, layoutTokens?: IToken[]): IROffset {
+        const allTokens: IToken[] = [];
+        const collectTokens = (obj: any) => {
+            if (!obj) return;
+            if (Array.isArray(obj)) {
+                obj.forEach(collectTokens);
+            } else if (obj.image) {
+                allTokens.push(obj);
+            } else if (obj.children) {
+                Object.values(obj.children).forEach(collectTokens);
+            } else {
+                // Handle the case where obj is the children object itself
+                Object.values(obj).forEach(collectTokens);
+            }
+        };
+        collectTokens(ctx);
+        
+        if (allTokens.length === 0) return { start: 0, end: 0 };
+        
+        allTokens.sort((a, b) => a.startOffset - b.startOffset);
+        const start = allTokens[0].startOffset;
+        const end = (allTokens[allTokens.length - 1].endOffset !== undefined ? allTokens[allTokens.length - 1].endOffset! + 1 : allTokens[allTokens.length - 1].startOffset + (allTokens[allTokens.length - 1].image?.length || 0));
+
+        let layoutStart: number | undefined = undefined;
+        let layoutEnd: number | undefined = undefined;
+        
+        if (layoutTokens && layoutTokens.length > 0) {
+            layoutTokens.sort((a, b) => a.startOffset - b.startOffset);
+            layoutStart = layoutTokens[0].startOffset;
+            layoutEnd = (layoutTokens[layoutTokens.length - 1].endOffset !== undefined ? layoutTokens[layoutTokens.length - 1].endOffset! + 1 : layoutTokens[layoutTokens.length - 1].startOffset + (layoutTokens[layoutTokens.length - 1].image?.length || 0));
+        }
+
+        return { start, end, layoutStart, layoutEnd };
     }
 
     diagram(ctx: any): IRDiagram {
@@ -41,30 +76,37 @@ export class DeploymentAstVisitor extends BaseVisitor {
     namePart(ctx: any): string {
         if (ctx.nodeIdentifier) return this.visit(ctx.nodeIdentifier[0]);
         if (ctx.StringLiteral) return ctx.StringLiteral[0].image.slice(1, -1);
+        if (ctx.LBracket) return this.visit(ctx.namePart[0]);
+        if (ctx.LParen) return this.visit(ctx.namePart[0]);
         return "";
     }
 
     nodeIdentifier(ctx: any): string {
-        const values = Object.values(ctx);
-        if (values.length > 0) {
-            const tokens = values[0] as IToken[];
-            return tokens[0].image;
-        }
-        return "";
+        const firstKey = Object.keys(ctx)[0];
+        const tokens = ctx[firstKey] as IToken[];
+        return tokens[0].image;
     }
 
-    stereotype(ctx: any): string {
-        return this.visit(ctx.name[0]);
+    payload(ctx: any): string {
+        if (!ctx.anyToken) return "";
+        let result = "";
+        ctx.anyToken.forEach((t: any) => {
+            const image = this.visit(t);
+            result += image;
+            if (image.match(/^[a-zA-Z0-9]+$/)) result += " ";
+        });
+        return result.trim();
     }
 
     nodeOrContainer(ctx: any): IRNode | IRContainer {
-        const keywordToken = Object.keys(ctx).find(k => !["name", "LBrace", "RBrace", "statement", "Newline", "stereo", "color"].includes(k));
+        const keywordToken = Object.keys(ctx).find(k => !["name", "LBrace", "RBrace", "statement", "Newline", "stereo", "color", "alias", "layout"].includes(k));
         const keyword = keywordToken ? keywordToken.toLowerCase() : "package";
         const name = this.visit(ctx.name[0]);
+        const alias = ctx.alias ? this.visit(ctx.alias[0]) : name;
         
         let stereo: string | undefined = undefined;
         if (ctx.stereo) {
-            stereo = ctx.stereo[0].image; // Keep brackets as per test expectations
+            stereo = ctx.stereo[0].image;
         }
 
         let color: string | undefined = undefined;
@@ -72,36 +114,55 @@ export class DeploymentAstVisitor extends BaseVisitor {
             color = ctx.color[0].image;
         }
 
+        let layout: any = undefined;
+        if (ctx.layout) {
+            const firstComment = ctx.layout[0].image;
+            const match = firstComment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
+            if (match) layout = { x: parseInt(match[1]), y: parseInt(match[2]) };
+        }
+
         if (ctx.LBrace) {
             return {
                 type: "container",
                 keyword,
-                name,
+                name: alias,
+                origName: name,
                 stereotype: stereo,
                 color,
+                layout,
                 statements: ctx.statement ? ctx.statement.map((s: any) => this.visit(s)).filter(Boolean).flat() : [],
-                offset: { start: 0, end: 0 }
-            };
+                offset: this.getOffsets(ctx, ctx.layout)
+            } as any;
         } else {
             return {
                 type: "node",
                 shape: keyword,
-                name,
+                name: alias,
                 origName: name,
                 stereotype: stereo,
                 color,
-                offset: { start: 0, end: 0 }
+                layout,
+                offset: this.getOffsets(ctx, ctx.layout)
             };
         }
     }
 
     connectionDeclaration(ctx: any): IREdge {
+        let layout: any = undefined;
+        if (ctx.layout) {
+            const firstComment = ctx.layout[0].image;
+            const match = firstComment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
+            if (match) layout = { x: parseInt(match[1]), y: parseInt(match[2]) };
+        }
+
         return {
             type: "edge",
             from: this.visit(ctx.from[0]),
             to: this.visit(ctx.to[0]),
             arrow: ctx.arrow[0].image,
-            offset: { start: 0, end: 0 }
+            label: ctx.payload ? this.visit(ctx.payload[0]) : undefined,
+            layout,
+            offset: this.getOffsets(ctx, ctx.layout)
         };
     }
 
@@ -113,7 +174,11 @@ export class DeploymentAstVisitor extends BaseVisitor {
         const values = Object.values(ctx);
         if (values.length > 0) {
             const tokens = values[0] as IToken[];
-            return tokens[0].image;
+            let image = tokens[0].image;
+            if (tokens[0].tokenType.name === "StringLiteral") {
+                return image.slice(1, -1).replace(/\\n/g, '\n').replace(/\\"/g, '"');
+            }
+            return image;
         }
         return "";
     }

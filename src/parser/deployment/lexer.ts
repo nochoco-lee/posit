@@ -24,6 +24,7 @@ export const Collections = createToken({ name: "Collections", pattern: /collecti
 export const Queue = createToken({ name: "Queue", pattern: /queue\b/i, categories: [common.IdentifierLike] });
 export const Stack = createToken({ name: "Stack", pattern: /stack\b/i, categories: [common.IdentifierLike] });
 
+export const As = createToken({ name: "As", pattern: /as\b/i, categories: [common.IdentifierLike] });
 export const Stereotype = createToken({ name: "Stereotype", pattern: /<<[^>]+>>/ });
 
 export const Arrow = createToken({
@@ -40,6 +41,7 @@ export const allDeploymentTokens = [
     common.PosComment,
     common.MultiLineComment,
     common.LineComment,
+    As,
     Stereotype,
     Arrow,
     common.Color,

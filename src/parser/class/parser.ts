@@ -103,7 +103,7 @@ export class ClassParser extends CstParser {
                         ]);
                     });
                     this.OPTION2(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
-                    this.OR4([ { ALT: () => { this.CONSUME(common.LBrace); this.MANY5({ GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== EOF, DEF: () => { this.OR5([ { ALT: () => this.CONSUME1(common.Newline) }, { ALT: () => this.SUBRULE(this.classMember) } ]); } }); this.CONSUME(common.RBrace); } }, { ALT: () => this.CONSUME2(common.Newline) } ]);
+                    this.OR4([ { ALT: () => { this.CONSUME(common.LBrace); this.MANY2({ GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== EOF, DEF: () => { this.OR5([ { ALT: () => this.CONSUME1(common.Newline) }, { ALT: () => this.SUBRULE(this.classMember) } ]); } }); this.CONSUME(common.RBrace); } }, { ALT: () => this.CONSUME2(common.Newline) } ]);
                 }
             },
             {
@@ -113,8 +113,9 @@ export class ClassParser extends CstParser {
                 },
                 ALT: () => {
                     this.SUBRULE3(this.name, { LABEL: "name" });
+                    this.OPTION3(() => this.CONSUME1(common.PosComment, { LABEL: "layout" }));
                     this.CONSUME1(common.LBrace);
-                    this.MANY7({ GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== EOF, DEF: () => { this.OR7([ { ALT: () => this.CONSUME3(common.Newline) }, { ALT: () => this.SUBRULE1(this.classMember) } ]); } });
+                    this.MANY4({ GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== EOF, DEF: () => { this.OR7([ { ALT: () => this.CONSUME3(common.Newline) }, { ALT: () => this.SUBRULE1(this.classMember) } ]); } });
                     this.CONSUME1(common.RBrace);
                 }
             }
@@ -141,7 +142,21 @@ export class ClassParser extends CstParser {
             { ALT: () => this.CONSUME(common.Footer) },
             { ALT: () => this.CONSUME(common.Title) }
         ]);
-        this.MANY(() => this.SUBRULE(this.anyToken));
+        this.MANY({
+             GATE: () => this.LA(1).tokenType !== common.Newline && this.LA(1).tokenType !== common.LBrace && this.LA(1).tokenType !== common.EndUml,
+             DEF: () => this.SUBRULE(this.anyToken)
+        });
+        this.OPTION(() => {
+            this.CONSUME(common.LBrace);
+            this.MANY1({
+                GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== common.EndUml && this.LA(1).tokenType !== EOF,
+                DEF: () => this.OR1([
+                    { ALT: () => this.CONSUME(common.Newline) },
+                    { ALT: () => this.SUBRULE1(this.anyToken) }
+                ])
+            });
+            this.CONSUME(common.RBrace);
+        });
     });
 
     public statement = this.RULE("statement", () => {
@@ -173,6 +188,7 @@ export class ClassParser extends CstParser {
             this.OR([
                 { ALT: () => this.CONSUME(common.Newline) },
                 { ALT: () => this.CONSUME(common.StartUml) },
+                { ALT: () => this.CONSUME(common.PosComment) },
                 { ALT: () => this.SUBRULE(this.statement) },
                 { ALT: () => this.CONSUME(common.EndUml) }
             ]);

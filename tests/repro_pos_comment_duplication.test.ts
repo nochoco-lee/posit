@@ -11,13 +11,13 @@ class A /' @pos(10, 10) '/
         const ast = parsePlantUml(puml);
         const layoutManager = new ClassLayoutManager();
         const map = layoutManager.process(ast);
-        
+
         // Simulate move
         map.nodes['A'].position = { x: 100, y: 100 };
-        
+
         const emitter = new Emitter();
         const updatedPuml = emitter.emitPlantUml(puml, ast, map);
-        
+
         // Count occurrences of @pos
         const matches = updatedPuml.match(/@pos/g);
         expect(matches?.length).toBe(1);

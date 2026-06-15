@@ -45,7 +45,7 @@ export class SequenceRenderer {
         if (map.activations) map.activations.forEach(act => this.drawActivation(act));
         map.connections.forEach(conn => this.drawConnection(conn));
         if (map.dividers) map.dividers.forEach(div => this.drawDivider(div));
-        if ((map as any).delays) (map as any).delays.forEach((delay: any) => this.drawDelay(delay));
+        if (map.delays) map.delays.forEach(delay => this.drawDelay(delay));
         map.notes.forEach(note => this.drawNote(note));
         this.layer.draw();
     }
@@ -445,8 +445,19 @@ export class SequenceRenderer {
     }
 
     private drawDelay(delay: any) {
-        const group = new Konva.Group({ x: 400, y: delay.position.y });
+        const group = new Konva.Group({ x: delay.position.x, y: delay.position.y });
         for (let i = 0; i < 3; i++) { group.add(new Konva.Circle({ x: 0, y: i * 10, radius: 2, fill: '#A80036' })); }
+        if (delay.text) {
+             const text = new Konva.Text({
+                 text: delay.text,
+                 fontSize: 12,
+                 fill: '#A80036',
+                 fontStyle: 'italic',
+                 y: 5,
+                 x: 10
+             });
+             group.add(text);
+        }
         this.layer.add(group);
     }
 
