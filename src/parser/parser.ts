@@ -19,7 +19,7 @@ class SequenceParser extends CstParser {
         // We set maxLookahead: 1 to prevent exponential pre-computation times in preComputeLookaheadFunctions.
         super(allTokens, { 
             skipValidations: true,
-            maxLookahead: 1,
+            maxLookahead: 2,
             errorMessageProvider: fastErrorProvider
         });
         this.performSelfAnalysis();
@@ -191,6 +191,7 @@ class SequenceParser extends CstParser {
                     this.OR1([ { ALT: () => this.CONSUME(Class) }, { ALT: () => this.CONSUME(Interface) }, { ALT: () => this.CONSUME(Enum) }, { ALT: () => this.CONSUME(Struct) }, { ALT: () => this.CONSUME(Annotation) }, { ALT: () => { this.CONSUME(Abstract); this.OPTION3(() => this.CONSUME1(Class)); } }, { ALT: () => this.CONSUME(Circle) }, { ALT: () => this.CONSUME(Diamond) }, { ALT: () => this.CONSUME(Exception) }, { ALT: () => this.CONSUME(Metaclass) }, { ALT: () => this.CONSUME(Protocol) }, { ALT: () => this.CONSUME(Record) }, { ALT: () => this.CONSUME(Stereotype) }, { ALT: () => this.CONSUME(Dataclass) }, { ALT: () => this.CONSUME(ObjectKeyword) }, { ALT: () => { this.CONSUME(LParen); this.CONSUME(RParen); } }, { ALT: () => this.CONSUME(DiamondShort) } ]);
                     this.SUBRULE(this.name, { LABEL: "name" });
                     this.MANY(() => { this.OR2([ { ALT: () => { this.CONSUME(As); this.SUBRULE1(this.name, { LABEL: "alias" }); }}, { GATE: () => { const next = this.LA(1).tokenType; return next === Identifier || next === StringLiteral; }, ALT: () => this.SUBRULE2(this.name, { LABEL: "alias" }) }, { GATE: () => { const next = this.LA(1).tokenType; return next === Extends || next === Implements; }, ALT: () => { this.OR4([ { ALT: () => this.CONSUME(Extends) }, { ALT: () => this.CONSUME(Implements) } ]); this.SUBRULE5(this.name, { LABEL: "parents" }); this.MANY3(() => { this.CONSUME(Comma); this.SUBRULE6(this.name, { LABEL: "parents" }); }); } }, { ALT: () => this.SUBRULE(this.stereotype) }, { ALT: () => this.SUBRULE(this.colorValue, { LABEL: "color" }) } ]); });
+                    this.OPTION4(() => { this.CONSUME(PosComment, { LABEL: "layout" }); });
                     this.OR3([ { ALT: () => { this.CONSUME(LBrace); this.MANY5({ GATE: () => this.LA(1).tokenType !== RBrace && this.LA(1).tokenType !== EOF, DEF: () => { this.OR5([ { ALT: () => this.CONSUME1(Newline) }, { ALT: () => this.SUBRULE(this.classMember) } ]); } }); this.CONSUME(RBrace); } }, { ALT: () => this.CONSUME2(Newline) }, { ALT: () => this.CONSUME(EOF) } ]);
                 }
             },
@@ -218,7 +219,7 @@ class SequenceParser extends CstParser {
 
     public endpoint = this.RULE("endpoint", (inConnection: boolean = false) => {
         this.OR([
-            { GATE: () => this.LA(1).tokenType === Colon, ALT: () => { this.CONSUME2(Colon); this.SUBRULE4(this.name, { ARGS: [inConnection], LABEL: "name" }); this.CONSUME3(Colon); } },
+            { GATE: () => this.LA(1).tokenType === Colon && (this.LA(2).tokenType === Identifier || this.LA(2).tokenType === StringLiteral || this.LA(2).tokenType === IdentifierLike || (this as any).tokenMatcher(this.LA(2), IdentifierLike)) && this.LA(3).tokenType === Colon, ALT: () => { this.CONSUME2(Colon); this.SUBRULE4(this.name, { ARGS: [inConnection], LABEL: "name" }); this.CONSUME3(Colon); } },
             { GATE: () => this.LA(1).tokenType === LParen && this.LA(2).tokenType === RParen, ALT: () => { this.CONSUME1(LParen); this.CONSUME1(RParen); this.MANY2(() => this.SUBRULE5(this.name, { ARGS: [inConnection], LABEL: "name" })); } },
             { GATE: () => this.LA(1).tokenType === StringLiteral, ALT: () => { this.CONSUME(StringLiteral, { LABEL: "label" }); this.OPTION7(() => { this.CONSUME(Slash); this.SUBRULE(this.anyToken); }); this.OPTION(() => { this.OPTION1(() => this.CONSUME(As)); this.SUBRULE(this.nodeIdentifier, { LABEL: "name" }); }); } },
             { GATE: () => this.LA(1).tokenType === Quote, ALT: () => { this.CONSUME1(Quote, { LABEL: "q1" }); this.MANY(() => { this.CONSUME2(Identifier, { LABEL: "labelTokens" }); }); this.CONSUME2(Quote, { LABEL: "q2" }); this.OPTION4(() => { this.OPTION5(() => this.CONSUME2(As)); this.SUBRULE2(this.nodeIdentifier, { LABEL: "name" }); }); } },
@@ -238,7 +239,15 @@ class SequenceParser extends CstParser {
         this.OPTION1(() => { this.CONSUME(LParen); this.MANY1({ GATE: () => this.LA(1).tokenType !== RParen && this.LA(1).tokenType !== Newline, DEF: () => this.SUBRULE(this.anyToken) }); this.CONSUME(RParen); });
         this.OR2([ { ALT: () => this.CONSUME1(Arrow, { LABEL: "arrow" }) }, { ALT: () => this.CONSUME(Visibility, { LABEL: "arrow" }) }, { ALT: () => this.CONSUME(Dot, { LABEL: "arrow" }) } ]);
         this.OPTION2(() => { this.CONSUME1(LParen); this.MANY2({ GATE: () => this.LA(1).tokenType !== RParen && this.LA(1).tokenType !== Newline, DEF: () => this.SUBRULE1(this.anyToken) }); this.CONSUME1(RParen); });
-        this.OPTION3(() => { this.SUBRULE2(this.endpoint, { ARGS: [false], LABEL: "to" }); });
+        this.OPTION3({
+            GATE: () => {
+                const t1 = this.LA(1).tokenType;
+                if (t1 === Colon) return this.LA(3).tokenType === Colon;
+                if (t1 === Arrow || t1 === Newline || t1 === EndUml || t1 === EOF) return false;
+                return true;
+            },
+            DEF: () => { this.SUBRULE2(this.endpoint, { ARGS: [false], LABEL: "to" }); }
+        });
         this.MANY3(() => { this.OR3([ { ALT: () => this.SUBRULE(this.colorValue) }, { ALT: () => this.CONSUME(Star) }, { ALT: () => this.CONSUME(Exclamation) }, { ALT: () => this.CONSUME1(Visibility) }, { ALT: () => this.CONSUME2(Arrow) } ]); });
         this.OPTION4(() => { this.SUBRULE(this.payload); });
         this.OPTION5(() => { this.CONSUME(PosComment, { LABEL: "layout" }); });
