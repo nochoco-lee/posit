@@ -1,0 +1,62 @@
+@startuml
+
+allowmixing
+
+skinparam nodesep 10
+abstract        abstract
+abstract class  &#34;abstract class&#34;
+annotation      annotation
+circle          circle
+()              circle_short_form
+class           class
+diamond         diamond
+&lt;&gt;              diamond_short_form
+entity          entity
+enum            enum
+exception       exception
+interface       interface
+metaclass       metaclass
+protocol        protocol
+stereotype      stereotype
+struct          struct
+object          object
+map map {
+ key =&gt; value
+}
+json JSON {
+   &#34;fruit&#34;:&#34;Apple&#34;,
+   &#34;size&#34;:&#34;Large&#34;,
+   &#34;color&#34;: [&#34;Red&#34;, &#34;Green&#34;]
+}
+action action
+actor actor
+actor/ &#34;actor/&#34;
+agent agent
+artifact artifact
+boundary boundary
+card card
+circle circle
+cloud cloud
+collections collections
+component component
+control control
+database database
+entity entity
+file file
+folder folder
+frame frame
+hexagon hexagon
+interface interface
+label label
+node node
+package package
+person person
+process process
+queue queue
+rectangle rectangle
+stack stack
+storage storage
+usecase usecase
+usecase/ &#34;usecase/&#34;
+state state
+@enduml

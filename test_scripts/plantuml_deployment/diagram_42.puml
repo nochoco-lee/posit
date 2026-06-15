@@ -1,0 +1,35 @@
+@startuml
+&lt;style&gt;
+.stereo {
+  BackgroundColor palegreen
+}
+&lt;/style&gt;
+actor actor &lt;&lt; stereo &gt;&gt;
+actor/ &#34;actor/&#34; &lt;&lt; stereo &gt;&gt;
+agent agent &lt;&lt; stereo &gt;&gt;
+artifact artifact &lt;&lt; stereo &gt;&gt;
+boundary boundary &lt;&lt; stereo &gt;&gt;
+card card &lt;&lt; stereo &gt;&gt;
+circle circle &lt;&lt; stereo &gt;&gt;
+cloud cloud &lt;&lt; stereo &gt;&gt;
+collections collections &lt;&lt; stereo &gt;&gt;
+component component &lt;&lt; stereo &gt;&gt;
+control control &lt;&lt; stereo &gt;&gt;
+database database &lt;&lt; stereo &gt;&gt;
+entity entity &lt;&lt; stereo &gt;&gt;
+file file &lt;&lt; stereo &gt;&gt;
+folder folder &lt;&lt; stereo &gt;&gt;
+frame frame &lt;&lt; stereo &gt;&gt;
+hexagon hexagon &lt;&lt; stereo &gt;&gt;
+interface interface &lt;&lt; stereo &gt;&gt;
+label label &lt;&lt; stereo &gt;&gt;
+node node &lt;&lt; stereo &gt;&gt;
+package package &lt;&lt; stereo &gt;&gt;
+person person &lt;&lt; stereo &gt;&gt;
+queue queue &lt;&lt; stereo &gt;&gt;
+rectangle rectangle &lt;&lt; stereo &gt;&gt;
+stack stack &lt;&lt; stereo &gt;&gt;
+storage storage &lt;&lt; stereo &gt;&gt;
+usecase usecase &lt;&lt; stereo &gt;&gt;
+usecase/ &#34;usecase/&#34; &lt;&lt; stereo &gt;&gt;
+@enduml

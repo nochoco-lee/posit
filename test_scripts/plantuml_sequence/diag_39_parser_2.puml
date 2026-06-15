@@ -1,4 +1,0 @@
-@startuml
-"User" -> Alice : Hello
-Alice -> "Web Server" : Request
-@enduml

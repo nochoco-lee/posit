@@ -1,6 +1,0 @@
-@startuml
-node n1 #red
-cloud c1 #blue {
-  artifact a1 #green
-}
-@enduml

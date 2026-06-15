@@ -1,0 +1,23 @@
+@startuml
+[i]
+node node {
+  portin p1
+  portin p2
+  portin p3
+  portout po1
+  portout po2
+  portout po3
+  file f1
+}
+[o]
+
+i --&gt; p1
+i --&gt; p2
+i --&gt; p3
+p1 --&gt; f1
+p2 --&gt; f1
+po1 --&gt; o
+po2 --&gt; o
+po3 --&gt; o
+f1 --&gt; po1
+@enduml

@@ -1,0 +1,10 @@
+@startuml
+title Bracketed line style with label
+node foo
+foo --&gt; bar          : â
+foo -[bold]-&gt; bar1   : [bold]
+foo -[dashed]-&gt; bar2 : [dashed]
+foo -[dotted]-&gt; bar3 : [dotted]
+foo -[hidden]-&gt; bar4 : [hidden]
+foo -[plain]-&gt; bar5  : [plain]
+@enduml

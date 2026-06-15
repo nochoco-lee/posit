@@ -1,5 +1,0 @@
-@startuml
-class List~T~ {
-    + add(item: T)
-}
-@enduml

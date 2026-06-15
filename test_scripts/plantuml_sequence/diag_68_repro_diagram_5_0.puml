@@ -1,7 +1,0 @@
-@startuml
-participant Participant [
-    =Title
-    ----
-    ""SubTitle""
-]
-@enduml

@@ -1,5 +1,0 @@
-@startuml
-autoactivate on
-A -> B : call
-return ok
-@enduml

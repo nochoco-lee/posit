@@ -1,0 +1,124 @@
+@startuml
+&lt;style&gt;
+artifact {
+  BackGroundColor #ee1100
+  LineThickness 1
+  LineColor black
+}
+card {
+  BackGroundColor #ff3311
+  LineThickness 1
+  LineColor black
+}
+cloud {
+  BackGroundColor #ff4422
+  LineThickness 1
+  LineColor black
+}
+component {
+  BackGroundColor #ff6644
+  LineThickness 1
+  LineColor black
+}
+database {
+  BackGroundColor #ff9933
+  LineThickness 1
+  LineColor black
+}
+file {
+  BackGroundColor #feae2d
+  LineThickness 1
+  LineColor black
+}
+folder {
+  BackGroundColor #ccbb33
+  LineThickness 1
+  LineColor black
+}
+frame {
+  BackGroundColor #d0c310
+  LineThickness 1
+  LineColor black
+}
+hexagon {
+  BackGroundColor #aacc22
+  LineThickness 1
+  LineColor black
+}
+node {
+  BackGroundColor #22ccaa
+  LineThickness 1
+  LineColor black
+}
+package {
+  BackGroundColor #12bdb9
+  LineThickness 1
+  LineColor black
+}
+queue {
+  BackGroundColor #11aabb
+  LineThickness 1
+  LineColor black
+}
+rectangle {
+  BackGroundColor #4444dd
+  LineThickness 1
+  LineColor black
+}
+stack {
+  BackGroundColor #3311bb
+  LineThickness 1
+  LineColor black
+}
+storage {
+  BackGroundColor #3b0cbd
+  LineThickness 1
+  LineColor black
+}
+&lt;/style&gt;
+artifact e1 as &#34;artifact&#34; {
+file f1
+}
+card e2 as &#34;card&#34; {
+file f2
+}
+cloud e3 as &#34;cloud&#34; {
+file f3
+}
+component e4 as &#34;component&#34; {
+file f4
+}
+database e5 as &#34;database&#34; {
+file f5
+}
+file e6 as &#34;file&#34; {
+file f6
+}
+folder e7 as &#34;folder&#34; {
+file f7
+}
+frame e8 as &#34;frame&#34; {
+file f8
+}
+hexagon e9 as &#34;hexagon&#34; {
+file f9
+}
+node e10 as &#34;node&#34; {
+file f10
+}
+package e11 as &#34;package&#34; {
+file f11
+}
+queue e12 as &#34;queue&#34; {
+file f12
+}
+rectangle e13 as &#34;rectangle&#34; {
+file f13
+}
+stack e14 as &#34;stack&#34; {
+file f14
+}
+storage e15 as &#34;storage&#34; {
+file f15
+}
+@enduml

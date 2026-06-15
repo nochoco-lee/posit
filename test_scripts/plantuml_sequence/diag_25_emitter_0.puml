@@ -1,4 +1,0 @@
-@startuml
-participant Alice
-actor Bob
-@enduml

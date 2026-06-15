@@ -1,0 +1,57 @@
+@startuml
+&lt;style&gt;
+componentDiagram {
+  BackGroundColor palegreen
+  LineThickness 1
+  LineColor red
+}
+document {
+  BackGroundColor white
+}
+&lt;/style&gt;
+artifact e1 as &#34;artifact&#34; {
+file f1
+}
+card e2 as &#34;card&#34; {
+file f2
+}
+cloud e3 as &#34;cloud&#34; {
+file f3
+}
+component e4 as &#34;component&#34; {
+file f4
+}
+database e5 as &#34;database&#34; {
+file f5
+}
+file e6 as &#34;file&#34; {
+file f6
+}
+folder e7 as &#34;folder&#34; {
+file f7
+}
+frame e8 as &#34;frame&#34; {
+file f8
+}
+hexagon e9 as &#34;hexagon&#34; {
+file f9
+}
+node e10 as &#34;node&#34; {
+file f10
+}
+package e11 as &#34;package&#34; {
+file f11
+}
+queue e12 as &#34;queue&#34; {
+file f12
+}
+rectangle e13 as &#34;rectangle&#34; {
+file f13
+}
+stack e14 as &#34;stack&#34; {
+file f14
+}
+storage e15 as &#34;storage&#34; {
+file f15
+}
+@enduml

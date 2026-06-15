@@ -1,0 +1,53 @@
+@startuml
+action      actionVeryLOOOOOOOOOOOOOOOOOOOg      as &#34;action&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f1
+}
+artifact    artifactVeryLOOOOOOOOOOOOOOOOOOOg    as &#34;artifact&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f1
+}
+card        cardVeryLOOOOOOOOOOOOOOOOOOOg        as &#34;card&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f2
+}
+cloud       cloudVeryLOOOOOOOOOOOOOOOOOOOg       as &#34;cloud&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f3
+}
+component   componentVeryLOOOOOOOOOOOOOOOOOOOg   as &#34;component&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f4
+}
+database    databaseVeryLOOOOOOOOOOOOOOOOOOOg    as &#34;database&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f5
+}
+file        fileVeryLOOOOOOOOOOOOOOOOOOOg        as &#34;file&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f6
+}
+folder      folderVeryLOOOOOOOOOOOOOOOOOOOg      as &#34;folder&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f7
+}
+frame       frameVeryLOOOOOOOOOOOOOOOOOOOg       as &#34;frame&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f8
+}
+hexagon     hexagonVeryLOOOOOOOOOOOOOOOOOOOg     as &#34;hexagon&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f9
+}
+node        nodeVeryLOOOOOOOOOOOOOOOOOOOg        as &#34;node&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f10
+}
+package     packageVeryLOOOOOOOOOOOOOOOOOOOg     as &#34;package&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f11
+}
+process     processVeryLOOOOOOOOOOOOOOOOOOOg     as &#34;process&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f11
+}
+queue       queueVeryLOOOOOOOOOOOOOOOOOOOg       as &#34;queue&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f12
+}
+rectangle   rectangleVeryLOOOOOOOOOOOOOOOOOOOg   as &#34;rectangle&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f13
+}
+stack       stackVeryLOOOOOOOOOOOOOOOOOOOg       as &#34;stack&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f14
+}
+storage     storageVeryLOOOOOOOOOOOOOOOOOOOg     as &#34;storage&#34; #aliceblue;line:blue;line.dotted;text:blue {
+file f15
+}
+@enduml

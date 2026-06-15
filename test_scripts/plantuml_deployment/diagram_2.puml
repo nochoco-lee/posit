@@ -1,0 +1,52 @@
+@startuml
+folder folder [
+This is a &lt;b&gt;folder
+----
+You can use separator
+====
+of different kind
+....
+and style
+]
+
+node node [
+This is a &lt;b&gt;node
+----
+You can use separator
+====
+of different kind
+....
+and style
+]
+
+database database [
+This is a &lt;b&gt;database
+----
+You can use separator
+====
+of different kind
+....
+and style
+]
+
+usecase usecase [
+This is a &lt;b&gt;usecase
+----
+You can use separator
+====
+of different kind
+....
+and style
+]
+
+card card [
+This is a &lt;b&gt;card
+----
+You can use separator
+====
+of different kind
+....
+and style
+&lt;i&gt;&lt;color:blue&gt;(add from V1.2020.7)&lt;/color&gt;&lt;/i&gt;
+]
+@enduml

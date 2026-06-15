@@ -1,0 +1,6 @@
+@startuml
+
+usecase usecase1
+(usecase2)
+
+@enduml

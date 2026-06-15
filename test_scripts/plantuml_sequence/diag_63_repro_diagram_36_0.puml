@@ -1,5 +1,0 @@
-@startuml
-Alice -> Bob : hello
-... Some delay ...
-Bob -> Alice : ok
-@enduml

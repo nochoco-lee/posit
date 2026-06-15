@@ -1,3 +1,0 @@
-@startuml
-User "1" *-- "many" Order
-@enduml

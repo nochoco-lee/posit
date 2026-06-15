@@ -1,3 +1,0 @@
-@startuml
-Foo -> Foo1 : To actor
-@enduml

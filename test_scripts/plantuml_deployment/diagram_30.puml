@@ -1,0 +1,9 @@
+@startuml
+left to right direction
+skinparam nodesep 5
+
+f3  ~~  b3  : &#34;&#34;~~&#34;&#34;\n//dotted//
+f2  ..  b2  : &#34;&#34;..&#34;&#34;\n//dashed//
+f1  ==  b1  : &#34;&#34;==&#34;&#34;\n//bold//
+f0  --  b0  : &#34;&#34;--&#34;&#34;\n//plain//
+@enduml

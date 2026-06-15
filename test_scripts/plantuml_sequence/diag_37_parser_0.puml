@@ -1,6 +1,0 @@
-@startuml
-participant Alice /' @pos(100, 200) '/
-actor Bob
-Alice -> Bob : Authentication Request /' @pos(150, 250) '/
-Bob --> Alice : Authentication Response
-@enduml

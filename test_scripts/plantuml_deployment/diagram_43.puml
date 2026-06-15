@@ -1,0 +1,16 @@
+@startuml
+allowmixing
+
+component Component
+actor     Actor
+usecase   Usecase
+()        Interface
+node      Node
+cloud     Cloud
+
+json JSON {
+   &#34;fruit&#34;:&#34;Apple&#34;,
+   &#34;size&#34;:&#34;Large&#34;,
+   &#34;color&#34;: [&#34;Red&#34;, &#34;Green&#34;]
+}
+@enduml

@@ -1,0 +1,7 @@
+@startuml
+
+interface interface1
+() &#34;interface2&#34;
+
+label &#34;//interface example//&#34;
+@enduml

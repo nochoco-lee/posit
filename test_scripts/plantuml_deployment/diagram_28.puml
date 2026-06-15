@@ -1,0 +1,10 @@
+@startuml
+skinparam rectangle {
+    roundCorner&lt;&lt;Concept&gt;&gt; 25
+}
+
+rectangle &#34;Concept Model&#34; &lt;&lt;Concept&gt;&gt; {
+rectangle &#34;Example 1&#34; &lt;&lt;Concept&gt;&gt; as ex1
+rectangle &#34;Another rectangle&#34;
+}
+@enduml

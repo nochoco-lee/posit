@@ -1,8 +1,0 @@
-@startuml
-/' 
-   This is a
-   multi-line comment
-'/
-Alice -> Bob : Hello
-/' Another multi-line comment '/
-@enduml

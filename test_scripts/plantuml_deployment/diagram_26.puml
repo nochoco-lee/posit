@@ -1,0 +1,27 @@
+@startuml
+actor        &#34;actor&#34;       as actorVeryLOOOOOOOOOOOOOOOOOOOg
+agent        &#34;agent&#34;       as agentVeryLOOOOOOOOOOOOOOOOOOOg
+artifact     &#34;artifact&#34;    as artifactVeryLOOOOOOOOOOOOOOOOOOOg
+boundary     &#34;boundary&#34;    as boundaryVeryLOOOOOOOOOOOOOOOOOOOg
+card         &#34;card&#34;        as cardVeryLOOOOOOOOOOOOOOOOOOOg
+cloud        &#34;cloud&#34;       as cloudVeryLOOOOOOOOOOOOOOOOOOOg
+collections  &#34;collections&#34; as collectionsVeryLOOOOOOOOOOOOOOOOOOOg
+component    &#34;component&#34;   as componentVeryLOOOOOOOOOOOOOOOOOOOg
+control      &#34;control&#34;     as controlVeryLOOOOOOOOOOOOOOOOOOOg
+database     &#34;database&#34;    as databaseVeryLOOOOOOOOOOOOOOOOOOOg
+entity       &#34;entity&#34;      as entityVeryLOOOOOOOOOOOOOOOOOOOg
+file         &#34;file&#34;        as fileVeryLOOOOOOOOOOOOOOOOOOOg
+folder       &#34;folder&#34;      as folderVeryLOOOOOOOOOOOOOOOOOOOg
+frame        &#34;frame&#34;       as frameVeryLOOOOOOOOOOOOOOOOOOOg
+hexagon      &#34;hexagon&#34;     as hexagonVeryLOOOOOOOOOOOOOOOOOOOg
+interface    &#34;interface&#34;   as interfaceVeryLOOOOOOOOOOOOOOOOOOOg
+label        &#34;label&#34;       as labelVeryLOOOOOOOOOOOOOOOOOOOg
+node         &#34;node&#34;        as nodeVeryLOOOOOOOOOOOOOOOOOOOg
+package      &#34;package&#34;     as packageVeryLOOOOOOOOOOOOOOOOOOOg
+person       &#34;person&#34;      as personVeryLOOOOOOOOOOOOOOOOOOOg
+queue        &#34;queue&#34;       as queueVeryLOOOOOOOOOOOOOOOOOOOg
+stack        &#34;stack&#34;       as stackVeryLOOOOOOOOOOOOOOOOOOOg
+rectangle    &#34;rectangle&#34;   as rectangleVeryLOOOOOOOOOOOOOOOOOOOg
+storage      &#34;storage&#34;     as storageVeryLOOOOOOOOOOOOOOOOOOOg
+usecase      &#34;usecase&#34;     as usecaseVeryLOOOOOOOOOOOOOOOOOOOg
+@enduml

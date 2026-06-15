@@ -1,5 +1,0 @@
-@startuml
-' This is a comment
-Alice -> Bob : Hello
-' Another comment
-@enduml

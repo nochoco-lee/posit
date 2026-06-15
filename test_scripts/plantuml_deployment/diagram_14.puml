@@ -1,0 +1,10 @@
+@startuml
+title Bracketed line thickness
+node foo
+foo --&gt; bar                 : â
+foo -[thickness=1]-&gt; bar1   : [1]
+foo -[thickness=2]-&gt; bar2   : [2]
+foo -[thickness=4]-&gt; bar3   : [4]
+foo -[thickness=8]-&gt; bar4   : [8]
+foo -[thickness=16]-&gt; bar5  : [16]
+@enduml

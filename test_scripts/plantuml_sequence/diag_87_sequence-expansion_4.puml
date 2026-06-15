@@ -1,6 +1,0 @@
-@startuml
-note left of Alice : hello
-note right of Bob : hi
-note over Alice, Bob : together
-note across : everyone
-@enduml

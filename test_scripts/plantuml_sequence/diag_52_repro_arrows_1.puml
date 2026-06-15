@@ -1,6 +1,0 @@
-@startuml
-foo -l-> dummyLeft
-foo -r-> dummyRight
-foo -u-> dummyUp
-foo -d-> dummyDown
-@enduml

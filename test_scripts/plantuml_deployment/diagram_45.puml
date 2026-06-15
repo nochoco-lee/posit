@@ -1,0 +1,15 @@
+@startuml
+[c]
+node node {
+  port p1
+  port p2
+  port p3
+  file f1
+}
+
+c --&gt; p1
+c --&gt; p2
+c --&gt; p3
+p1 --&gt; f1
+p2 --&gt; f1
+@enduml

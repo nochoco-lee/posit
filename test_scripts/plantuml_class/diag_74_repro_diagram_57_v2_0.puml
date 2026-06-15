@@ -1,7 +1,0 @@
-@startuml
-class BaseClass
-
-namespace net.dummy #DDDDDD {
-    .BaseClass <|-- Person
-}
-@enduml

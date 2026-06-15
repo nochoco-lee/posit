@@ -1,5 +1,0 @@
-@startuml
-activate Alice
-deactivate Alice
-destroy Bob
-@enduml

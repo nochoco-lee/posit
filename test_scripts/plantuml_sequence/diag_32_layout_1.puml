@@ -1,3 +1,0 @@
-@startuml
-participant LockedObject /' @pos(500, 600) '/
-@enduml

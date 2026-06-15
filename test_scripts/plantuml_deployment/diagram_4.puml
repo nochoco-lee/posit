@@ -1,0 +1,6 @@
+@startuml
+
+component component1
+[component2]
+
+@enduml
