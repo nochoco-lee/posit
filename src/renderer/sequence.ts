@@ -19,6 +19,8 @@ export class SequenceRenderer {
     protected lifelines: Record<string, Konva.Line> = {};
     protected activationRects: Record<string, { rect: Konva.Rect, def: LayoutActivation, destroyX1?: Konva.Line, destroyX2?: Konva.Line }[]> = {};
     protected groupVisuals: { group: Konva.Group, rect: Konva.Rect, dividers: Konva.Line[], labels: Konva.Text[], def: LayoutGroup }[] = [];
+    protected dividerVisuals: { group: Konva.Group, rect: Konva.Rect, doubleLines: Konva.Line[], text: Konva.Text, def: LayoutDivider }[] = [];
+    protected noteVisuals: { group: Konva.Group, rect: Konva.Rect, text: Konva.Text, def: LayoutNote }[] = [];
     protected participantOrder: string[] = [];
 
     constructor(stage: Konva.Stage, layer: Konva.Layer) {
@@ -38,6 +40,8 @@ export class SequenceRenderer {
         this.lifelines = {};
         this.activationRects = {};
         this.groupVisuals = [];
+        this.dividerVisuals = [];
+        this.noteVisuals = [];
         const sortedNodes = Object.values(map.nodes).filter(n => n.type === 'participant' || n.type === 'actor').sort((a, b) => a.position.x - b.position.x);
         this.participantOrder = sortedNodes.map(n => n.id);
         Object.values(map.nodes).forEach(node => { this.drawLifeline(node); this.drawNode(node); });
@@ -72,6 +76,18 @@ export class SequenceRenderer {
         this.updateAllActivations();
         // Sync Groups
         this.groupVisuals.forEach(visual => {
+            const { group, rect, def } = visual;
+            group.position(def.position);
+            rect.size(def.size);
+        });
+        // Sync Dividers
+        this.dividerVisuals.forEach(visual => {
+            const { group, rect, def } = visual;
+            group.position(def.position);
+            rect.width(def.size.width);
+        });
+        // Sync Notes
+        this.noteVisuals.forEach(visual => {
             const { group, rect, def } = visual;
             group.position(def.position);
             rect.size(def.size);
@@ -375,8 +391,11 @@ export class SequenceRenderer {
         const doubleLineRight = new Konva.Line({ points: [midX + gap, lineY - 3, div.size.width, lineY - 3], stroke: '#A80036', strokeWidth: 2 });
         const doubleLineLeft2 = new Konva.Line({ points: [0, lineY + 3, midX - gap, lineY + 3], stroke: '#A80036', strokeWidth: 2 });
         const doubleLineRight2 = new Konva.Line({ points: [midX + gap, lineY + 3, div.size.width, lineY + 3], stroke: '#A80036', strokeWidth: 2 });
-        group.add(doubleLineLeft); group.add(doubleLineRight); group.add(doubleLineLeft2); group.add(doubleLineRight2);
+        
+        const doubleLines = [doubleLineLeft, doubleLineRight, doubleLineLeft2, doubleLineRight2];
+        doubleLines.forEach(l => group.add(l));
         group.add(text); this.layer.add(group);
+        this.dividerVisuals.push({ group, rect, doubleLines, text, def: div });
     }
 
     private drawDelay(delay: any) {
@@ -384,6 +403,18 @@ export class SequenceRenderer {
         for (let i = 0; i < 3; i++) { group.add(new Konva.Circle({ x: 0, y: i * 10, radius: 2, fill: '#A80036' })); }
         if (delay.text) { group.add(new Konva.Text({ text: delay.text, fontSize: 12, fill: '#A80036', fontStyle: 'italic', y: 5, x: 10 })); }
         this.layer.add(group);
+    }
+
+    private drawNote(noteDef: LayoutNote) {
+        const group = new Konva.Group({ x: noteDef.position.x, y: noteDef.position.y, draggable: true, id: `note-${noteDef.text.substring(0, 10)}` });
+        group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
+        group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });
+        group.on('dragend', (e: any) => { if (this.onNodeMove) this.onNodeMove(group.id(), Math.round(e.target.x()), Math.round(e.target.y())); });
+        const rect = new Konva.Rect({ width: noteDef.size.width, height: noteDef.size.height, fill: '#FBFB77', stroke: '#A80036', strokeWidth: 1 });
+        const text = new Konva.Text({ text: noteDef.text, width: noteDef.size.width, padding: 5, fontSize: 12, align: 'center' });
+        group.add(rect); group.add(text);
+        this.layer.add(group);
+        this.noteVisuals.push({ group, rect, text, def: noteDef });
     }
 
     private updateConnections(nodeId: string) {
@@ -454,6 +485,7 @@ export class SequenceRenderer {
                     for (const n of nodes) { const x = n.group.x(); if (x < minX) minX = x; const right = x + n.base.size.width; if (right > maxX) maxX = right; }
                     minX -= padding; maxX += padding;
                     group.x(minX); rect.width(Math.max(100, maxX - minX));
+                    def.position.x = minX; def.size.width = rect.width(); // Update internal state to prevent snapback
                     const children = group.getChildren();
                     for (let i = 0; i < children.length; i++) {
                         const child = children[i];
@@ -463,6 +495,67 @@ export class SequenceRenderer {
                 }
             }
         });
+
+        // Update Dividers
+        const allNodeGroupsList = Object.values(this.nodeGroups);
+        if (allNodeGroupsList.length > 0) {
+            let minX = Infinity;
+            let maxX = -Infinity;
+            allNodeGroupsList.forEach(g => { 
+                const nodeBaseId = g.id(); 
+                const nodeWidth = this.map!.nodes[nodeBaseId].size.width; 
+                const x = g.x();
+                if (x < minX) minX = x;
+                if (x + nodeWidth > maxX) maxX = x + nodeWidth;
+            });
+            const divX = Math.max(0, minX - 50);
+            const divWidth = (maxX - divX) + 50;
+
+            this.dividerVisuals.forEach(vis => {
+                vis.group.x(divX);
+                vis.def.position.x = divX;
+                vis.def.size.width = divWidth;
+                
+                const midX = divWidth / 2;
+                const textWidth = vis.text.getTextWidth() + 20;
+                const gap = textWidth / 2;
+                vis.rect.x(midX - textWidth / 2);
+                vis.rect.width(textWidth);
+                vis.text.width(divWidth); // text stays centered in the full divWidth
+                
+                const lineY = vis.text.height() / 2;
+                vis.doubleLines[0].points([0, lineY - 3, midX - gap, lineY - 3]);
+                vis.doubleLines[1].points([midX + gap, lineY - 3, divWidth, lineY - 3]);
+                vis.doubleLines[2].points([0, lineY + 3, midX - gap, lineY + 3]);
+                vis.doubleLines[3].points([midX + gap, lineY + 3, divWidth, lineY + 3]);
+            });
+        }
+
+        // Update Notes
+        this.noteVisuals.forEach(vis => {
+            const targets = vis.def.targets || [];
+            if (targets.indexOf(nodeId) !== -1) {
+                const nodeBases = targets.map(tId => this.map!.nodes[tId]).filter(n => n);
+                const nodeGrps = targets.map(tId => this.nodeGroups[tId]).filter(g => g);
+                if (nodeGrps.length > 0) {
+                    let minX = Infinity; let maxX = -Infinity;
+                    nodeGrps.forEach((g, idx) => { const x = g.x(); const w = nodeBases[idx].size.width; if (x < minX) minX = x; if (x + w > maxX) maxX = x + w; });
+                    const centerX = (minX + maxX) / 2;
+                    if (vis.def.placement === 'over' || vis.def.placement === 'across') {
+                        const noteWidth = Math.max(vis.def.size.width, maxX - minX + 20);
+                        vis.group.x(centerX - noteWidth / 2); vis.rect.width(noteWidth); vis.text.width(noteWidth);
+                        vis.def.position.x = vis.group.x(); vis.def.size.width = noteWidth;
+                    } else if (vis.def.placement === 'left') {
+                        vis.group.x(minX - vis.rect.width() - 10);
+                        vis.def.position.x = vis.group.x();
+                    } else if (vis.def.placement === 'right') {
+                        vis.group.x(maxX + 10);
+                        vis.def.position.x = vis.group.x();
+                    }
+                }
+            }
+        });
+
         this.updateAllActivations();
     }
 
@@ -485,7 +578,7 @@ export class SequenceRenderer {
         if (groupDef.dividerYs) {
             groupDef.dividerYs.forEach((dividerY, index) => {
                 const relativeY = dividerY - groupDef.position.y;
-                const divider = new Konva.Line({ points: [0, relativeY, groupDef.size.width, relativeY], stroke: groupDef.color || '#A80036', strokeWidth: 1, dash: [5, 5] });
+                const divider = new Konva.Line({ points: [0, relativeY, groupDef.size.width, relativeY], stroke: '#A80036', strokeWidth: 1, dash: [5, 5] });
                 group.add(divider);
                 const nextSection = groupDef.sections[index + 1];
                 if (nextSection && nextSection.label) { group.add(new Konva.Text({ x: 5, y: relativeY + 10, text: `[${nextSection.label}]`, fontSize: 11, fontStyle: 'italic', fill: groupDef.color || '#A80036' })); }
@@ -499,9 +592,11 @@ export class SequenceRenderer {
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });
         group.on('dragend', (e: any) => { if (this.onNodeMove) this.onNodeMove(group.id(), Math.round(e.target.x()), Math.round(e.target.y())); });
-        group.add(new Konva.Rect({ width: noteDef.size.width, height: noteDef.size.height, fill: '#FBFB77', stroke: '#A80036', strokeWidth: 1 }));
-        group.add(new Konva.Text({ text: noteDef.text, width: noteDef.size.width, padding: 5, fontSize: 12, align: 'center' }));
+        const rect = new Konva.Rect({ width: noteDef.size.width, height: noteDef.size.height, fill: '#FBFB77', stroke: '#A80036', strokeWidth: 1 });
+        const text = new Konva.Text({ text: noteDef.text, width: noteDef.size.width, padding: 5, fontSize: 12, align: 'center' });
+        group.add(rect); group.add(text);
         this.layer.add(group);
+        this.noteVisuals.push({ group, rect, text, def: noteDef });
     }
 
     private updateAllActivations() { if (!this.map) return; Object.keys(this.activationRects).forEach(nodeId => { this.updateActivationsForNode(nodeId); }); }
