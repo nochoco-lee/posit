@@ -50,6 +50,14 @@ export class ClassParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Struct) },
             { ALT: () => this.CONSUME(lexer.Annotation) },
             { ALT: () => this.CONSUME(lexer.Abstract) },
+            { ALT: () => this.CONSUME(lexer.Entity) },
+            { ALT: () => this.CONSUME(lexer.Circle) },
+            { ALT: () => this.CONSUME(lexer.Diamond) },
+            { ALT: () => this.CONSUME(lexer.Exception) },
+            { ALT: () => this.CONSUME(lexer.Metaclass) },
+            { ALT: () => this.CONSUME(lexer.Protocol) },
+            { ALT: () => this.CONSUME(lexer.Record) },
+            { ALT: () => this.CONSUME(lexer.Stereotype) },
             { ALT: () => this.CONSUME(lexer.Extends) },
             { ALT: () => this.CONSUME(lexer.Implements) }
         ]);
@@ -64,7 +72,15 @@ export class ClassParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Enum) },
             { ALT: () => this.CONSUME(lexer.Struct) },
             { ALT: () => this.CONSUME(lexer.Annotation) },
-            { ALT: () => this.CONSUME(lexer.Abstract) }
+            { ALT: () => this.CONSUME(lexer.Abstract) },
+            { ALT: () => this.CONSUME(lexer.Entity) },
+            { ALT: () => this.CONSUME(lexer.Circle) },
+            { ALT: () => this.CONSUME(lexer.Diamond) },
+            { ALT: () => this.CONSUME(lexer.Exception) },
+            { ALT: () => this.CONSUME(lexer.Metaclass) },
+            { ALT: () => this.CONSUME(lexer.Protocol) },
+            { ALT: () => this.CONSUME(lexer.Record) },
+            { ALT: () => this.CONSUME(lexer.Stereotype) }
         ]);
     });
 
@@ -86,7 +102,8 @@ export class ClassParser extends CstParser {
             {
                 GATE: () => {
                     const t1 = this.LA(1).tokenType;
-                    const isClassKeyword = t1 === lexer.Visibility || t1 === lexer.Class || t1 === lexer.Interface || t1 === lexer.Enum || t1 === lexer.Struct || t1 === lexer.Annotation || t1 === lexer.Abstract;
+                    const isClassKeyword = t1 === lexer.Visibility || t1 === lexer.Class || t1 === lexer.Interface || t1 === lexer.Enum || t1 === lexer.Struct || t1 === lexer.Annotation || t1 === lexer.Abstract || 
+                                          t1 === lexer.Entity || t1 === lexer.Circle || t1 === lexer.Diamond || t1 === lexer.Exception || t1 === lexer.Metaclass || t1 === lexer.Protocol || t1 === lexer.Record || t1 === lexer.Stereotype;
                     if (!isClassKeyword) return false;
                     let i = 2;
                     while (true) { const tok = this.LA(i).tokenType; if (tok === lexer.Arrow) return false; if (tok === common.Newline || tok === common.EndUml || tok === EOF) break; i++; }
@@ -94,7 +111,22 @@ export class ClassParser extends CstParser {
                 },
                 ALT: () => {
                     this.OPTION(() => this.CONSUME(lexer.Visibility));
-                    this.OR1([ { ALT: () => this.CONSUME(lexer.Class) }, { ALT: () => this.CONSUME(lexer.Interface) }, { ALT: () => this.CONSUME(lexer.Enum) }, { ALT: () => this.CONSUME(lexer.Struct) }, { ALT: () => this.CONSUME(lexer.Annotation) }, { ALT: () => { this.CONSUME(lexer.Abstract); this.OPTION1(() => this.CONSUME1(lexer.Class)); } } ]);
+                    this.OR1([ 
+                        { ALT: () => this.CONSUME(lexer.Class) }, 
+                        { ALT: () => this.CONSUME(lexer.Interface) }, 
+                        { ALT: () => this.CONSUME(lexer.Enum) }, 
+                        { ALT: () => this.CONSUME(lexer.Struct) }, 
+                        { ALT: () => this.CONSUME(lexer.Annotation) }, 
+                        { ALT: () => this.CONSUME(lexer.Entity) },
+                        { ALT: () => this.CONSUME(lexer.Circle) },
+                        { ALT: () => this.CONSUME(lexer.Diamond) },
+                        { ALT: () => this.CONSUME(lexer.Exception) },
+                        { ALT: () => this.CONSUME(lexer.Metaclass) },
+                        { ALT: () => this.CONSUME(lexer.Protocol) },
+                        { ALT: () => this.CONSUME(lexer.Record) },
+                        { ALT: () => this.CONSUME(lexer.Stereotype) },
+                        { ALT: () => { this.CONSUME(lexer.Abstract); this.OPTION1(() => this.CONSUME1(lexer.Class)); } } 
+                    ]);
                     this.SUBRULE(this.name, { LABEL: "name" });
                     this.MANY(() => {
                         this.OR2([
@@ -108,15 +140,26 @@ export class ClassParser extends CstParser {
             },
             {
                 GATE: () => {
+                    const t1 = this.LA(1).tokenType;
+                    const t2 = this.LA(2).tokenType;
+                    if (t1 === common.LParen && t2 === common.RParen) return true;
+                    if (t1 === common.LAngle && t2 === common.RAngle) return true;
                     let i = 1; while (true) { const tok = this.LA(i).tokenType; if (tok === common.Identifier || tok === common.Dot || tok === common.StringLiteral || tok === common.NumberToken) i++; else break; }
                     return this.LA(i).tokenType === common.LBrace;
                 },
                 ALT: () => {
-                    this.SUBRULE3(this.name, { LABEL: "name" });
+                    this.OR6([
+                         { ALT: () => { this.CONSUME(common.LParen); this.CONSUME(common.RParen); } },
+                         { ALT: () => { this.CONSUME(common.LAngle); this.CONSUME(common.RAngle); } },
+                         { ALT: () => this.SUBRULE3(this.name, { LABEL: "name" }) }
+                    ]);
+                    this.OPTION5(() => this.SUBRULE4(this.name, { LABEL: "name" }));
                     this.OPTION3(() => this.CONSUME1(common.PosComment, { LABEL: "layout" }));
-                    this.CONSUME1(common.LBrace);
-                    this.MANY4({ GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== EOF, DEF: () => { this.OR7([ { ALT: () => this.CONSUME3(common.Newline) }, { ALT: () => this.SUBRULE1(this.classMember) } ]); } });
-                    this.CONSUME1(common.RBrace);
+                    this.OPTION6(() => {
+                        this.CONSUME1(common.LBrace);
+                        this.MANY4({ GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== EOF, DEF: () => { this.OR7([ { ALT: () => this.CONSUME3(common.Newline) }, { ALT: () => this.SUBRULE1(this.classMember) } ]); } });
+                        this.CONSUME1(common.RBrace);
+                    });
                 }
             }
         ]);
@@ -155,7 +198,8 @@ export class ClassParser extends CstParser {
             { ALT: () => this.CONSUME(common.Page) },
             { ALT: () => this.CONSUME(common.Header) },
             { ALT: () => this.CONSUME(common.Footer) },
-            { ALT: () => this.CONSUME(common.Title) }
+            { ALT: () => this.CONSUME(common.Title) },
+            { ALT: () => this.CONSUME(common.Identifier) } // Catch-all for other commands like allowmixing
         ]);
         this.MANY({
              GATE: () => this.LA(1).tokenType !== common.Newline && this.LA(1).tokenType !== common.LBrace && this.LA(1).tokenType !== common.EndUml,
@@ -184,7 +228,7 @@ export class ClassParser extends CstParser {
 
     private isIgnored(): boolean {
         const tok = this.LA(1).tokenType;
-        return tok === common.Skinparam || tok === common.Hide || tok === common.Show || tok === common.Page || tok === common.Header || tok === common.Footer || tok === common.Title;
+        return tok === common.Skinparam || tok === common.Hide || tok === common.Show || tok === common.Page || tok === common.Header || tok === common.Footer || tok === common.Title || tok === common.Identifier;
     }
 
     private isConnection(): boolean {

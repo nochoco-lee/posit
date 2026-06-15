@@ -17,6 +17,8 @@ import {
     Else,
     Opt,
     Par,
+    Critical,
+    Option,
     And,
     Rect,
     Autonumber,
@@ -63,6 +65,8 @@ import {
     LAngle,
     RAngle,
     Subgraph,
+    Click,
+    Link,
     Direction
 } from "./lexer";
 
@@ -135,9 +139,11 @@ class MermaidParser extends CstParser {
     private isConnection(): boolean {
         let la = 1;
         let t = this.LA(la);
+        while (t.tokenType === LParen || t.tokenType === RParen) { la++; t = this.LA(la); }
         if (t.tokenType !== Identifier && t.tokenType !== StringLiteral && t.tokenType !== BacktickIdentifier && t.tokenType !== Word) return false;
         la++;
         t = this.LA(la);
+        while (t.tokenType === LParen || t.tokenType === RParen) { la++; t = this.LA(la); }
         if (t.tokenType === Plus || t.tokenType === Minus) {
             la++;
             t = this.LA(la);
@@ -154,8 +160,7 @@ class MermaidParser extends CstParser {
 
     private isFlowchartNode(): boolean {
         const t1 = this.LA(1).tokenType;
-        const t2 = this.LA(2).tokenType;
-        return (t1 === Identifier || t1 === Word) && (t2 === LShape || t2 === LBrace || t2 === LBracket || t2 === LParen);
+        return (t1 === Identifier || t1 === Word || t1 === StringLiteral || t1 === BacktickIdentifier);
     }
 
     public ignoredStatement = this.RULE("ignoredStatement", () => {
@@ -169,7 +174,9 @@ class MermaidParser extends CstParser {
             { ALT: () => this.CONSUME(Slash) },
             { ALT: () => this.CONSUME(Backslash) },
             { ALT: () => this.CONSUME(Ampersand) },
-            { ALT: () => this.CONSUME(And) }
+            { ALT: () => this.CONSUME(And) },
+            { ALT: () => this.CONSUME(Click) },
+            { ALT: () => this.CONSUME(Link) }
         ]);
         this.MANY(() => this.SUBRULE(this.anyToken));
     });
@@ -210,7 +217,8 @@ class MermaidParser extends CstParser {
             { ALT: () => this.CONSUME(Identifier) },
             { ALT: () => this.CONSUME(StringLiteral) },
             { ALT: () => this.CONSUME(BacktickIdentifier) },
-            { ALT: () => this.CONSUME(Word) }
+            { ALT: () => this.CONSUME(Word) },
+            { ALT: () => { this.CONSUME(LParen); this.CONSUME(RParen); } }
         ]);
     });
 
@@ -286,7 +294,10 @@ class MermaidParser extends CstParser {
                 this.CONSUME(Colon);
                 this.SUBRULE(this.payload, { LABEL: "text" });
             }},
-            { ALT: () => this.SUBRULE2(this.genericName, { LABEL: "textName" }) }
+            { 
+                GATE: () => this.LA(1).tokenType !== Colon,
+                ALT: () => this.SUBRULE2(this.payload, { LABEL: "textName" }) 
+            }
         ]);
     });
 
@@ -296,13 +307,14 @@ class MermaidParser extends CstParser {
             { ALT: () => this.CONSUME(Alt) },
             { ALT: () => this.CONSUME(Opt) },
             { ALT: () => this.CONSUME(Par) },
+            { ALT: () => this.CONSUME(Critical) },
             { ALT: () => this.CONSUME(Rect) },
             { ALT: () => this.CONSUME(Box) }
         ]);
         this.OPTION(() => this.SUBRULE(this.payload, { LABEL: "label" }));
         this.MANY1(() => this.SUBRULE(this.sequenceStatement));
         this.MANY2(() => {
-            this.OR1([ { ALT: () => this.CONSUME(Else) }, { ALT: () => this.CONSUME(And) } ]);
+            this.OR1([ { ALT: () => this.CONSUME(Else) }, { ALT: () => this.CONSUME(Option) }, { ALT: () => this.CONSUME(And) } ]);
             this.OPTION1(() => this.SUBRULE1(this.genericName, { LABEL: "elseLabel" }));
             this.MANY3(() => this.SUBRULE1(this.sequenceStatement));
         });
@@ -382,7 +394,7 @@ class MermaidParser extends CstParser {
     });
 
     public flowchartNodeDeclaration = this.RULE("flowchartNodeDeclaration", () => {
-        this.CONSUME(Identifier, { LABEL: "id" });
+        this.SUBRULE(this.genericName, { LABEL: "id" });
         this.OPTION(() => {
             this.OR([
                 { ALT: () => { this.CONSUME(LShape); this.SUBRULE(this.payload, { LABEL: "label" }); this.CONSUME(RShape); } },

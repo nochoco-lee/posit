@@ -20,21 +20,21 @@ export class PlantUmlScanner {
             deployment: 0
         };
 
-        if (/\b(?:participant|actor|boundary|control|entity|database|collections|queue|autonumber|newpage|box|activate|deactivate|destroy|return|partition|mainframe)\b/i.test(text)) scores.sequence += 50;
-        if (/\+\+|--(?:\s|:|$)/.test(text)) scores.sequence += 40; // Activation shorthand
-        if (/\b(?:alt|opt|loop|par|break|critical|group)\b/i.test(text)) scores.sequence += 40;
-        if (/->>|<<-|->x|x<-|->\?|\?<-|\[->|<-]|->\+|-->-|->\*|!->/.test(text)) scores.sequence += 60;
-        if (/(?<!-)>(?!-)|(?<!-)<(?!-)/.test(text)) scores.sequence += 20; // Single arrows like -> or <-
-        if (/\balice\b|\bbob\b/i.test(text)) scores.sequence += 10; // Common sequence names
+        if (/\b(?:participant|actor|boundary|control|entity|database|collections|queue|autonumber|newpage|box|activate|deactivate|destroy|return|partition|mainframe|hnote|rnote|note|ref)\b/i.test(text)) scores.sequence += 100;
+        if (/\+\+|--(?:\s|:|$)/.test(text)) scores.sequence += 60; // Activation shorthand
+        if (/\b(?:alt|opt|loop|par|break|critical|group)\b/i.test(text)) scores.sequence += 60;
+        if (/->>|<<-|->x|x<-|->\?|\?<-|\[->|<-]|->\+|-->-|->\*|!->/.test(text)) scores.sequence += 80;
+        if (/(?<!-)>(?!-)|(?<!-)<(?!-)/.test(text)) scores.sequence += 30; // Single arrows like -> or <-
 
         // Class indicators
-        if (/\b(?:class|interface|enum|struct|annotation|abstract|extends|implements)\b/i.test(text)) scores.class += 50;
-        if (/<\||\|>|\*--|--\*|o--|--o|\+--|--\+|#--|--#/.test(text)) scores.class += 60;
-        if (/[{}]/.test(text) && /\b(?:class|interface|enum)\b/i.test(text)) scores.class += 40;
+        if (/\b(?:class|interface|enum|struct|annotation|abstract|extends|implements|stereotype|metaclass|protocol|record|exception|dataclass)\b/i.test(text)) scores.class += 100;
+        if (/<\||\|>|\*--|--\*|o--|--o|\+--|--\+|#--|--#/.test(text)) scores.class += 80;
+        if (/[{}]/.test(text) && /\b(?:class|interface|enum)\b/i.test(text)) scores.class += 60;
+        if (/\(\)|<>\b/i.test(text)) scores.class += 40; // circle or diamond short forms
 
         // Deployment indicators
-        if (/\b(?:artifact|cloud|component|node|storage|rectangle|card|file|hexagon|person|process|agent|usecase|action|frame|rect|package|namespace|folder)\b/i.test(text)) scores.deployment += 50;
-        if (/\b(?:database|collections|queue|stack)\b/i.test(text)) scores.deployment += 30;
+        if (/\b(?:artifact|cloud|component|node|storage|rectangle|card|file|hexagon|person|process|agent|usecase|action|frame|rect|package|namespace|folder|together)\b/i.test(text)) scores.deployment += 80;
+        if (/\b(?:database|collections|queue|stack)\b/i.test(text)) scores.deployment += 50;
         if (/\blabel\b/i.test(text)) scores.deployment += 20; // Reduced weight
         if (/-up-|-down-|-left-|-right-/.test(text)) scores.deployment += 40;
         if (/\[/.test(text) && /]/.test(text)) {

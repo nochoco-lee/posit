@@ -20,7 +20,10 @@ export class DeploymentParser extends CstParser {
 
     public anyToken = this.RULE("anyToken", () => {
         this.OR([
-            { ALT: () => this.CONSUME(common.IdentifierLike) },
+            { ALT: () => this.CONSUME(common.Identifier) },
+            { ALT: () => this.CONSUME(common.NumberToken) },
+            { ALT: () => this.CONSUME(common.StringLiteral) },
+            { ALT: () => this.CONSUME(common.Color) },
             { ALT: () => this.CONSUME(lexer.Arrow) },
             { ALT: () => this.CONSUME(common.Comma) },
             { ALT: () => this.CONSUME(common.LParen) },
@@ -39,26 +42,88 @@ export class DeploymentParser extends CstParser {
             { ALT: () => this.CONSUME(common.QuestionMark) },
             { ALT: () => this.CONSUME(common.LAngle) },
             { ALT: () => this.CONSUME(common.RAngle) },
-            { ALT: () => this.CONSUME(common.StringLiteral) },
-            { ALT: () => this.CONSUME(common.Color) },
-            { ALT: () => this.CONSUME(lexer.Stereotype) }
+            { ALT: () => this.CONSUME(lexer.Stereotype) },
+            { ALT: () => this.CONSUME(lexer.Artifact) },
+            { ALT: () => this.CONSUME(lexer.Cloud) },
+            { ALT: () => this.CONSUME(lexer.Component) },
+            { ALT: () => this.CONSUME(lexer.NodeKeyword) },
+            { ALT: () => this.CONSUME(lexer.Storage) },
+            { ALT: () => this.CONSUME(lexer.Rectangle) },
+            { ALT: () => this.CONSUME(lexer.Card) },
+            { ALT: () => this.CONSUME(lexer.FileKeyword) },
+            { ALT: () => this.CONSUME(lexer.Hexagon) },
+            { ALT: () => this.CONSUME(lexer.Person) },
+            { ALT: () => this.CONSUME(lexer.Process) },
+            { ALT: () => this.CONSUME(lexer.Agent) },
+            { ALT: () => this.CONSUME(lexer.Usecase) },
+            { ALT: () => this.CONSUME(lexer.Action) },
+            { ALT: () => this.CONSUME(lexer.LabelEntity) },
+            { ALT: () => this.CONSUME(lexer.Together) },
+            { ALT: () => this.CONSUME(lexer.Control) },
+            { ALT: () => this.CONSUME(lexer.Boundary) },
+            { ALT: () => this.CONSUME(lexer.Entity) },
+            { ALT: () => this.CONSUME(lexer.Package) },
+            { ALT: () => this.CONSUME(lexer.Namespace) },
+            { ALT: () => this.CONSUME(lexer.Folder) },
+            { ALT: () => this.CONSUME(lexer.Frame) },
+            { ALT: () => this.CONSUME(lexer.Database) },
+            { ALT: () => this.CONSUME(lexer.Collections) },
+            { ALT: () => this.CONSUME(lexer.Queue) },
+            { ALT: () => this.CONSUME(lexer.Stack) }
         ]);
     });
 
-    public nodeIdentifier = this.RULE("nodeIdentifier", () => { this.CONSUME(common.IdentifierLike); });
+    public nodeIdentifier = this.RULE("nodeIdentifier", () => {
+        this.OR([
+            { ALT: () => this.CONSUME(common.Identifier) },
+            { ALT: () => this.CONSUME(common.NumberToken) },
+            { ALT: () => this.CONSUME(lexer.Artifact) },
+            { ALT: () => this.CONSUME(lexer.Cloud) },
+            { ALT: () => this.CONSUME(lexer.Component) },
+            { ALT: () => this.CONSUME(lexer.NodeKeyword) },
+            { ALT: () => this.CONSUME(lexer.Storage) },
+            { ALT: () => this.CONSUME(lexer.Rectangle) },
+            { ALT: () => this.CONSUME(lexer.Card) },
+            { ALT: () => this.CONSUME(lexer.FileKeyword) },
+            { ALT: () => this.CONSUME(lexer.Hexagon) },
+            { ALT: () => this.CONSUME(lexer.Person) },
+            { ALT: () => this.CONSUME(lexer.Process) },
+            { ALT: () => this.CONSUME(lexer.Agent) },
+            { ALT: () => this.CONSUME(lexer.Usecase) },
+            { ALT: () => this.CONSUME(lexer.Action) },
+            { ALT: () => this.CONSUME(lexer.LabelEntity) },
+            { ALT: () => this.CONSUME(lexer.Together) },
+            { ALT: () => this.CONSUME(lexer.Control) },
+            { ALT: () => this.CONSUME(lexer.Boundary) },
+            { ALT: () => this.CONSUME(lexer.Entity) },
+            { ALT: () => this.CONSUME(lexer.Package) },
+            { ALT: () => this.CONSUME(lexer.Namespace) },
+            { ALT: () => this.CONSUME(lexer.Folder) },
+            { ALT: () => this.CONSUME(lexer.Frame) },
+            { ALT: () => this.CONSUME(lexer.Database) },
+            { ALT: () => this.CONSUME(lexer.Collections) },
+            { ALT: () => this.CONSUME(lexer.Queue) },
+            { ALT: () => this.CONSUME(lexer.Stack) }
+        ]);
+    });
+
     public namePart = this.RULE("namePart", () => { 
         this.OR([
             { ALT: () => this.SUBRULE(this.nodeIdentifier) },
             { ALT: () => this.CONSUME(common.StringLiteral) },
             { ALT: () => {
                 this.CONSUME(common.LBracket);
-                this.SUBRULE1(this.namePart);
+                this.MANY(() => { this.SUBRULE(this.anyToken); });
                 this.CONSUME(common.RBracket);
             }},
             { ALT: () => {
                 this.CONSUME(common.LParen);
-                this.SUBRULE2(this.namePart);
-                this.CONSUME(common.RParen);
+                this.OPTION(() => this.CONSUME(common.RParen)); // Support bare ()
+                this.MANY1({ 
+                    GATE: () => this.LA(1).tokenType !== common.RParen, 
+                    DEF: () => this.SUBRULE1(this.anyToken) 
+                });
+                this.OPTION1(() => this.CONSUME1(common.RParen));
             }}
         ]); 
     });
@@ -99,7 +164,16 @@ export class DeploymentParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Process) },
             { ALT: () => this.CONSUME(lexer.Agent) },
             { ALT: () => this.CONSUME(lexer.Usecase) },
-            { ALT: () => this.CONSUME(lexer.Action) }
+            { ALT: () => this.CONSUME(lexer.Action) },
+            { ALT: () => this.CONSUME(lexer.LabelEntity) },
+            { ALT: () => this.CONSUME(lexer.Together) },
+            { ALT: () => this.CONSUME(lexer.Control) },
+            { ALT: () => this.CONSUME(lexer.Boundary) },
+            { ALT: () => this.CONSUME(lexer.Entity) },
+            { ALT: () => this.CONSUME(lexer.Collections) },
+            { ALT: () => this.CONSUME(lexer.Queue) },
+            { ALT: () => this.CONSUME(lexer.Stack) },
+            { ALT: () => { this.CONSUME(common.LParen); this.CONSUME(common.RParen); } }
         ]);
         this.SUBRULE(this.name, { LABEL: "name" });
         this.MANY(() => {

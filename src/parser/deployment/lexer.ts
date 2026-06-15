@@ -15,6 +15,11 @@ export const Process = createToken({ name: "Process", pattern: /process\b/i, cat
 export const Agent = createToken({ name: "Agent", pattern: /agent\b/i, categories: [common.IdentifierLike] });
 export const Usecase = createToken({ name: "Usecase", pattern: /usecase\b/i, categories: [common.IdentifierLike] });
 export const Action = createToken({ name: "Action", pattern: /action\b/i, categories: [common.IdentifierLike] });
+export const LabelEntity = createToken({ name: "LabelEntity", pattern: /label\b/i, categories: [common.IdentifierLike] });
+export const Together = createToken({ name: "Together", pattern: /together\b/i, categories: [common.IdentifierLike] });
+export const Control = createToken({ name: "Control", pattern: /control\b/i, categories: [common.IdentifierLike] });
+export const Boundary = createToken({ name: "Boundary", pattern: /boundary\b/i, categories: [common.IdentifierLike] });
+export const Entity = createToken({ name: "Entity", pattern: /entity\b/i, categories: [common.IdentifierLike] });
 export const Package = createToken({ name: "Package", pattern: /package\b/i, categories: [common.IdentifierLike] });
 export const Namespace = createToken({ name: "Namespace", pattern: /namespace\b/i, categories: [common.IdentifierLike] });
 export const Folder = createToken({ name: "Folder", pattern: /folder\b/i, categories: [common.IdentifierLike] });
@@ -41,6 +46,8 @@ export const allDeploymentTokens = [
     common.PosComment,
     common.MultiLineComment,
     common.LineComment,
+    common.Plus,
+    common.Minus,
     As,
     Stereotype,
     Arrow,
@@ -59,6 +66,11 @@ export const allDeploymentTokens = [
     Agent,
     Usecase,
     Action,
+    LabelEntity,
+    Together,
+    Control,
+    Boundary,
+    Entity,
     Package,
     Namespace,
     Folder,
@@ -71,6 +83,9 @@ export const allDeploymentTokens = [
     common.Title,
     common.Header,
     common.Footer,
+    common.Hide,
+    common.Show,
+    common.Page,
     common.LBrace,
     common.RBrace,
     common.LParen,

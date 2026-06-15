@@ -30,6 +30,8 @@ export const Alt = createToken({ name: "Alt", pattern: /alt\b/i });
 export const Else = createToken({ name: "Else", pattern: /else\b/i });
 export const Opt = createToken({ name: "Opt", pattern: /opt\b/i });
 export const Par = createToken({ name: "Par", pattern: /par\b/i });
+export const Critical = createToken({ name: "Critical", pattern: /critical\b/i });
+export const Option = createToken({ name: "Option", pattern: /option\b/i });
 export const And = createToken({ name: "And", pattern: /and\b/i });
 export const Rect = createToken({ name: "Rect", pattern: /rect\b/i });
 export const Autonumber = createToken({ name: "Autonumber", pattern: /autonumber\b/i });
@@ -43,6 +45,8 @@ export const Interface = createToken({ name: "Interface", pattern: /interface\b/
 
 // Keywords (Flowchart)
 export const Subgraph = createToken({ name: "Subgraph", pattern: /subgraph\b/i });
+export const Click = createToken({ name: "Click", pattern: /click\b/i });
+export const Link = createToken({ name: "Link", pattern: /link\b/i });
 export const Direction = createToken({ name: "Direction", pattern: /direction\b/i });
 export const DirType = createToken({ name: "DirType", pattern: /(?:LR|RL|TB|BT|TD)\b/i });
 
@@ -142,6 +146,8 @@ export const allMeTokens = [
     Else,
     Opt,
     Par,
+    Critical,
+    Option,
     And,
     Rect,
     Autonumber,
@@ -151,6 +157,8 @@ export const allMeTokens = [
     Class,
     Interface,
     Subgraph,
+    Click,
+    Link,
     Direction,
     DirType,
     Arrow, 
