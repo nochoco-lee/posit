@@ -325,12 +325,19 @@ export class LayoutPumlSvgRenderer {
                         const isCircle = headStr.includes("o");
                         const isHalfTop = headStr.includes("\\");
                         const isHalfBottom = headStr.includes("/");
-                        const isAsync = headStr.includes(">>") || (!headStr.includes(">") && (isHalfTop || isHalfBottom));
-                        const isFullOpen = headStr.includes(">>") || (headStr.includes(">") && !headStr.includes("|>") && !isLost && !isCircle);
+                        const isUnknown = headStr.includes("?");
+                        // In sequence diagrams, ->> is open (>), -> is solid (filled triangle)
+                        const isOpen = headStr.includes(">>") || headStr.includes("<<") || headStr.includes(")") || headStr.includes("(");
+                        const isSolid = (headStr.includes(">") || headStr.includes("<")) && !isOpen && !isCircle && !isLost && !isUnknown;
 
                         if (isLost) {
                             svg += `<line x1="${x - 5}" y1="${y - 5}" x2="${x + 5}" y2="${y + 5}" stroke="#A80036" stroke-width="2" />\n`;
                             svg += `<line x1="${x + 5}" y1="${y - 5}" x2="${x - 5}" y2="${y + 5}" stroke="#A80036" stroke-width="2" />\n`;
+                            return;
+                        }
+
+                        if (isUnknown) {
+                            svg += this.renderText(x, y - 5, "?", 14, "middle", "#A80036");
                             return;
                         }
 
@@ -344,9 +351,9 @@ export class LayoutPumlSvgRenderer {
                             svg += `<line x1="${currentX - 10 * direction}" y1="${y - 5}" x2="${currentX}" y2="${y}" stroke="#A80036" stroke-width="2" />\n`;
                         } else if (isHalfBottom) {
                             svg += `<line x1="${currentX - 10 * direction}" y1="${y + 5}" x2="${currentX}" y2="${y}" stroke="#A80036" stroke-width="2" />\n`;
-                        } else if (isFullOpen || isAsync) {
+                        } else if (isOpen) {
                             svg += `<path d="M ${currentX - 10 * direction} ${y - 5} L ${currentX} ${y} L ${currentX - 10 * direction} ${y + 5}" fill="none" stroke="#A80036" stroke-width="2" />\n`;
-                        } else if (headStr.includes(">") || headStr.includes("<")) {
+                        } else if (isSolid) {
                             const headPath = `M ${currentX - 10 * direction} ${y - 5} L ${currentX} ${y} L ${currentX - 10 * direction} ${y + 5} Z`;
                             svg += `<path d="${headPath}" fill="#A80036" />\n`;
                         }

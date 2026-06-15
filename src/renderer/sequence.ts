@@ -12,7 +12,9 @@ export class SequenceRenderer {
         targetId: string, 
         konvaObj: Konva.Arrow | Konva.Line, 
         labelObj?: Konva.Text,
-        group: Konva.Group 
+        group: Konva.Group,
+        headObj?: Konva.Shape,
+        startHeadObj?: Konva.Shape
     }[] = [];
     protected lifelines: Record<string, Konva.Line> = {};
     protected activationRects: Record<string, { rect: Konva.Rect, def: LayoutActivation }[]> = {};
@@ -162,6 +164,75 @@ export class SequenceRenderer {
         this.nodeGroups[nodeDef.id] = group; this.layer.add(group);
     }
 
+    private getArrowHeadType(type: string) {
+        const isDashed = type.includes('--') || type.includes('..');
+        const isBidirectional = type.includes('<->') || (type.startsWith('<') && type.endsWith('>'));
+        
+        const getHead = (s: string) => {
+            if (s.includes('x')) return 'lost';
+            if (s.includes('o')) return 'found';
+            if (s.includes('>>')) return 'open';
+            if (s.includes('\\')) return 'half-top';
+            if (s.includes('/')) return 'half-bottom';
+            if (s.includes('>')) return 'filled';
+            if (s.includes('<')) return 'filled';
+            return 'none';
+        };
+        
+        const parts = type.split(/[-.=]+/);
+        const startHead = getHead(parts[0]);
+        const endHead = getHead(parts[parts.length - 1]);
+        
+        return { isDashed, isBidirectional, startHead, endHead };
+    }
+
+    private createArrowHead(type: string, color: string): Konva.Shape | undefined {
+        if (type === 'none') return undefined;
+        
+        return new Konva.Shape({
+            name: 'arrow-head',
+            sceneFunc: (context, shape) => {
+                const length = 10;
+                const width = 10;
+                context.beginPath();
+                if (type === 'lost') {
+                    context.moveTo(-5, -5); context.lineTo(5, 5);
+                    context.moveTo(5, -5); context.lineTo(-5, 5);
+                } else if (type === 'found') {
+                    context.arc(-5, 0, 5, 0, Math.PI * 2);
+                } else if (type === 'open') {
+                    context.moveTo(-length, -width/2);
+                    context.lineTo(0, 0);
+                    context.lineTo(-length, width/2);
+                } else if (type === 'half-top') {
+                    context.moveTo(-length, -width/2);
+                    context.lineTo(0, 0);
+                } else if (type === 'half-bottom') {
+                    context.moveTo(-length, width/2);
+                    context.lineTo(0, 0);
+                } else {
+                    // Filled
+                    context.moveTo(0, 0);
+                    context.lineTo(-length, -width/2);
+                    context.lineTo(-length, width/2);
+                    context.closePath();
+                    context.fillStrokeShape(shape);
+                    return;
+                }
+                context.strokeShape(shape);
+            },
+            stroke: color,
+            strokeWidth: 2,
+            fill: type === 'filled' ? color : undefined
+        });
+    }
+
+    private updateArrowHead(head: Konva.Shape, from: {x: number, y: number}, to: {x: number, y: number}) {
+        const angle = Math.atan2(to.y - from.y, to.x - from.x);
+        head.position(to);
+        head.rotation(angle * 180 / Math.PI);
+    }
+
     private drawConnection(conn: LayoutConnection) {
         if (!this.map) return;
         const fromExternal = conn.from === '[' || conn.from === ']';
@@ -222,9 +293,7 @@ export class SequenceRenderer {
              targetX = conn.to === ']' ? originCenter + 100 : originCenter - 100;
         }
 
-        const isDashed = conn.type.includes('--') || conn.type.includes('..');
-        const isOpenArrow = conn.type.includes('>>') || conn.type.includes('\\') || conn.type.includes('/'); 
-        const isBidirectional = conn.type.includes('<->') || (conn.type.startsWith('<') && conn.type.endsWith('>'));
+        const arrowInfo = this.getArrowHeadType(conn.type);
         const connIndex = this.map.connections.indexOf(conn);
         const connGroup = new Konva.Group({ x: 0, y: yPos, draggable: true, id: `conn-${conn.from}-${conn.to}-${conn.label || ''}` });
         
@@ -251,11 +320,33 @@ export class SequenceRenderer {
         connGroup.on('dragend', (e: any) => { if (this.onNodeMove) { const newY = Math.round(e.target.y()); this.onNodeMove(connGroup.id(), 0, newY); } });
 
         let visualArrow: Konva.Arrow;
+        const color = '#A80036';
+        let headObj: Konva.Shape | undefined;
+        let startHeadObj: Konva.Shape | undefined;
+
         if (isSelfMessage) {
             const actShift = getAdjustedX(conn.from, true, originX) - originX;
-            visualArrow = new Konva.Arrow({ points: [originX + actShift, 0, originX + 30 + actShift, 0, originX + 30 + actShift, 20, originX + 7 + actShift, 20], stroke: '#A80036', strokeWidth: 2, hitStrokeWidth: 10, dash: isDashed ? [5, 5] : undefined, pointerLength: 8, pointerWidth: 8, fill: isOpenArrow ? 'rgba(0,0,0,0)' : '#A80036' });
+            const points = [originX + actShift, 0, originX + 30 + actShift, 0, originX + 30 + actShift, 20, originX + 7 + actShift, 20];
+            visualArrow = new Konva.Arrow({ points, stroke: color, strokeWidth: 2, hitStrokeWidth: 10, dash: arrowInfo.isDashed ? [5, 5] : undefined, pointerLength: 0 });
+            headObj = this.createArrowHead(arrowInfo.endHead, color);
+            if (headObj) {
+                this.updateArrowHead(headObj, { x: points[4], y: points[5] }, { x: points[6], y: points[7] });
+                connGroup.add(headObj);
+            }
         } else {
-            visualArrow = new Konva.Arrow({ points: [originX, 0, targetX, 0], pointerLength: 10, pointerWidth: 10, fill: isOpenArrow ? 'rgba(0,0,0,0)' : '#A80036', stroke: '#A80036', strokeWidth: 2, hitStrokeWidth: 10, dash: isDashed ? [5, 5] : undefined, pointerAtBeginning: isBidirectional });
+            visualArrow = new Konva.Arrow({ points: [originX, 0, targetX, 0], pointerLength: 0, stroke: color, strokeWidth: 2, hitStrokeWidth: 10, dash: arrowInfo.isDashed ? [5, 5] : undefined });
+            headObj = this.createArrowHead(arrowInfo.endHead, color);
+            if (headObj) {
+                this.updateArrowHead(headObj, { x: originX, y: 0 }, { x: targetX, y: 0 });
+                connGroup.add(headObj);
+            }
+            if (arrowInfo.isBidirectional || arrowInfo.startHead !== 'none') {
+                startHeadObj = this.createArrowHead(arrowInfo.startHead !== 'none' ? arrowInfo.startHead : arrowInfo.endHead, color);
+                if (startHeadObj) {
+                    this.updateArrowHead(startHeadObj, { x: targetX, y: 0 }, { x: originX, y: 0 });
+                    connGroup.add(startHeadObj);
+                }
+            }
         }
 
         connGroup.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
@@ -272,7 +363,7 @@ export class SequenceRenderer {
             connGroup.add(labelTextObj);
         }
         this.layer.add(connGroup);
-        this.connectionArrows.push({ originId: conn.from, targetId: conn.to, konvaObj: visualArrow, labelObj: labelTextObj, group: connGroup });
+        this.connectionArrows.push({ originId: conn.from, targetId: conn.to, konvaObj: visualArrow, labelObj: labelTextObj, group: connGroup, headObj, startHeadObj });
     }
 
     private drawDivider(div: LayoutDivider) {
@@ -417,7 +508,11 @@ export class SequenceRenderer {
                 const yPos = conn.group.y();
                 if (isSelfMessage) {
                     const adjX = getAdjustedX(nodeId, draggedCenterX, yPos, true);
-                    conn.konvaObj.points([adjX, 0, adjX + 30, 0, adjX + 30, 20, adjX + 7, 20]);
+                    const points = [adjX, 0, adjX + 30, 0, adjX + 30, 20, adjX + 7, 20];
+                    conn.konvaObj.points(points);
+                    if (conn.headObj) {
+                        this.updateArrowHead(conn.headObj, { x: points[4], y: points[5] }, { x: points[6], y: points[7] });
+                    }
                     if (conn.labelObj) {
                         conn.labelObj.width(150);
                         conn.labelObj.offsetX(conn.labelObj.width() / 2);
@@ -445,6 +540,12 @@ export class SequenceRenderer {
                         targetX = conn.targetId === ']' ? originCenter + 100 : originCenter - 100;
                     }
                     conn.konvaObj.points([originX, 0, targetX, 0]);
+                    if (conn.headObj) {
+                        this.updateArrowHead(conn.headObj, { x: originX, y: 0 }, { x: targetX, y: 0 });
+                    }
+                    if (conn.startHeadObj) {
+                        this.updateArrowHead(conn.startHeadObj, { x: targetX, y: 0 }, { x: originX, y: 0 });
+                    }
                     if (conn.labelObj) { 
                         const midX = (originX + targetX) / 2; 
                         const textWidth = Math.max(50, Math.abs(targetX - originX) - 10);
