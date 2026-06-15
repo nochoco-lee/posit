@@ -46,7 +46,13 @@ export class SequenceParser extends CstParser {
         ]);
     });
 
-    public nodeIdentifier = this.RULE("nodeIdentifier", () => { this.CONSUME(common.IdentifierLike); });
+    public nodeIdentifier = this.RULE("nodeIdentifier", () => {
+        this.OR([
+            { ALT: () => this.CONSUME(common.IdentifierLike) },
+            { ALT: () => this.CONSUME(common.LBracket) },
+            { ALT: () => this.CONSUME(common.RBracket) }
+        ]);
+    });
     public namePart = this.RULE("namePart", () => { this.OR([{ ALT: () => this.SUBRULE(this.nodeIdentifier) }, { ALT: () => this.CONSUME(common.StringLiteral) }]); });
 
     public name = this.RULE("name", () => {
@@ -71,7 +77,7 @@ export class SequenceParser extends CstParser {
         this.CONSUME(common.Colon);
         this.MANY({ 
             GATE: () => { const next = this.LA(1).tokenType; return next !== common.EndUml && next !== common.Newline; }, 
-            DEF: () => this.SUBRULE(this.anyToken) 
+            DEF: () => this.OR([ { ALT: () => this.SUBRULE(this.anyToken) }, { ALT: () => this.CONSUME(common.Newline) } ]) 
         });
     });
 
@@ -92,7 +98,8 @@ export class SequenceParser extends CstParser {
                 { ALT: () => { this.CONSUME(lexer.As); this.SUBRULE1(this.name, { LABEL: "alias" }); }},
                 { GATE: () => { const next = this.LA(1).tokenType; return next === common.Identifier || next === common.StringLiteral || next === common.NumberToken || next === common.IdentifierLike; }, ALT: () => this.SUBRULE2(this.name, { LABEL: "alias" }) },
                 { ALT: () => this.CONSUME(common.Color, { LABEL: "color" }) },
-                { ALT: () => { this.CONSUME(lexer.Order); this.CONSUME(common.NumberToken, { LABEL: "order" }); } }
+                { ALT: () => { this.CONSUME(lexer.Order); this.CONSUME(common.NumberToken, { LABEL: "order" }); } },
+                { ALT: () => { this.CONSUME(common.LBracket); this.SUBRULE(this.label, { LABEL: "multilineLabel" }); this.CONSUME(common.RBracket); } }
             ]);
         });
         this.OPTION(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
@@ -100,10 +107,14 @@ export class SequenceParser extends CstParser {
 
     public connectionDeclaration = this.RULE("connectionDeclaration", () => {
         this.SUBRULE(this.name, { LABEL: "from" });
+        this.MANY(() => { this.OR([ { ALT: () => this.CONSUME(common.Plus) }, { ALT: () => this.CONSUME(common.Minus) } ]); });
         this.CONSUME(lexer.Arrow, { LABEL: "arrow" });
+        this.MANY1(() => { this.OR1([ { ALT: () => this.CONSUME1(common.Plus) }, { ALT: () => this.CONSUME1(common.Minus) } ]); });
         this.SUBRULE1(this.name, { LABEL: "to" });
-        this.OPTION(() => { this.SUBRULE(this.payload); });
-        this.OPTION1(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
+        this.MANY2(() => { this.OR2([ { ALT: () => this.CONSUME2(common.Plus) }, { ALT: () => this.CONSUME2(common.Minus) } ]); });
+        this.OPTION(() => { this.CONSUME(lexer.As); this.SUBRULE2(this.name, { LABEL: "alias" }); });
+        this.OPTION1(() => { this.SUBRULE(this.payload); });
+        this.OPTION2(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
     });
 
     public noteDeclaration = this.RULE("noteDeclaration", () => {

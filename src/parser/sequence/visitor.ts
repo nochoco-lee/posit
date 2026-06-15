@@ -134,10 +134,11 @@ export class SequenceAstVisitor extends BaseVisitor {
     }
 
     participantDeclaration(ctx: any): IRNode {
-        const shapeToken = Object.keys(ctx).find(k => !["name", "alias", "color", "order", "layout"].includes(k));
+        const shapeToken = Object.keys(ctx).find(k => !["name", "alias", "color", "order", "layout", "multilineLabel"].includes(k));
         const shape = shapeToken ? shapeToken.toLowerCase() : "participant";
         const name = this.visit(ctx.name[0]);
-        const alias = ctx.alias ? this.visit(ctx.alias[0]) : name;
+        let alias = ctx.alias ? this.visit(ctx.alias[0]) : name;
+        let multilineLabel = ctx.multilineLabel ? this.visit(ctx.multilineLabel[0]) : undefined;
         
         let layout: any = undefined;
         if (ctx.layout) {
@@ -150,16 +151,47 @@ export class SequenceAstVisitor extends BaseVisitor {
             type: "node",
             shape,
             name: alias,
-            origName: name,
+            origName: multilineLabel || name,
             layout,
             offset: this.getOffsets(ctx, ctx.layout)
         };
     }
 
     connectionDeclaration(ctx: any): IREdge {
-        const arrow = ctx.arrow[0].image;
+        let arrow = ctx.arrow[0].image;
+        let from = this.visit(ctx.from[0]);
+        let to = this.visit(ctx.to[0]);
+
+        if (ctx.alias) {
+            to = this.visit(ctx.alias[0]);
+        }
+
+        if (arrow.startsWith('<') && !arrow.endsWith('>')) {
+            const temp = from;
+            from = to;
+            to = temp;
+            
+            // Reverse the arrow
+            arrow = arrow.split('').reverse().map(c => {
+                if (c === '<') return '>';
+                if (c === '>') return '<';
+                if (c === '(') return ')';
+                if (c === ')') return '(';
+                if (c === '[') return ']';
+                if (c === ']') return '[';
+                if (c === '{') return '}';
+                if (c === '}') return '{';
+                return c;
+            }).join('');
+        }
+
         let isCreation = arrow.includes('++') || arrow.includes('->*');
         let isDeletion = arrow.includes('--') || arrow.includes('!!');
+
+        if (ctx.Plus || ctx.Minus || ctx.Plus1 || ctx.Minus1 || ctx.Plus2 || ctx.Minus2) {
+            if (ctx.Plus || ctx.Plus1 || ctx.Plus2) isCreation = true;
+            if (ctx.Minus || ctx.Minus1 || ctx.Minus2) isDeletion = true;
+        }
 
         let layout: any = undefined;
         if (ctx.layout) {
@@ -170,8 +202,8 @@ export class SequenceAstVisitor extends BaseVisitor {
 
         return {
             type: "edge",
-            from: this.visit(ctx.from[0]),
-            to: this.visit(ctx.to[0]),
+            from,
+            to,
             fromLabel: "",
             toLabel: "",
             arrow,

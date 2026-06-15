@@ -66,6 +66,8 @@ export const Exclamation = createToken({ name: "Exclamation", pattern: /!/ });
 export const QuestionMark = createToken({ name: "QuestionMark", pattern: /\?/ });
 export const LAngle = createToken({ name: "LAngle", pattern: /</ });
 export const RAngle = createToken({ name: "RAngle", pattern: />/ });
+export const Plus = createToken({ name: "Plus", pattern: /\+/ });
+export const Minus = createToken({ name: "Minus", pattern: /-/ });
 
 export const commonTokens = [
     WhiteSpace,
@@ -103,5 +105,7 @@ export const commonTokens = [
     Exclamation,
     QuestionMark,
     LAngle,
-    RAngle
+    RAngle,
+    Plus,
+    Minus
 ];

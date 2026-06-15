@@ -268,10 +268,16 @@ export class MermaidAstVisitor extends BaseVisitor {
     flowchartNodeDeclaration(ctx: any): IRNode {
         const id = ctx.id[0].image;
         let label = id;
-        if (ctx.label) label = this.visit(ctx.label[0]);
+        let shape = "box";
+        if (ctx.label) {
+            label = this.visit(ctx.label[0]);
+            if (ctx.LBrace || ctx.LBrace1) {
+                shape = "diamond";
+            }
+        }
         return {
             type: "node",
-            shape: "box",
+            shape: shape,
             name: id,
             origName: label,
         };

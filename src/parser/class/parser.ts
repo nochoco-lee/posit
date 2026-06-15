@@ -125,11 +125,26 @@ export class ClassParser extends CstParser {
     public colorValue = this.RULE("colorValue", () => { this.OR([ { ALT: () => this.CONSUME(common.Color) }, { ALT: () => { this.CONSUME(lexer.Visibility); this.CONSUME(common.Identifier); } }]); });
 
     public connectionDeclaration = this.RULE("connectionDeclaration", () => {
-        this.SUBRULE1(this.name, { LABEL: "from" });
-        this.CONSUME(lexer.Arrow, { LABEL: "arrow" });
-        this.SUBRULE2(this.name, { LABEL: "to" });
-        this.OPTION(() => { this.CONSUME(common.Colon); this.SUBRULE(this.memberLabel, { LABEL: "payload" }); });
-        this.OPTION1(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
+        this.OR([
+            { ALT: () => {
+                this.SUBRULE1(this.name, { LABEL: "from" });
+                this.OPTION(() => this.CONSUME(common.StringLiteral, { LABEL: "fromLabel" }));
+                this.CONSUME(lexer.Arrow, { LABEL: "arrow" });
+                this.OPTION1(() => this.CONSUME1(common.StringLiteral, { LABEL: "toLabel" }));
+                this.SUBRULE2(this.name, { LABEL: "to" });
+            }},
+            { ALT: () => {
+                this.CONSUME(common.LParen);
+                this.SUBRULE3(this.name, { LABEL: "from" });
+                this.CONSUME(common.Comma);
+                this.SUBRULE4(this.name, { LABEL: "to" });
+                this.CONSUME(common.RParen);
+                this.CONSUME1(lexer.Arrow, { LABEL: "arrow" });
+                this.SUBRULE5(this.name, { LABEL: "assoc" });
+            }}
+        ]);
+        this.OPTION2(() => { this.CONSUME(common.Colon); this.SUBRULE(this.memberLabel, { LABEL: "payload" }); });
+        this.OPTION3(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
     });
 
     public ignoredStatement = this.RULE("ignoredStatement", () => {

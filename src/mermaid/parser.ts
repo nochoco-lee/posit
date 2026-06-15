@@ -260,7 +260,7 @@ class MermaidParser extends CstParser {
         this.MANY({
             GATE: () => {
                 const t = this.LA(1).tokenType;
-                return t !== RBrace && t !== Newline && t !== VerticalBar && t !== RParen;
+                return t !== RBrace && t !== Newline && t !== VerticalBar && t !== RParen && t !== RShape;
             },
             DEF: () => this.SUBRULE(this.anyToken)
         });
@@ -299,7 +299,7 @@ class MermaidParser extends CstParser {
             { ALT: () => this.CONSUME(Rect) },
             { ALT: () => this.CONSUME(Box) }
         ]);
-        this.OPTION(() => this.SUBRULE(this.genericName, { LABEL: "label" }));
+        this.OPTION(() => this.SUBRULE(this.payload, { LABEL: "label" }));
         this.MANY1(() => this.SUBRULE(this.sequenceStatement));
         this.MANY2(() => {
             this.OR1([ { ALT: () => this.CONSUME(Else) }, { ALT: () => this.CONSUME(And) } ]);
@@ -386,7 +386,12 @@ class MermaidParser extends CstParser {
         this.OPTION(() => {
             this.OR([
                 { ALT: () => { this.CONSUME(LShape); this.SUBRULE(this.payload, { LABEL: "label" }); this.CONSUME(RShape); } },
-                { ALT: () => { this.CONSUME(LBrace); this.MANY(() => this.SUBRULE(this.flowchartStatement)); this.CONSUME(RBrace); } }
+                { ALT: () => { 
+                    this.OPTION1(() => this.CONSUME(At));
+                    this.CONSUME(LBrace); 
+                    this.SUBRULE1(this.payload, { LABEL: "label" }); 
+                    this.CONSUME(RBrace); 
+                } }
             ]);
         });
     });

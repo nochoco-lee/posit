@@ -176,10 +176,21 @@ export class ClassAstVisitor extends BaseVisitor {
         return result.trim();
     }
 
-    connectionDeclaration(ctx: any): IREdge {
+    connectionDeclaration(ctx: any): IREdge | IREdge[] {
+        let arrow = ctx.arrow[0].image;
         let from = this.visit(ctx.from[0]);
         let to = this.visit(ctx.to[0]);
-        let arrow = ctx.arrow[0].image;
+
+        if (ctx.assoc) {
+            const assoc = this.visit(ctx.assoc[0]);
+            return [
+                { type: "edge", from, to: assoc, arrow, offset: this.getOffsets(ctx) } as IREdge,
+                { type: "edge", from: to, to: assoc, arrow, offset: this.getOffsets(ctx) } as IREdge
+            ];
+        }
+
+        const fromLabel = ctx.fromLabel ? ctx.fromLabel[0].image.slice(1, -1) : undefined;
+        const toLabel = ctx.toLabel ? ctx.toLabel[0].image.slice(1, -1) : undefined;
 
         if (arrow === "<|--" || arrow === "<|..") {
             const temp = from;
@@ -199,6 +210,8 @@ export class ClassAstVisitor extends BaseVisitor {
             type: "edge",
             from,
             to,
+            fromLabel,
+            toLabel,
             arrow,
             label: ctx.payload ? this.visit(ctx.payload[0]) : undefined,
             layout,
