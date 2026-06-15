@@ -2,36 +2,50 @@
 /**
  * Utility for measuring text dimensions.
  * In a browser environment, it uses a canvas to get accurate measurements.
- * In a Node.js environment without a global document, it falls back to estimates.
+ * In a Node.js environment, it utilizes the 'canvas' npm package.
  */
 
 let canvas: any = null;
+
+function getContext(fontSize: number, fontFamily: string) {
+    if (!canvas) {
+        if (typeof document !== 'undefined') {
+            canvas = document.createElement('canvas');
+        } else {
+            try {
+                // Using require for Node.js environments to load the 'canvas' package
+                const { createCanvas } = require('canvas');
+                canvas = createCanvas(200, 200);
+            } catch (e) {
+                // If the canvas package is not available, we'll return null and use fallbacks
+                return null;
+            }
+        }
+    }
+    const context = canvas.getContext('2d');
+    if (context) {
+        context.font = `${fontSize}px ${fontFamily}`;
+    }
+    return context;
+}
 
 export function measureText(
     text: string, 
     fontSize: number = 14, 
     fontFamily: string = 'sans-serif'
 ): { width: number, height: number } {
-    if (typeof document === 'undefined') {
-        // Fallback for Node.js environments (like some Vitest runs)
+    const context = getContext(fontSize, fontFamily);
+    
+    if (!context) {
+        // Fallback for environments where canvas is unavailable
         const lines = text.split('\n');
         const maxChars = Math.max(...lines.map(line => line.length));
-        // Rough estimate: average character width is ~0.6 of font size
         return {
-            width: maxChars * fontSize * 0.6,
+            width: maxChars * fontSize * 0.7, // Slightly more conservative fallback
             height: lines.length * fontSize * 1.2
         };
     }
 
-    if (!canvas) {
-        canvas = document.createElement('canvas');
-    }
-    const context = canvas.getContext('2d');
-    if (!context) {
-        return { width: 100, height: 20 };
-    }
-
-    context.font = `${fontSize}px ${fontFamily}`;
     const lines = text.split('\n');
     let maxWidth = 0;
     
@@ -52,19 +66,13 @@ export function wrapText(
     fontSize: number = 14,
     fontFamily: string = 'sans-serif'
 ): string {
-    if (typeof document === 'undefined') {
-        // Simple fallback wrap
+    const context = getContext(fontSize, fontFamily);
+    
+    if (!context) {
+        // Simple fallback wrap (no-op)
         return text; 
     }
 
-    if (!canvas) {
-        canvas = document.createElement('canvas');
-    }
-    const context = canvas.getContext('2d');
-    if (!context) return text;
-
-    context.font = `${fontSize}px ${fontFamily}`;
-    
     const words = text.split(' ');
     let lines: string[] = [];
     let currentLine = words[0];
