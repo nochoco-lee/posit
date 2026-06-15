@@ -61,6 +61,10 @@ export interface IRGroup extends IRStatement {
     keyword: string;   // 'alt', 'opt', 'loop', 'par'
     label?: string;
     color?: string;
+    layout?: {
+        x: number;
+        y: number;
+    };
     sections: {
         label?: string;
         statements: IRStatement[];
@@ -73,6 +77,10 @@ export interface IRNote extends IRStatement {
     targets?: string[];
     text: string;
     color?: string;
+    layout?: {
+        x: number;
+        y: number;
+    };
 }
 
 export interface IRActivation extends IRStatement {
@@ -102,6 +110,10 @@ export interface IRAutonumber extends IRStatement {
 export interface IRDivider extends IRStatement {
     type: 'divider';
     label: string;
+    layout?: {
+        x: number;
+        y: number;
+    };
 }
 
 export interface IRDelay extends IRStatement {
@@ -112,6 +124,10 @@ export interface IRRef extends IRStatement {
     type: 'ref';
     targets: string[];
     text: string;
+    layout?: {
+        x: number;
+        y: number;
+    };
 }
 
 export interface IRMainframe extends IRStatement {

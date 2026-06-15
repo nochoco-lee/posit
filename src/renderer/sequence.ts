@@ -276,11 +276,43 @@ export class SequenceRenderer {
     }
 
     private drawDivider(div: LayoutDivider) {
+        const divIndex = this.map?.dividers?.indexOf(div) ?? -1;
         const group = new Konva.Group({ 
             x: div.position.x, 
             y: div.position.y,
             draggable: true,
-            id: `div-${div.label}` 
+            id: `div-${div.label}`,
+            dragBoundFunc: (pos) => {
+                let minY = DEFAULTS.SEQUENCE_START_Y + DEFAULTS.PARTICIPANT_HEIGHT + 10;
+                let maxY = 5000;
+
+                if (this.map && divIndex !== -1) {
+                    // Find logical predecessor (connection or divider)
+                    // For simplicity, we can use the order in which they appear in the map or their current Y positions
+                    // Actually, the most robust way is to find elements with Y < current_div_Y and Y > current_div_Y
+                    
+                    const otherDividers = (this.map.dividers || []).filter(d => d !== div);
+                    const connections = this.map.connections || [];
+                    
+                    const predecessors = [
+                        ...otherDividers.filter(d => d.position.y < div.position.y).map(d => d.position.y),
+                        ...connections.filter(c => (c.calculatedY || 0) < div.position.y).map(c => (c.calculatedY || 0))
+                    ];
+                    if (predecessors.length > 0) {
+                        minY = Math.max(minY, Math.max(...predecessors) + 10);
+                    }
+
+                    const successors = [
+                        ...otherDividers.filter(d => d.position.y > div.position.y).map(d => d.position.y),
+                        ...connections.filter(c => (c.calculatedY || 0) > div.position.y).map(c => (c.calculatedY || 0))
+                    ];
+                    if (successors.length > 0) {
+                        maxY = Math.min(maxY, Math.min(...successors) - 10);
+                    }
+                }
+
+                return { x: div.position.x, y: Math.max(minY, Math.min(maxY, pos.y)) };
+            }
         });
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });

@@ -53,6 +53,14 @@ export class Emitter {
                         const g = s as IRGroup;
                         if (g.label === group.label && g.keyword === group.keyword) return g;
                     }
+                    if (s.type === 'ref') {
+                        const r = s as IRRef;
+                        if (r.text === group.label && group.keyword === 'ref') return r;
+                    }
+                    if (s.type === 'mainframe') {
+                        const m = s as IRMainframe;
+                        if (m.label === group.label && group.keyword === 'mainframe') return m;
+                    }
                     if (s.type === 'group') {
                          const res = findGroup((s as IRGroup).sections.flatMap(sec => sec.statements));
                          if (res) return res;

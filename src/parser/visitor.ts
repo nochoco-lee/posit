@@ -622,7 +622,18 @@ export class SequenceAstVisitor extends BaseVisitor {
         if (ctx.colorValue) color = this.visit(ctx.colorValue[0]);
         if (ctx.colorValue1) color = this.visit(ctx.colorValue1[0]);
         if (ctx.colorValue2) color = this.visit(ctx.colorValue2[0]);
-        return { type: "group", keyword, label, color, sections, offset: { start: startToken.startOffset, end: endOffset } };
+
+        let layout: { x: number; y: number } | undefined = undefined;
+        let layoutStart: number | undefined;
+        let layoutEnd: number | undefined;
+        if (ctx.layout) {
+            const layoutToken = ctx.layout[0];
+            layoutStart = layoutToken.startOffset;
+            layoutEnd = layoutToken.endOffset;
+            layout = this.parsePosComment(layoutToken.image);
+        }
+
+        return { type: "group", keyword, label, color, sections, layout, offset: { start: startToken.startOffset, end: endOffset, layoutStart, layoutEnd } };
     }
 
     elseBlock(ctx: any) {
@@ -657,6 +668,17 @@ export class SequenceAstVisitor extends BaseVisitor {
         if (ctx.target) ctx.target.forEach((t: any) => targets.push(this.visit(t).image));
         let color: string | undefined = undefined;
         if (ctx.colorValue) color = this.visit(ctx.colorValue[0]);
+        
+        let layout: { x: number; y: number } | undefined = undefined;
+        let layoutStart: number | undefined;
+        let layoutEnd: number | undefined;
+        if (ctx.layout) {
+            const layoutToken = ctx.layout[0];
+            layoutStart = layoutToken.startOffset;
+            layoutEnd = layoutToken.endOffset;
+            layout = this.parsePosComment(layoutToken.image);
+        }
+
         let text = "";
         let endOffset = startToken.endOffset;
         if (ctx.payload) {
@@ -674,7 +696,10 @@ export class SequenceAstVisitor extends BaseVisitor {
             if (ctx.alias) endOffset = this.visit(ctx.alias[0]).endOffset;
         } else if (ctx.alias) endOffset = this.visit(ctx.alias[0]).endOffset;
         else if (ctx.target) endOffset = this.visit(ctx.target[ctx.target.length - 1]).endOffset;
-        return { type: "note", placement, targets, text, color, offset: { start: startToken.startOffset, end: endOffset } };
+        
+        if (ctx.layout && ctx.layout[0].endOffset > endOffset) endOffset = ctx.layout[0].endOffset;
+
+        return { type: "note", placement, targets, text, color, layout, offset: { start: startToken.startOffset, end: endOffset, layoutStart, layoutEnd } };
     }
 
     noteType(ctx: any): IToken {
@@ -688,6 +713,17 @@ export class SequenceAstVisitor extends BaseVisitor {
         const startToken = ctx.Ref[0];
         const targets: string[] = [];
         if (ctx.target) ctx.target.forEach((t: any) => targets.push(this.visit(t).image));
+        
+        let layout: { x: number; y: number } | undefined = undefined;
+        let layoutStart: number | undefined;
+        let layoutEnd: number | undefined;
+        if (ctx.layout) {
+            const layoutToken = ctx.layout[0];
+            layoutStart = layoutToken.startOffset;
+            layoutEnd = layoutToken.endOffset;
+            layout = this.parsePosComment(layoutToken.image);
+        }
+
         let text = "";
         let endOffset = startToken.endOffset;
         if (ctx.payload) {
@@ -699,7 +735,10 @@ export class SequenceAstVisitor extends BaseVisitor {
             text = blockData.text;
             endOffset = blockData.endOffset;
         } else if (ctx.target) endOffset = this.visit(ctx.target[ctx.target.length - 1]).endOffset;
-        return { type: "ref", targets, text, offset: { start: startToken.startOffset, end: endOffset } };
+        
+        if (ctx.layout && ctx.layout[0].endOffset > endOffset) endOffset = ctx.layout[0].endOffset;
+
+        return { type: "ref", targets, text, layout, offset: { start: startToken.startOffset, end: endOffset, layoutStart, layoutEnd } };
     }
 
     noteBlock(ctx: any): { text: string, endOffset: number } {
@@ -758,7 +797,28 @@ export class SequenceAstVisitor extends BaseVisitor {
         const image = token.image;
         const match = image.match(/==+\s*(.*?)\s*==+/);
         const label = match ? match[1] : "";
-        return { type: "divider", label, offset: { start: token.startOffset, end: token.endOffset } };
+        
+        let layout: { x: number; y: number } | undefined = undefined;
+        let layoutStart: number | undefined;
+        let layoutEnd: number | undefined;
+        if (ctx.layout) {
+            const layoutToken = ctx.layout[0];
+            layoutStart = layoutToken.startOffset;
+            layoutEnd = layoutToken.endOffset;
+            layout = this.parsePosComment(layoutToken.image);
+        }
+
+        return { 
+            type: "divider", 
+            label, 
+            layout,
+            offset: { 
+                start: token.startOffset, 
+                end: ctx.layout ? ctx.layout[0].endOffset : token.endOffset,
+                layoutStart,
+                layoutEnd
+            } 
+        };
     }
 
     delayStatement(ctx: any): IRDelay {

@@ -279,6 +279,7 @@ class SequenceParser extends CstParser {
             { ALT: () => {} }
         ]);
         this.OPTION2(() => this.SUBRULE(this.colorValue));
+        this.OPTION4(() => { this.CONSUME(PosComment, { LABEL: "layout" }); });
         this.OR4([
             { GATE: () => this.LA(1).tokenType === Colon, ALT: () => this.SUBRULE(this.payload) },
             { GATE: () => { const t1 = this.LA(1).tokenType; if (t1 !== Newline) return false; let i = 2; while (true) { const tok = this.LA(i).tokenType; if (tok === EndNote || tok === Endhnote || tok === Endrnote || (tok === End && (this.LA(i+1).tokenType === Note || this.LA(i+1).tokenType === Ref))) return true; if (tok === EndUml || tok === EOF) return false; i++; } }, ALT: () => { this.MANY1(() => this.CONSUME(Newline)); this.SUBRULE(this.noteBlock); } },
@@ -289,6 +290,7 @@ class SequenceParser extends CstParser {
     public refDeclaration = this.RULE("refDeclaration", () => {
         this.CONSUME(Ref);
         this.OR([ { ALT: () => { this.CONSUME(Over); this.SUBRULE(this.name, { LABEL: "target" }); this.MANY(() => { this.CONSUME(Comma); this.SUBRULE1(this.name, { LABEL: "target" }); }); }}, { ALT: () => {} } ]);
+        this.OPTION5(() => { this.CONSUME(PosComment, { LABEL: "layout" }); });
         this.OR4([ { GATE: () => this.LA(1).tokenType === Colon, ALT: () => this.SUBRULE(this.payload) }, { GATE: () => this.LA(1).tokenType === Newline, ALT: () => { this.MANY1(() => this.CONSUME(Newline)); this.SUBRULE(this.noteBlock); } }, { ALT: () => {} } ]);
     });
 
@@ -299,7 +301,7 @@ class SequenceParser extends CstParser {
 
     public groupingBlock = this.RULE("groupingBlock", () => {
         this.OR([ { ALT: () => this.CONSUME(Alt) }, { ALT: () => this.CONSUME(Opt) }, { ALT: () => this.CONSUME(Loop) }, { ALT: () => this.CONSUME(Par) }, { ALT: () => this.CONSUME(Group) }, { ALT: () => this.CONSUME(Partition) }, { ALT: () => this.CONSUME(Box) } ]);
-        this.MANY1(() => this.SUBRULE(this.colorValue)); this.SUBRULE(this.label); this.MANY2(() => this.SUBRULE1(this.colorValue)); this.OPTION1(() => this.SUBRULE(this.payload)); this.OPTION2(() => { this.CONSUME(LBracket); this.SUBRULE1(this.label); this.CONSUME(RBracket); }); this.MANY3(() => this.SUBRULE2(this.colorValue)); this.CONSUME(Newline);
+        this.MANY1(() => this.SUBRULE(this.colorValue)); this.SUBRULE(this.label); this.MANY2(() => this.SUBRULE1(this.colorValue)); this.OPTION1(() => this.SUBRULE(this.payload)); this.OPTION2(() => { this.CONSUME(LBracket); this.SUBRULE1(this.label); this.CONSUME(RBracket); }); this.MANY3(() => this.SUBRULE2(this.colorValue)); this.OPTION5(() => { this.CONSUME(PosComment, { LABEL: "layout" }); }); this.CONSUME(Newline);
         this.MANY({ GATE: () => { const nextType = this.LA(1).tokenType; return nextType !== End && nextType !== Else && nextType !== EndUml; }, DEF: () => { this.OR1([ { ALT: () => this.CONSUME1(Newline) }, { ALT: () => this.SUBRULE(this.statement) } ]); } });
         this.MANY4(() => this.SUBRULE(this.elseBlock)); this.CONSUME(End); this.OPTION3(() => this.CONSUME1(Box));
     });
@@ -317,7 +319,10 @@ class SequenceParser extends CstParser {
             ]);
         });
     });
-    public dividerStatement = this.RULE("dividerStatement", () => { this.CONSUME(Divider); });
+    public dividerStatement = this.RULE("dividerStatement", () => { 
+        this.CONSUME(Divider); 
+        this.OPTION(() => { this.CONSUME(PosComment, { LABEL: "layout" }); });
+    });
     public delayStatement = this.RULE("delayStatement", () => { this.CONSUME(Delay); });
     public returnStatement = this.RULE("returnStatement", () => { this.CONSUME(Return); this.OPTION(() => this.SUBRULE(this.label)); });
     public createStatement = this.RULE("createStatement", () => { this.CONSUME(Create); this.OR([ { GATE: () => { const next = this.LA(1).tokenType; return next === Participant || next === Actor || next === Boundary || next === Control || next === Entity || next === Database || next === Collections || next === Queue; }, ALT: () => this.SUBRULE(this.participantDeclaration) }, { ALT: () => this.SUBRULE(this.name) } ]); });
