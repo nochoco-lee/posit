@@ -52,6 +52,7 @@ export class DeploymentRenderer {
         
         switch (type) {
             case 'database':
+            case 'storage':
                 // Draw a cylinder-like shape
                 const topEllipse = new Konva.Ellipse({
                     x: width / 2,
@@ -120,6 +121,8 @@ export class DeploymentRenderer {
                 return g;
 
             case 'folder':
+            case 'package':
+            case 'namespace':
                 // Folder shape with tab
                 const folderBody = new Konva.Rect({
                     x: 0, y: 10, width: width, height: height - 10,
@@ -157,6 +160,48 @@ export class DeploymentRenderer {
                     stroke: colors.stroke, strokeWidth: 1
                 });
                 g.add(artBody); g.add(docIcon);
+                return g;
+
+            case 'component':
+                const compRect = new Konva.Rect({
+                    width: width, height: height,
+                    fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                });
+                const smallRect1 = new Konva.Rect({
+                    x: -10, y: 10, width: 20, height: 10,
+                    fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                });
+                const smallRect2 = new Konva.Rect({
+                    x: -10, y: height - 20, width: 20, height: 10,
+                    fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                });
+                g.add(compRect); g.add(smallRect1); g.add(smallRect2);
+                return g;
+
+            case 'usecase':
+                return new Konva.Ellipse({
+                    x: width / 2, y: height / 2,
+                    radiusX: width / 2, radiusY: height / 2,
+                    fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                });
+
+            case 'boundary':
+                const bCircle = new Konva.Circle({ x: 15, y: height / 2, radius: 15, stroke: colors.stroke, strokeWidth: colors.strokeWidth });
+                const bLine1 = new Konva.Line({ points: [0, height / 2 - 20, 0, height / 2 + 20], stroke: colors.stroke, strokeWidth: colors.strokeWidth });
+                const bLine2 = new Konva.Line({ points: [30, height / 2, width, height / 2], stroke: colors.stroke, strokeWidth: colors.strokeWidth });
+                g.add(bCircle); g.add(bLine1); g.add(bLine2);
+                return g;
+
+            case 'control':
+                const cCircle = new Konva.Circle({ x: width / 2, y: height / 2, radius: 20, stroke: colors.stroke, strokeWidth: colors.strokeWidth });
+                const cArrow = new Konva.Arrow({ points: [width / 2, height / 2 - 20, width / 2 + 5, height / 2 - 25], pointerLength: 5, pointerWidth: 5, fill: colors.stroke, stroke: colors.stroke, strokeWidth: colors.strokeWidth });
+                g.add(cCircle); g.add(cArrow);
+                return g;
+
+            case 'entity':
+                const eCircle = new Konva.Circle({ x: width / 2, y: height / 2 - 5, radius: 20, stroke: colors.stroke, strokeWidth: colors.strokeWidth });
+                const eLine = new Konva.Line({ points: [width / 2 - 25, height / 2 + 15, width / 2 + 25, height / 2 + 15], stroke: colors.stroke, strokeWidth: colors.strokeWidth });
+                g.add(eCircle); g.add(eLine);
                 return g;
 
             case 'person':

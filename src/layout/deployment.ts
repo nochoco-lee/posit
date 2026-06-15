@@ -22,6 +22,28 @@ export class DeploymentLayoutManager {
         return map;
     }
 
+    private getNodeSize(type: string): { width: number, height: number } {
+        switch (type) {
+            case 'usecase':
+                return { width: 140, height: 70 };
+            case 'person':
+                return { width: 60, height: 90 };
+            case 'database':
+            case 'storage':
+                return { width: 100, height: 80 };
+            case 'cloud':
+                return { width: 150, height: 80 };
+            case 'hexagon':
+                return { width: 120, height: 80 };
+            case 'boundary':
+            case 'control':
+            case 'entity':
+                return { width: 80, height: 80 };
+            default:
+                return { width: this.minNodeWidth, height: this.minNodeHeight };
+        }
+    }
+
     private layoutStatements(statements: IRStatement[], map: LayoutMap, startX: number, startY: number): { width: number, height: number } {
         let x = startX;
         let y = startY;
@@ -34,8 +56,7 @@ export class DeploymentLayoutManager {
             if (s.type === 'node') {
                 const node = s as IRNode;
                 const id = node.name;
-                const width = this.minNodeWidth;
-                const height = this.minNodeHeight;
+                const size = this.getNodeSize(node.shape);
 
                 map.nodes[id] = {
                     id,
@@ -44,12 +65,12 @@ export class DeploymentLayoutManager {
                     stereotype: node.stereotype,
                     color: node.color,
                     position: { x, y },
-                    size: { width, height }
+                    size
                 };
 
-                maxWidth = Math.max(maxWidth, width);
-                y += height + this.padding;
-                totalHeight += height + this.padding;
+                maxWidth = Math.max(maxWidth, size.width);
+                y += size.height + this.padding;
+                totalHeight += size.height + this.padding;
 
             } else if (s.type === 'edge') {
                 const edge = s as IREdge;

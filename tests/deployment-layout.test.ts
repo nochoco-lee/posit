@@ -82,4 +82,22 @@ cloud c1 #blue {
         expect(layout.groups[0].color).toBe('#blue');
         expect(layout.nodes['a1'].color).toBe('#green');
     });
+
+    it("should assign shape-specific sizes", () => {
+        const puml = `
+@startuml
+usecase UC1
+person P1
+database DB1
+node N1
+@enduml
+`;
+        const ast: IRDiagram = parsePlantUml(puml);
+        const layout = new LayoutManager().process(ast);
+
+        expect(layout.nodes["UC1"].size).toEqual({ width: 140, height: 70 });
+        expect(layout.nodes["P1"].size).toEqual({ width: 60, height: 90 });
+        expect(layout.nodes["DB1"].size).toEqual({ width: 100, height: 80 });
+        expect(layout.nodes["N1"].size).toEqual({ width: 120, height: 60 });
+    });
 });
