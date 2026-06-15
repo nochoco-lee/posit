@@ -21,6 +21,7 @@ export function parseMermaid(text: string): IRDiagram {
 
     // 3. Visiting to create AST
     const ast = visitor.visit(cst);
+    ast.syntax = 'mermaid';
 
     return ast;
 }

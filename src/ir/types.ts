@@ -146,6 +146,7 @@ export interface IRContainer extends IRStatement {
 
 export interface IRDiagram {
     type: "Diagram";
+    syntax: 'plantuml' | 'mermaid';
     diagramType: 'sequence' | 'class' | 'deployment' | 'unknown';
     statements: IRStatement[];
 }

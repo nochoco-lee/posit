@@ -1,9 +1,9 @@
-import { IRDiagram, IREdge, IRNode, IRStatement } from "../ir/types";
+import { IRDiagram, IREdge, IRNode, IRStatement, IRGroup, IRContainer, IRDivider, IRNote } from "../ir/types";
 import { LayoutMap } from "./types";
 
 export class Emitter {
     /**
-     * Applies new layout positions to the original PlantUML source text.
+     * Applies new layout positions to the original source text.
      */
     public emitPlantUml(originalText: string, ir: IRDiagram, layoutMap: LayoutMap): string {
         if (ir.type !== "Diagram") {
@@ -11,24 +11,39 @@ export class Emitter {
         }
 
         const patches: Array<{ start: number; end: number; replacement: string }> = [];
+        const syntax = ir.syntax || 'plantuml';
 
-        // Note: For MVP we use node name/id matching to find the AST statement
-        const statements = ir.statements;
+        // Recursive search helper to find all statements
+        const findAll = (stmts: IRStatement[]): IRStatement[] => {
+            let results: IRStatement[] = [];
+            for (const s of stmts) {
+                if (!s) continue;
+                results.push(s);
+                if (s.type === 'container') {
+                    results = results.concat(findAll((s as IRContainer).statements));
+                } else if (s.type === 'group') {
+                    results = results.concat(findAll((s as IRGroup).sections.flatMap(sec => sec.statements)));
+                }
+            }
+            return results;
+        };
+
+        const allStatements = findAll(ir.statements);
 
         for (const [id, layoutNode] of Object.entries(layoutMap.nodes)) {
-            // Find corresponding participant/class declaration
-            const nodeStatement = statements.find((s: IRStatement) => 
+            // Find corresponding participant/class declaration (now recursive)
+            const nodeStatement = allStatements.find((s: IRStatement) => 
                 s && s.type === "node" && (s as IRNode).name === id
             );
             if (nodeStatement && nodeStatement.offset) {
-                const patch = this.createPatchContext(nodeStatement, layoutNode.position);
+                const patch = this.createPatchContext(nodeStatement, layoutNode.position, syntax);
                 if (patch) patches.push(patch);
             }
         }
 
         for (const conn of layoutMap.connections) {
-            // Find corresponding connection
-            const connStatement = statements.find((s: IRStatement) => {
+            // Find corresponding connection (now recursive)
+            const connStatement = allStatements.find((s: IRStatement) => {
                 if (!s || s.type !== "edge") return false;
                 const edge = s as IREdge;
                 if (edge.from !== conn.from || edge.to !== conn.to) return false;
@@ -40,55 +55,52 @@ export class Emitter {
             });
             
             if (connStatement && connStatement.offset && conn.position) {
-                const patch = this.createPatchContext(connStatement, conn.position);
+                const patch = this.createPatchContext(connStatement, conn.position, syntax);
                 if (patch) patches.push(patch);
             }
         }
 
         for (const group of layoutMap.groups) {
-            // Recursive search for group in IR
-            const findGroup = (stmts: IRStatement[]): any => {
-                for (const s of stmts) {
-                    if (s.type === 'group') {
-                        const g = s as IRGroup;
-                        if (g.label === group.label && g.keyword === group.keyword) return g;
-                    }
-                    if (s.type === 'ref') {
-                        const r = s as IRRef;
-                        if (r.text === group.label && group.keyword === 'ref') return r;
-                    }
-                    if (s.type === 'mainframe') {
-                        const m = s as IRMainframe;
-                        if (m.label === group.label && group.keyword === 'mainframe') return m;
-                    }
-                    if (s.type === 'group') {
-                         const res = findGroup((s as IRGroup).sections.flatMap(sec => sec.statements));
-                         if (res) return res;
-                    }
+             const irGroup = allStatements.find((s: IRStatement) => {
+                if (s.type === 'group') {
+                    const g = s as IRGroup;
+                    return g.label === group.label && g.keyword === group.keyword;
                 }
-                return null;
-            };
-            const irGroup = findGroup(statements);
+                if (s.type === 'container') {
+                    const c = s as IRContainer;
+                    return c.name === group.label && c.keyword === group.keyword;
+                }
+                if (s.type === 'ref') {
+                    const r = s as any;
+                    return r.text === group.label && group.keyword === 'ref';
+                }
+                if (s.type === 'mainframe') {
+                    const m = s as any;
+                    return m.label === group.label && group.keyword === 'mainframe';
+                }
+                return false;
+             });
+
             if (irGroup && irGroup.offset && group.position) {
-                const patch = this.createPatchContext(irGroup, group.position);
+                const patch = this.createPatchContext(irGroup, group.position, syntax);
                 if (patch) patches.push(patch);
             }
         }
 
         if (layoutMap.dividers) {
             for (const div of layoutMap.dividers) {
-                const irDiv = statements.find((s: IRStatement) => s.type === 'divider' && (s as IRDivider).label === div.label);
+                const irDiv = allStatements.find((s: IRStatement) => s.type === 'divider' && (s as IRDivider).label === div.label);
                 if (irDiv && irDiv.offset && div.position) {
-                    const patch = this.createPatchContext(irDiv, div.position);
+                    const patch = this.createPatchContext(irDiv, div.position, syntax);
                     if (patch) patches.push(patch);
                 }
             }
         }
 
         for (const note of layoutMap.notes) {
-            const irNote = statements.find((s: IRStatement) => s.type === 'note' && (s as IRNote).text === note.text);
+            const irNote = allStatements.find((s: IRStatement) => s.type === 'note' && (s as IRNote).text === note.text);
             if (irNote && irNote.offset && note.position) {
-                const patch = this.createPatchContext(irNote, note.position);
+                const patch = this.createPatchContext(irNote, note.position, syntax);
                 if (patch) patches.push(patch);
             }
         }
@@ -107,19 +119,20 @@ export class Emitter {
         return resultText;
     }
 
-    private createPatchContext(statement: IRStatement, position: { x: number; y: number }): { start: number; end: number; replacement: string } | null {
+    private createPatchContext(statement: IRStatement, position: { x: number; y: number }, syntax: 'plantuml' | 'mermaid'): { start: number; end: number; replacement: string } | null {
         const offset = statement.offset;
         if (!offset || offset.start === undefined || offset.end === undefined || isNaN(offset.start) || isNaN(offset.end)) return null;
 
-        const replacementStr = ` /' @pos(${position.x}, ${position.y}) '/`;
+        const replacementStr = syntax === 'mermaid' 
+            ? ` %% @pos(${position.x}, ${position.y})`
+            : ` /' @pos(${position.x}, ${position.y}) '/`;
 
         if (offset.layoutStart !== undefined && offset.layoutEnd !== undefined) {
-            // Update existing comment layoutStart points to `/'` and layoutEnd points to `'/`
-            // Chevrotain endOffset is inclusive, so we need + 1
+            // Update existing comment
             return {
                 start: offset.layoutStart,
                 end: offset.layoutEnd + 1,
-                replacement: replacementStr.trim() // no leading space needed if we replace exact bounds
+                replacement: replacementStr.trim()
             };
         } else {
             // Inject new comment at the end of the statement (before newline)

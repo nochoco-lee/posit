@@ -15,6 +15,7 @@ export class SequenceAstVisitor extends BaseVisitor {
         const statements = ctx.statement ? ctx.statement.map((s: any) => this.visit(s)).filter((s: any) => s !== null) : [];
         return {
             type: "Diagram",
+            syntax: "plantuml",
             diagramType: "unknown",
             statements,
         };
@@ -97,25 +98,19 @@ export class SequenceAstVisitor extends BaseVisitor {
         let layout: { x: number; y: number } | undefined = undefined;
         let layoutStart: number | undefined;
         let layoutEnd: number | undefined;
-        if (ctx.PosComment) {
-            const layoutToken = ctx.PosComment[0];
+        if (ctx.layout) {
+            const layoutToken = ctx.layout[0];
             layoutStart = layoutToken.startOffset;
             layoutEnd = layoutToken.endOffset;
             layout = this.parsePosComment(layoutToken.image);
         }
         const startToken = ctx.Colon ? ctx.Colon[0] : ctx.LBracket ? ctx.LBracket[0] : ctx.LParen ? ctx.LParen[0] : nameToken;
-        let endToken = ctx.Colon && ctx.Colon.length > 1 ? ctx.Colon[1] : (ctx.RBracket ? ctx.RBracket[0] : (ctx.RParen ? ctx.RParen[0] : nameToken));
-        if (ctx.PosComment) endToken = ctx.PosComment[0];
-        else if (ctx.colorValue) {
-            const c = ctx.colorValue[0];
-            endToken = c.tokenType ? c : (c.children.Identifier ? c.children.Identifier[0] : c.children.Color[0]);
-        }
-        else if (ctx.multilineLabel) endToken = this.visit(ctx.multilineLabel[0]);
-        else if (ctx.stereotype) endToken = ctx.stereotype[0];
-        else if (ctx.alias) endToken = this.visit(ctx.alias[0]);
+        let endOffset = nameToken.endOffset;
+        endOffset = this.getMaxOffset(ctx, endOffset);
+
         return {
             type: "node", shape, name, origName, stereotype, layout, color,
-            offset: { start: startToken.startOffset, end: endToken.endOffset, layoutStart, layoutEnd }
+            offset: { start: startToken.startOffset, end: endOffset, layoutStart, layoutEnd }
         };
     }
 
@@ -143,19 +138,12 @@ export class SequenceAstVisitor extends BaseVisitor {
             layout = this.parsePosComment(layoutToken.image);
         }
         const startToken = ctx.Participant ? ctx.Participant[0] : ctx.Actor ? ctx.Actor[0] : ctx.Boundary ? ctx.Boundary[0] : ctx.Control ? ctx.Control[0] : ctx.Entity ? ctx.Entity[0] : ctx.Database ? ctx.Database[0] : ctx.Collections ? ctx.Collections[0] : ctx.Queue ? ctx.Queue[0] : ctx.Artifact ? ctx.Artifact[0] : ctx.Storage ? ctx.Storage[0] : ctx.Rectangle ? ctx.Rectangle[0] : ctx.Card ? ctx.Card[0] : ctx.FileKeyword ? ctx.FileKeyword[0] : ctx.Stack ? ctx.Stack[0] : ctx.Hexagon ? ctx.Hexagon[0] : ctx.Person ? ctx.Person[0] : ctx.Process ? ctx.Process[0] : ctx.Agent ? ctx.Agent[0] : ctx.LabelKeyword ? ctx.LabelKeyword[0] : ctx.Usecase ? ctx.Usecase[0] : ctx.Component ? ctx.Component[0] : ctx.Action ? ctx.Action[0] : ctx.Port ? ctx.Port[0] : ctx.PortIn ? ctx.PortIn[0] : ctx.PortOut ? ctx.PortOut[0] : ctx.NodeKeyword ? ctx.NodeKeyword[0] : ctx.Circle ? ctx.Circle[0] : ctx.Interface ? ctx.Interface[0] : ctx.Cloud ? ctx.Cloud[0] : ctx.Frame ? ctx.Frame[0] : ctx.Folder ? ctx.Folder[0] : ctx.Package ? ctx.Package[0] : nameToken;
-        let endToken = nameToken;
-        if (ctx.layout) endToken = ctx.layout[0];
-        else if (ctx.colorValue) {
-            const c = ctx.colorValue[0];
-            endToken = c.tokenType ? c : (c.children.Identifier ? c.children.Identifier[0] : c.children.Color[0]);
-        }
-        else if (ctx.order) endToken = ctx.order[0];
-        else if (ctx.multilineLabel) endToken = this.visit(ctx.multilineLabel[0]);
-        else if (ctx.stereotype) endToken = ctx.stereotype[0];
-        else if (ctx.alias) endToken = this.visit(ctx.alias[0]);
+        let endOffset = nameToken.endOffset;
+        endOffset = this.getMaxOffset(ctx, endOffset);
+
         return {
             type: "node", shape, name, origName, stereotype, layout, color,
-            offset: { start: startToken.startOffset, end: endToken.endOffset, layoutStart, layoutEnd }
+            offset: { start: startToken.startOffset, end: endOffset, layoutStart, layoutEnd }
         };
     }
 
@@ -219,6 +207,24 @@ export class SequenceAstVisitor extends BaseVisitor {
         return null as any;
     }
 
+    private getMaxOffset(ctx: any, currentMax: number): number {
+        let max = currentMax;
+        for (const key in ctx) {
+            if (key === "Newline") continue; // Skip newlines for offset calculation
+            const children = ctx[key];
+            if (Array.isArray(children)) {
+                for (const child of children) {
+                    if (child.endOffset !== undefined) {
+                        if (child.endOffset > max) max = child.endOffset;
+                    } else if (child.children) {
+                        max = this.getMaxOffset(child.children, max);
+                    }
+                }
+            }
+        }
+        return max;
+    }
+
     classDeclaration(ctx: any): IRNode {
         const visibility = ctx.Visibility ? ctx.Visibility[0].image : undefined;
         const shape = ctx.Class ? "class" : ctx.Interface ? "interface" : ctx.Enum ? "enum" : ctx.Struct ? "struct" : ctx.Annotation ? "annotation" : ctx.Abstract ? "abstract" : ctx.Circle ? "circle" : ctx.Diamond ? "diamond" : ctx.Exception ? "exception" : ctx.Metaclass ? "metaclass" : ctx.Protocol ? "protocol" : ctx.Record ? "record" : ctx.Stereotype ? "stereotype" : ctx.Dataclass ? "dataclass" : ctx.ObjectKeyword ? "object" : ctx.LParen ? "circle" : ctx.DiamondShort ? "diamond" : "class";
@@ -251,14 +257,12 @@ export class SequenceAstVisitor extends BaseVisitor {
         
         const startToken = ctx.Visibility ? ctx.Visibility[0] : (ctx.Class ? ctx.Class[0] : ctx.Interface ? ctx.Interface[0] : ctx.Enum ? ctx.Enum[0] : ctx.Struct ? ctx.Struct[0] : ctx.Annotation ? ctx.Annotation[0] : ctx.Abstract ? ctx.Abstract[0] : ctx.Circle ? ctx.Circle[0] : ctx.Diamond ? ctx.Diamond[0] : ctx.Exception ? ctx.Exception[0] : ctx.Metaclass ? ctx.Metaclass[0] : ctx.Protocol ? ctx.Protocol[0] : ctx.Record ? ctx.Record[0] : ctx.Stereotype ? ctx.Stereotype[0] : ctx.Dataclass ? ctx.Dataclass[0] : ctx.ObjectKeyword ? ctx.ObjectKeyword[0] : ctx.LParen ? ctx.LParen[0] : ctx.DiamondShort ? ctx.DiamondShort[0] : nameToken);
         
-        let endToken = ctx.RBrace ? ctx.RBrace[0] : (ctx.layout ? ctx.layout[0] : nameToken);
-        if (ctx.parents && ctx.parents.length > 0 && !ctx.RBrace && !ctx.layout) {
-             endToken = this.visit(ctx.parents[ctx.parents.length - 1]);
-        }
+        let endOffset = nameToken.endOffset;
+        endOffset = this.getMaxOffset(ctx, endOffset);
 
         return {
             type: "node", shape, name, members, parents, layout, visibility,
-            offset: { start: startToken.startOffset, end: endToken.endOffset, layoutStart, layoutEnd }
+            offset: { start: startToken.startOffset, end: endOffset, layoutStart, layoutEnd }
         };
     }
 
@@ -617,7 +621,8 @@ export class SequenceAstVisitor extends BaseVisitor {
         if (ctx.elseBlock) ctx.elseBlock.forEach((eb: any) => { sections.push(this.visit(eb)); });
         const endToken = ctx.End[0];
         let endOffset = endToken.endOffset;
-        if (ctx.Box && ctx.Box.length > 1) endOffset = ctx.Box[1].endOffset;
+        endOffset = this.getMaxOffset(ctx, endOffset);
+        
         let color: string | undefined = undefined;
         if (ctx.colorValue) color = this.visit(ctx.colorValue[0]);
         if (ctx.colorValue1) color = this.visit(ctx.colorValue1[0]);
@@ -697,7 +702,7 @@ export class SequenceAstVisitor extends BaseVisitor {
         } else if (ctx.alias) endOffset = this.visit(ctx.alias[0]).endOffset;
         else if (ctx.target) endOffset = this.visit(ctx.target[ctx.target.length - 1]).endOffset;
         
-        if (ctx.layout && ctx.layout[0].endOffset > endOffset) endOffset = ctx.layout[0].endOffset;
+        endOffset = this.getMaxOffset(ctx, endOffset);
 
         return { type: "note", placement, targets, text, color, layout, offset: { start: startToken.startOffset, end: endOffset, layoutStart, layoutEnd } };
     }
@@ -736,7 +741,7 @@ export class SequenceAstVisitor extends BaseVisitor {
             endOffset = blockData.endOffset;
         } else if (ctx.target) endOffset = this.visit(ctx.target[ctx.target.length - 1]).endOffset;
         
-        if (ctx.layout && ctx.layout[0].endOffset > endOffset) endOffset = ctx.layout[0].endOffset;
+        endOffset = this.getMaxOffset(ctx, endOffset);
 
         return { type: "ref", targets, text, layout, offset: { start: startToken.startOffset, end: endOffset, layoutStart, layoutEnd } };
     }
@@ -873,7 +878,30 @@ export class SequenceAstVisitor extends BaseVisitor {
         let endOffset = 0;
         if (ctx.RBrace) endOffset = ctx.RBrace[0].endOffset;
         else if (ctx.multilineLabel) endOffset = this.visit(ctx.multilineLabel[0]).endOffset;
-        return { type: "container", keyword, name, stereotype, color, statements, offset: { start: keywordToken ? keywordToken.startOffset : 0, end: endOffset } };
+        
+        // Find absolute max end offset among all children to be safe
+        Object.values(ctx).flat().forEach((c: any) => {
+            if (!c) return;
+            if (c.endOffset !== undefined && c.endOffset > endOffset) endOffset = c.endOffset;
+            else if (c.children) {
+                Object.values(c.children).flat().forEach((tc: any) => {
+                    if (tc.endOffset !== undefined && tc.endOffset > endOffset) endOffset = tc.endOffset;
+                });
+            }
+        });
+        
+        let layout: { x: number; y: number } | undefined = undefined;
+        let layoutStart: number | undefined;
+        let layoutEnd: number | undefined;
+        if (ctx.layout) {
+            const layoutToken = ctx.layout[0];
+            layoutStart = layoutToken.startOffset;
+            layoutEnd = layoutToken.endOffset;
+            layout = this.parsePosComment(layoutToken.image);
+            if (layoutToken.endOffset > endOffset) endOffset = layoutToken.endOffset;
+        }
+
+        return { type: "container", keyword, name, stereotype, color, statements, layout, offset: { start: keywordToken ? keywordToken.startOffset : 0, end: endOffset, layoutStart, layoutEnd } };
     }
 
     private unquoteString(str: string): string {

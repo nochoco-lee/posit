@@ -32,6 +32,7 @@ export function parsePlantUml(text: string): IRDiagram {
     if (!ast) {
         throw new Error("Parsing errors: Visitor returned null ast");
     }
+    ast.syntax = 'plantuml';
 
     // Auto-detect diagram type based on elements
     let diagramType: 'sequence' | 'class' | 'deployment' | 'unknown' = 'unknown';

@@ -14,6 +14,7 @@ export class MermaidAstVisitor extends BaseVisitor {
         const statements = ctx.statement ? ctx.statement.map((s: any) => this.visit(s)).filter((s: any) => s) : [];
         return {
             type: "Diagram",
+            syntax: "mermaid",
             diagramType: "unknown",
             statements,
         };
