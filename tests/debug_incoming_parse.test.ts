@@ -1,6 +1,6 @@
-import { it } from "vitest";
-import { SequenceLexer } from "./src/parser/lexer";
-import { parser } from "./src/parser/parser";
+import { it, expect } from "vitest";
+import { SequenceLexer } from "../src/parser/lexer";
+import { parser } from "../src/parser/parser";
 
 it("should parse ?-> Alice", () => {
     const input = `@startuml
@@ -12,4 +12,6 @@ it("should parse ?-> Alice", () => {
     if (parser.errors.length > 0) {
         console.log("ERRORS:", JSON.stringify(parser.errors.map(e => e.message), null, 2));
     }
+    expect(parser.errors).toHaveLength(0);
 });
+

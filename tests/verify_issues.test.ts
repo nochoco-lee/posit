@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { describe, it, expect } from 'vitest';
 import { parsePlantUml } from '../src/parser/index';
 
 const diagrams = [
@@ -12,29 +13,33 @@ const diagrams = [
 
 const dirs = ['test_scripts/plantuml_sequence', 'test_scripts/plantuml_class'];
 
-console.log('Verifying issues from issues_list.md...\n');
+describe('Issue Verification', () => {
+    it('should parse all listed diagrams from issues_list.md', () => {
+        diagrams.forEach(diag => {
+            let content = '';
+            let found = false;
+            for (const dir of dirs) {
+                const filePath = path.join(dir, diag);
+                if (fs.existsSync(filePath)) {
+                    content = fs.readFileSync(filePath, 'utf-8');
+                    found = true;
+                    break;
+                }
+            }
 
-diagrams.forEach(diag => {
-    let content = '';
-    let found = false;
-    for (const dir of dirs) {
-        const filePath = path.join(dir, diag);
-        if (fs.existsSync(filePath)) {
-            content = fs.readFileSync(filePath, 'utf-8');
-            found = true;
-            break;
-        }
-    }
+            if (!found) {
+                console.warn(`[ ] ${diag}: NOT FOUND`);
+                return;
+            }
 
-    if (!found) {
-        console.log(`[ ] ${diag}: NOT FOUND`);
-        return;
-    }
-
-    try {
-        parsePlantUml(content);
-        console.log(`[X] ${diag}: PASSED`);
-    } catch (e: any) {
-        console.log(`[ ] ${diag}: FAILED - ${e.message.split('\n')[0]}`);
-    }
+            try {
+                parsePlantUml(content);
+                // console.log(`[X] ${diag}: PASSED`);
+            } catch (e: any) {
+                console.error(`[ ] ${diag}: FAILED - ${e.message.split('\n')[0]}`);
+                throw new Error(`${diag} failed to parse: ${e.message}`);
+            }
+        });
+    });
 });
+
