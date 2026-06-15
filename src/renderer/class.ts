@@ -344,6 +344,8 @@ export class ClassRenderer {
         if (!draggedGroup || !draggedNodeBase) return;
 
         this.connectionArrows.forEach(conn => {
+            if (conn.originId !== nodeId && conn.targetId !== nodeId) return;
+
             const originBase = this.map!.nodes[conn.originId];
             const originGroup = this.nodeGroups[conn.originId];
             const targetBase = this.map!.nodes[conn.targetId];

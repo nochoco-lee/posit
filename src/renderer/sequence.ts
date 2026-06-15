@@ -277,43 +277,44 @@ export class SequenceRenderer {
 
     private drawDivider(div: LayoutDivider) {
         const divIndex = this.map?.dividers?.indexOf(div) ?? -1;
+        let minY = DEFAULTS.SEQUENCE_START_Y + DEFAULTS.PARTICIPANT_HEIGHT + 10;
+        let maxY = 5000;
+
         const group = new Konva.Group({ 
             x: div.position.x, 
             y: div.position.y,
             draggable: true,
             id: `div-${div.label}`,
             dragBoundFunc: (pos) => {
-                let minY = DEFAULTS.SEQUENCE_START_Y + DEFAULTS.PARTICIPANT_HEIGHT + 10;
-                let maxY = 5000;
-
-                if (this.map && divIndex !== -1) {
-                    // Find logical predecessor (connection or divider)
-                    // For simplicity, we can use the order in which they appear in the map or their current Y positions
-                    // Actually, the most robust way is to find elements with Y < current_div_Y and Y > current_div_Y
-                    
-                    const otherDividers = (this.map.dividers || []).filter(d => d !== div);
-                    const connections = this.map.connections || [];
-                    
-                    const predecessors = [
-                        ...otherDividers.filter(d => d.position.y < div.position.y).map(d => d.position.y),
-                        ...connections.filter(c => (c.calculatedY || 0) < div.position.y).map(c => (c.calculatedY || 0))
-                    ];
-                    if (predecessors.length > 0) {
-                        minY = Math.max(minY, Math.max(...predecessors) + 10);
-                    }
-
-                    const successors = [
-                        ...otherDividers.filter(d => d.position.y > div.position.y).map(d => d.position.y),
-                        ...connections.filter(c => (c.calculatedY || 0) > div.position.y).map(c => (c.calculatedY || 0))
-                    ];
-                    if (successors.length > 0) {
-                        maxY = Math.min(maxY, Math.min(...successors) - 10);
-                    }
-                }
-
                 return { x: div.position.x, y: Math.max(minY, Math.min(maxY, pos.y)) };
             }
         });
+
+        group.on('dragstart', () => {
+            minY = DEFAULTS.SEQUENCE_START_Y + DEFAULTS.PARTICIPANT_HEIGHT + 10;
+            maxY = 5000;
+            if (this.map && divIndex !== -1) {
+                const otherDividers = (this.map.dividers || []).filter(d => d !== div);
+                const connections = this.map.connections || [];
+                
+                const predecessors = [
+                    ...otherDividers.filter(d => d.position.y < div.position.y).map(d => d.position.y),
+                    ...connections.filter(c => (c.calculatedY || 0) < div.position.y).map(c => (c.calculatedY || 0))
+                ];
+                if (predecessors.length > 0) {
+                    minY = Math.max(minY, Math.max(...predecessors) + 10);
+                }
+
+                const successors = [
+                    ...otherDividers.filter(d => d.position.y > div.position.y).map(d => d.position.y),
+                    ...connections.filter(c => (c.calculatedY || 0) > div.position.y).map(c => (c.calculatedY || 0))
+                ];
+                if (successors.length > 0) {
+                    maxY = Math.min(maxY, Math.min(...successors) - 10);
+                }
+            }
+        });
+
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });
         group.on('dragend', (e: any) => {
@@ -360,38 +361,46 @@ export class SequenceRenderer {
 
     private updateConnections(nodeId: string) {
         if (!this.map) return;
-        const draggedGroup = this.nodeGroups[nodeId]; const draggedNodeBase = this.map.nodes[nodeId];
+        const draggedGroup = this.nodeGroups[nodeId];
+        const draggedNodeBase = this.map.nodes[nodeId];
         if (!draggedGroup || !draggedNodeBase) return;
+        
         const draggedCenterX = draggedGroup.x() + (draggedNodeBase.size.width / 2);
         const lifeline = this.lifelines[nodeId];
-        if (lifeline) { const points = lifeline.points(); points[0] = draggedCenterX; points[2] = draggedCenterX; lifeline.points(points); }
+        if (lifeline) {
+            const points = lifeline.points();
+            points[0] = draggedCenterX;
+            points[2] = draggedCenterX;
+            lifeline.points(points);
+        }
         this.updateActivationsForNode(nodeId);
 
         // Helper to get X coordinate adjusted for activations (local to updateConnections)
-        const getAdjustedX = (nodeId: string, otherX: number, yPos: number, isSelf: boolean) => {
-            const node = this.map!.nodes[nodeId];
+        const getAdjustedX = (targetId: string, otherX: number, yPos: number, isSelf: boolean) => {
+            const node = this.map!.nodes[targetId];
             if (!node) return 0;
-            const nodeGroup = this.nodeGroups[nodeId];
+            const nodeGroup = this.nodeGroups[targetId];
             const centerX = (nodeGroup ? nodeGroup.x() : node.position.x) + node.size.width / 2;
-            const activations = this.map!.activations?.filter(a => a.nodeId === nodeId) || [];
-            const activeAtY = activations.filter(a => {
+            
+            const entries = this.activationRects[targetId] || [];
+            const activeAtY = entries.filter(entry => {
+                const a = entry.def;
                 let startY = a.startPosition.y;
                 let endY = startY + a.size.height;
-                const startMsg = a.startMessageIndex !== undefined ? this.map!.connections[a.startMessageIndex] : null;
-                const endMsg = a.endMessageIndex !== undefined ? this.map!.connections[a.endMessageIndex] : null;
-                if (startMsg) {
-                    const visual = this.connectionArrows[a.startMessageIndex!];
-                    startY = visual ? visual.group.y() : startMsg.calculatedY || startY;
+                if (a.startMessageIndex !== undefined && this.connectionArrows[a.startMessageIndex]) {
+                    startY = this.connectionArrows[a.startMessageIndex].group.y();
                 }
-                if (endMsg) {
-                    const visual = this.connectionArrows[a.endMessageIndex!];
-                    endY = visual ? visual.group.y() : endMsg.calculatedY || endY;
+                if (a.endMessageIndex !== undefined && this.connectionArrows[a.endMessageIndex]) {
+                    endY = this.connectionArrows[a.endMessageIndex].group.y();
                 }
                 return yPos >= startY && yPos <= endY;
             });
 
             if (activeAtY.length === 0) return centerX;
-            const maxDepth = Math.max(...activeAtY.map(a => a.depth || 0));
+            let maxDepth = 0;
+            for (const entry of activeAtY) {
+                if ((entry.def.depth || 0) > maxDepth) maxDepth = entry.def.depth!;
+            }
             const actWidth = 10;
             const leftEdge = centerX - actWidth / 2;
             const rightEdge = centerX + actWidth / 2 + (maxDepth * 5);
@@ -400,46 +409,57 @@ export class SequenceRenderer {
             return leftEdge;
         };
 
-        this.connectionArrows.forEach(conn => {
-            const isSelfMessage = conn.originId === conn.targetId;
-            const yPos = conn.group.y();
-            if (isSelfMessage && conn.originId === nodeId) {
-                const adjX = getAdjustedX(nodeId, draggedCenterX, yPos, true);
-                conn.konvaObj.points([adjX, 0, adjX + 30, 0, adjX + 30, 20, adjX + 7, 20]);
-                if (conn.labelObj) { conn.labelObj.width(150); conn.labelObj.offsetX(conn.labelObj.width() / 2); conn.labelObj.position({ x: adjX + 15, y: -conn.labelObj.height() - 5 }); }
-            } else if (conn.originId === nodeId || conn.targetId === nodeId) {
-                const originBase = this.map!.nodes[conn.originId]; const originGroup = this.nodeGroups[conn.originId];
-                const targetBase = this.map!.nodes[conn.targetId]; const targetGroup = this.nodeGroups[conn.targetId];
-                const fromExternal = conn.originId === '[' || conn.originId === ']'; const toExternal = conn.targetId === '[' || conn.targetId === ']';
-                
-                let rawOriginX = fromExternal ? (targetGroup?.x() || 100) + (targetBase?.size.width || 0) / 2 - 100 : (originGroup!.x() + originBase!.size.width / 2);
-                let rawTargetX = toExternal ? (originGroup?.x() || 100) + (originBase?.size.width || 0) / 2 + 100 : (targetGroup!.x() + targetBase!.size.width / 2);
-                
-                let originX = fromExternal ? rawOriginX : getAdjustedX(conn.originId, rawTargetX, yPos, false);
-                let targetX = toExternal ? rawTargetX : getAdjustedX(conn.targetId, rawOriginX, yPos, false);
+        const movedMessageIndices = new Set<number>();
+        this.connectionArrows.forEach((conn, index) => {
+            if (conn.originId === nodeId || conn.targetId === nodeId) {
+                movedMessageIndices.add(index);
+                const isSelfMessage = conn.originId === conn.targetId;
+                const yPos = conn.group.y();
+                if (isSelfMessage) {
+                    const adjX = getAdjustedX(nodeId, draggedCenterX, yPos, true);
+                    conn.konvaObj.points([adjX, 0, adjX + 30, 0, adjX + 30, 20, adjX + 7, 20]);
+                    if (conn.labelObj) {
+                        conn.labelObj.width(150);
+                        conn.labelObj.offsetX(conn.labelObj.width() / 2);
+                        conn.labelObj.position({ x: adjX + 15, y: -conn.labelObj.height() - 5 });
+                    }
+                } else {
+                    const originBase = this.map!.nodes[conn.originId];
+                    const originGroup = this.nodeGroups[conn.originId];
+                    const targetBase = this.map!.nodes[conn.targetId];
+                    const targetGroup = this.nodeGroups[conn.targetId];
+                    const fromExternal = conn.originId === '[' || conn.originId === ']';
+                    const toExternal = conn.targetId === '[' || conn.targetId === ']';
+                    
+                    let rawOriginX = fromExternal ? (targetGroup?.x() || 100) + (targetBase?.size.width || 0) / 2 - 100 : (originGroup!.x() + originBase!.size.width / 2);
+                    let rawTargetX = toExternal ? (originGroup?.x() || 100) + (originBase?.size.width || 0) / 2 + 100 : (targetGroup!.x() + targetBase!.size.width / 2);
+                    
+                    let originX = fromExternal ? rawOriginX : getAdjustedX(conn.originId, rawTargetX, yPos, false);
+                    let targetX = toExternal ? rawTargetX : getAdjustedX(conn.targetId, rawOriginX, yPos, false);
 
-                if (fromExternal && targetGroup) {
-                     const targetCenter = targetGroup.x() + targetBase.size.width / 2;
-                     originX = conn.originId === '[' ? targetCenter - 100 : targetCenter + 100;
-                } else if (toExternal && originGroup) {
-                     const originCenter = originGroup.x() + originBase.size.width / 2;
-                     targetX = conn.targetId === ']' ? originCenter + 100 : originCenter - 100;
+                    if (fromExternal && targetGroup) {
+                        const targetCenter = targetGroup.x() + targetBase.size.width / 2;
+                        originX = conn.originId === '[' ? targetCenter - 100 : targetCenter + 100;
+                    } else if (toExternal && originGroup) {
+                        const originCenter = originGroup.x() + originBase.size.width / 2;
+                        targetX = conn.targetId === ']' ? originCenter + 100 : originCenter - 100;
+                    }
+                    conn.konvaObj.points([originX, 0, targetX, 0]);
+                    if (conn.labelObj) { 
+                        const midX = (originX + targetX) / 2; 
+                        const textWidth = Math.max(50, Math.abs(targetX - originX) - 10);
+                        conn.labelObj.width(textWidth); 
+                        conn.labelObj.offsetX(conn.labelObj.width() / 2); 
+                        conn.labelObj.position({ x: midX, y: -conn.labelObj.height() - 5 }); 
+                    }
                 }
-                conn.konvaObj.points([originX, 0, targetX, 0]);
-                if (conn.labelObj) { 
-                    const midX = (originX + targetX) / 2; 
-                    const textWidth = Math.max(50, Math.abs(targetX - originX) - 10);
-                    conn.labelObj.width(textWidth); 
-                    conn.labelObj.offsetX(conn.labelObj.width() / 2); 
-                    conn.labelObj.position({ x: midX, y: -conn.labelObj.height() - 5 }); 
-                }
-                }
-                });
+            }
+        });
 
-                // Update Groups
-                this.groupVisuals.forEach(visual => {
-                const { group, rect, def } = visual;
-                if (def.participants && def.participants.includes(nodeId)) {
+        // Update Groups
+        this.groupVisuals.forEach(visual => {
+            const { group, rect, def } = visual;
+            if (def.participants && def.participants.indexOf(nodeId) !== -1) {
                 const nodes = def.participants.map(pId => ({
                     group: this.nodeGroups[pId],
                     base: this.map!.nodes[pId]
@@ -447,44 +467,52 @@ export class SequenceRenderer {
 
                 if (nodes.length > 0) {
                     const padding = def.keyword === 'box' ? 20 : 10;
-                    const minX = Math.min(...nodes.map(n => n.group.x())) - padding;
-                    const maxX = Math.max(...nodes.map(n => n.group.x() + n.base.size.width)) + padding;
+                    let minX = Infinity;
+                    let maxX = -Infinity;
+                    for (const n of nodes) {
+                        const x = n.group.x();
+                        if (x < minX) minX = x;
+                        const right = x + n.base.size.width;
+                        if (right > maxX) maxX = right;
+                    }
+                    minX -= padding;
+                    maxX += padding;
 
                     group.x(minX);
                     rect.width(Math.max(100, maxX - minX));
 
-                    // Update internal elements like labels and dividers
                     const children = group.getChildren();
-                    children.forEach(child => {
+                    for (let i = 0; i < children.length; i++) {
+                        const child = children[i];
                         if (child instanceof Konva.Text) {
-                            if (child.align() === 'center') {
-                                child.width(rect.width());
-                            }
+                            if (child.align() === 'center') child.width(rect.width());
                         } else if (child instanceof Konva.Line && child !== rect) {
-                            // Update dividers
                             const points = child.points();
                             points[2] = rect.width();
                             child.points(points);
-                        } else if (child instanceof Konva.Rect && child !== rect) {
-                            // Keyword rect or initialization box
-                            if (child.width() === rect.width()) {
-                                // likely not what we want, but let's see
-                            }
                         }
-                    });
+                    }
                 }
-                }
-                });
-
-                Object.values(this.activationRects).forEach(rectList => {
-            rectList.forEach(item => {
-                const { rect, def } = item;
-                let startY = rect.y(); let endY = rect.y() + rect.height();
-                if (def.startMessageIndex !== undefined && this.connectionArrows[def.startMessageIndex]) startY = this.connectionArrows[def.startMessageIndex].group.y();
-                if (def.endMessageIndex !== undefined && this.connectionArrows[def.endMessageIndex]) endY = this.connectionArrows[def.endMessageIndex].group.y();
-                rect.y(startY); rect.height(Math.max(5, endY - startY));
-            });
+            }
         });
+
+        // Update Activation Y positions
+        for (const nodeIdKey in this.activationRects) {
+            const rectList = this.activationRects[nodeIdKey];
+            for (let i = 0; i < rectList.length; i++) {
+                const { rect, def } = rectList[i];
+                const startIdx = def.startMessageIndex;
+                const endIdx = def.endMessageIndex;
+                if ((startIdx !== undefined && movedMessageIndices.has(startIdx)) || (endIdx !== undefined && movedMessageIndices.has(endIdx))) {
+                    let startY = rect.y();
+                    let endY = startY + rect.height();
+                    if (startIdx !== undefined && this.connectionArrows[startIdx]) startY = this.connectionArrows[startIdx].group.y();
+                    if (endIdx !== undefined && this.connectionArrows[endIdx]) endY = this.connectionArrows[endIdx].group.y();
+                    rect.y(startY);
+                    rect.height(Math.max(5, endY - startY));
+                }
+            }
+        }
     }
 private drawGroup(groupDef: LayoutGroup) {
     const group = new Konva.Group({ 
