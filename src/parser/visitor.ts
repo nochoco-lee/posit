@@ -284,7 +284,9 @@ export class SequenceAstVisitor extends BaseVisitor {
                 const colorImage = firstToken.image;
                 if (colorImage.startsWith("#")) {
                     visibility = "#";
-                    name = name.substring(colorImage.length).trim();
+                    if (name.startsWith("#")) {
+                        name = name.substring(1).trim();
+                    }
                 }
             }
         }

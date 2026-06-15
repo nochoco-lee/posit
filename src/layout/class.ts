@@ -1,5 +1,5 @@
 import { DEFAULTS, LayoutConnection, LayoutMap, LayoutNode, LayoutNote, LayoutGroup } from "./types";
-import { IRDiagram, IRNode, IREdge, IRStatement, IRNote, IRGroup } from "../ir/types";
+import { IRDiagram, IRNode, IREdge, IRStatement, IRNote, IRGroup, IRContainer } from "../ir/types";
 
 export class ClassLayoutManager {
     private map: LayoutMap;
@@ -16,13 +16,48 @@ export class ClassLayoutManager {
     }
 
     public process(ir: IRDiagram): LayoutMap {
-        // Pass 1: Setup all nodes
-        ir.statements.filter(s => s && s.type === "node").forEach((statement: any) => {
-            this.processNode(statement as IRNode);
-        });
+        // Pass 1: Setup all explicit nodes
+        this.processStatementsPass1(ir.statements);
 
-        // Pass 2: Setup connections, notes, groups (which may depend on node positions)
-        ir.statements.forEach((statement: IRStatement) => {
+        // Pass 1.5: Setup implicit nodes from connections
+        this.processStatementsPass1_5(ir.statements);
+
+        // Pass 2: Setup connections, notes, groups
+        this.processStatementsPass2(ir.statements);
+
+        return this.map;
+    }
+
+    private processStatementsPass1(statements: IRStatement[]) {
+        statements.forEach((statement: any) => {
+            if (!statement) return;
+            if (statement.type === "node") {
+                this.processNode(statement as IRNode);
+            } else if (statement.type === "container") {
+                this.processStatementsPass1((statement as IRContainer).statements);
+            }
+        });
+    }
+
+    private processStatementsPass1_5(statements: IRStatement[]) {
+        statements.forEach((statement: any) => {
+            if (!statement) return;
+            if (statement.type === "edge") {
+                const edge = statement as IREdge;
+                if (!this.map.nodes[edge.from]) {
+                    this.processNode({ type: 'node', name: edge.from, shape: 'class' } as IRNode);
+                }
+                if (!this.map.nodes[edge.to]) {
+                    this.processNode({ type: 'node', name: edge.to, shape: 'class' } as IRNode);
+                }
+            } else if (statement.type === "container") {
+                this.processStatementsPass1_5((statement as IRContainer).statements);
+            }
+        });
+    }
+
+    private processStatementsPass2(statements: IRStatement[]) {
+        statements.forEach((statement: IRStatement) => {
             if (!statement) return;
             if (statement.type === "edge") {
                 this.processConnection(statement as IREdge);
@@ -30,18 +65,51 @@ export class ClassLayoutManager {
                 this.processNote(statement as IRNote);
             } else if (statement.type === "group") {
                 this.processGroup(statement as IRGroup);
+            } else if (statement.type === "container") {
+                this.processContainer(statement as IRContainer);
             }
         });
+    }
 
-        return this.map;
+    private processContainer(container: IRContainer) {
+        const layoutGroup: LayoutGroup = {
+            type: "group",
+            id: container.name || `group-${Math.random()}`,
+            keyword: container.keyword,
+            label: container.name || "",
+            sections: [{ statements: container.statements }],
+            position: { x: 50, y: this.currentClassY },
+            size: { width: 450, height: 150 },
+            dividerYs: []
+        };
+
+        this.map.groups.push(layoutGroup);
+        this.currentClassY += 20;
+        this.processStatementsPass2(container.statements);
+        this.currentClassY += 170;
     }
 
     private processNode(node: IRNode) {
         const id = node.name;
+        if (this.map.nodes[id] && node.members && node.members.length > 0) {
+            // Update existing implicit node if we now have more info
+            const existing = this.map.nodes[id];
+            existing.members = node.members;
+            const fields = node.members.filter(m => m.isField);
+            const methods = node.members.filter(m => m.isMethod);
+            let height = 30 + (node.members.length * 20) + 10;
+            if (fields.length > 0 && methods.length > 0) height += 5;
+            existing.size.height = height;
+            return;
+        }
+        if (this.map.nodes[id]) return;
         
         let height = DEFAULTS.CLASS_HEIGHT;
         if (node.members && node.members.length > 0) {
+            const fields = node.members.filter(m => m.isField);
+            const methods = node.members.filter(m => m.isMethod);
             height = 30 + (node.members.length * 20) + 10;
+            if (fields.length > 0 && methods.length > 0) height += 5;
         }
 
         const size = {
@@ -59,8 +127,8 @@ export class ClassLayoutManager {
 
         const layoutNode: LayoutNode = {
             id,
-            origName: node.name,
-            type: node.shape,
+            origName: node.origName || node.name,
+            type: node.shape || 'class',
             position,
             size,
             members: node.members
@@ -89,18 +157,16 @@ export class ClassLayoutManager {
     }
 
     private processNote(note: IRNote) {
-        // ... similar logic conceptually, but for classes ...
-        // MVP naive note placement near last class
         let x = 100;
         let y = this.currentClassY;
 
         if (note.targets && note.targets.length > 0) {
             const firstTarget = this.map.nodes[note.targets[0]];
             if (firstTarget) {
-                if (note.placement === "left") {
+                if (note.placement === "left" || note.placement === "left of") {
                     x = firstTarget.position.x - DEFAULTS.NOTE_WIDTH - 20;
                     y = firstTarget.position.y;
-                } else if (note.placement === "right") {
+                } else if (note.placement === "right" || note.placement === "right of") {
                     x = firstTarget.position.x + firstTarget.size.width + 20;
                     y = firstTarget.position.y;
                 } else {

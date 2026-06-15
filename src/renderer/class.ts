@@ -117,32 +117,55 @@ export class ClassRenderer {
 
         // Draw members
         if (nodeDef.members) {
-            nodeDef.members.forEach((member: any, index: number) => {
-                let memberText = "";
-                if (member.visibility) memberText += member.visibility + " ";
-                if (member.isStatic) memberText += "{static} ";
-                if (member.isAbstract) memberText += "{abstract} ";
-                memberText += member.name;
-                if (member.parameters) memberText += "(" + member.parameters.join(", ") + ")";
-                if (member.type) memberText += " : " + member.type;
+            const fields = nodeDef.members.filter(m => m.isField);
+            const methods = nodeDef.members.filter(m => m.isMethod);
 
-                const memberLabel = new Konva.Text({
-                    text: memberText,
-                    fontSize: 12,
-                    x: 5,
-                    y: 35 + (index * 20),
-                    width: nodeDef.size.width - 10,
-                    wrap: 'none',
-                    ellipsis: true,
-                    fontStyle: member.isAbstract ? 'italic' : 'normal',
-                    textDecoration: member.isStatic ? 'underline' : ''
+            let currentY = 35;
+            fields.forEach((member: any) => {
+                group.add(this.createMemberLabel(member, currentY, nodeDef.size.width));
+                currentY += 20;
+            });
+
+            if (fields.length > 0 && methods.length > 0) {
+                const sep = new Konva.Line({
+                    points: [0, currentY, nodeDef.size.width, currentY],
+                    stroke: stroke,
+                    strokeWidth: 1
                 });
-                group.add(memberLabel);
+                group.add(sep);
+                currentY += 5;
+            }
+
+            methods.forEach((member: any) => {
+                group.add(this.createMemberLabel(member, currentY, nodeDef.size.width));
+                currentY += 20;
             });
         }
 
         this.nodeGroups[nodeDef.id] = group;
         this.layer.add(group);
+    }
+
+    private createMemberLabel(member: any, y: number, width: number): Konva.Text {
+        let memberText = "";
+        if (member.visibility) memberText += member.visibility + " ";
+        if (member.isStatic) memberText += "{static} ";
+        if (member.isAbstract) memberText += "{abstract} ";
+        memberText += member.name;
+        if (member.parameters) memberText += "(" + member.parameters.join(", ") + ")";
+        if (member.type) memberText += " : " + member.type;
+
+        return new Konva.Text({
+            text: memberText,
+            fontSize: 12,
+            x: 5,
+            y: y,
+            width: width - 10,
+            wrap: 'none',
+            ellipsis: true,
+            fontStyle: member.isAbstract ? 'italic' : 'normal',
+            textDecoration: member.isStatic ? 'underline' : ''
+        });
     }
 
     private getIntersection(p1: { x: number, y: number }, p2: { x: number, y: number }, rect: { x: number, y: number, width: number, height: number }): { x: number, y: number } {
@@ -174,9 +197,8 @@ export class ClassRenderer {
             tMax = Math.min(tMax, Math.max(t1, t2));
         } else if (p1.y < top || p1.y > bottom) return p2;
 
-        if (tMin <= tMax && tMax >= 0 && tMax <= 1) {
-            const t = tMin > 0 ? tMin : 0;
-            return { x: p1.x + t * dx, y: p1.y + t * dy };
+        if (tMin <= tMax && tMin >= 0 && tMin <= 1) {
+            return { x: p1.x + tMin * dx, y: p1.y + tMin * dy };
         }
 
         return p2;

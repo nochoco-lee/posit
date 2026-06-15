@@ -73,9 +73,8 @@ export class LayoutPumlSvgRenderer {
             tMax = Math.min(tMax, Math.max(t1, t2));
         } else if (p1.y < top || p1.y > bottom) return p2;
 
-        if (tMin <= tMax && tMax >= 0 && tMax <= 1) {
-            const t = tMin > 0 ? tMin : 0;
-            return { x: p1.x + t * dx, y: p1.y + t * dy };
+        if (tMin <= tMax && tMin >= 0 && tMin <= 1) {
+            return { x: p1.x + tMin * dx, y: p1.y + tMin * dy };
         }
 
         return p2;
@@ -182,9 +181,25 @@ export class LayoutPumlSvgRenderer {
                     else if (n.stereotype) title = `${n.stereotype}\n${title}`;
                     svg += this.renderText(n.position.x + n.size.width/2, n.position.y + 15, title, 12, "middle", "black");
                     if (n.members) {
-                        n.members.forEach((m: any, i: number) => {
-                            let mText = `${m.visibility || ''}${m.name}${m.isMethod ? '()' : ''}`;
-                            svg += this.renderText(n.position.x + 5, n.position.y + 45 + (i * 18), mText, 10, "start", "black");
+                        const fields = n.members.filter((m: any) => m.isField);
+                        const methods = n.members.filter((m: any) => m.isMethod);
+                        let currentY = n.position.y + 45;
+
+                        fields.forEach((m: any) => {
+                            let mText = `${m.visibility || ""} ${m.isStatic ? "{static} " : ""}${m.isAbstract ? "{abstract} " : ""}${m.name}${m.type ? " : " + m.type : ""}`;
+                            svg += this.renderText(n.position.x + 5, currentY, mText, 10, "start", "black");
+                            currentY += 18;
+                        });
+
+                        if (fields.length > 0 && methods.length > 0) {
+                            svg += `<line x1="${n.position.x}" y1="${currentY - 5}" x2="${n.position.x + n.size.width}" y2="${currentY - 5}" stroke="#A80036" stroke-width="1" />\n`;
+                            currentY += 5;
+                        }
+
+                        methods.forEach((m: any) => {
+                            let mText = `${m.visibility || ""} ${m.isStatic ? "{static} " : ""}${m.isAbstract ? "{abstract} " : ""}${m.name}(${m.parameters?.join(", ") || ""})${m.type ? " : " + m.type : ""}`;
+                            svg += this.renderText(n.position.x + 5, currentY, mText, 10, "start", "black");
+                            currentY += 18;
                         });
                     }
                 } else {
@@ -196,11 +211,11 @@ export class LayoutPumlSvgRenderer {
 
         // 5. Connections
         map.connections.forEach(c => {
-            const isSequence = map.diagramType === 'sequence';
+            const isSequence = map.diagramType === "sequence";
             const originNode = map.nodes[c.from];
             const targetNode = map.nodes[c.to];
-            const fromExternal = c.from === '[' || c.from === ']';
-            const toExternal = c.to === '[' || c.to === ']';
+            const fromExternal = c.from === "[" || c.from === "]";
+            const toExternal = c.to === "[" || c.to === "]";
 
             if ((!originNode && !fromExternal) || (!targetNode && !toExternal)) return;
 
@@ -241,9 +256,9 @@ export class LayoutPumlSvgRenderer {
                 tx = endPt.x; ty = endPt.y;
             }
             
-            const isDotted = c.type.includes('..');
-            const isDashed = c.type.includes('--');
-            const strokeDash = isDotted ? 'stroke-dasharray="2,2"' : isDashed ? 'stroke-dasharray="8,4"' : '';
+            const isDotted = c.type.includes("..");
+            const isDashed = c.type.includes("--");
+            const strokeDash = isDotted ? 'stroke-dasharray="2,2"' : isDashed ? 'stroke-dasharray="8,4"' : "";
             
             if (c.from === c.to && isSequence) {
                 const path = `M ${ox} ${oy} L ${ox + 30} ${oy} L ${ox + 30} ${oy + 20} L ${ox + 7} ${oy + 20}`;
@@ -260,12 +275,12 @@ export class LayoutPumlSvgRenderer {
                     const headStr = isStart ? type.split(/[-.=]+/)[0] : type.split(/[-.=]+/)[type.split(/[-.=]+/).length - 1];
                     
                     if (isSequence) {
-                        const isLost = headStr.includes('x');
-                        const isCircle = headStr.includes('o');
-                        const isHalfTop = headStr.includes('\\');
-                        const isHalfBottom = headStr.includes('/');
-                        const isAsync = headStr.includes('>>') || (!headStr.includes('>') && (isHalfTop || isHalfBottom));
-                        const isFullOpen = headStr.includes('>>') || (headStr.includes('>') && !headStr.includes('|>') && !isLost && !isCircle);
+                        const isLost = headStr.includes("x");
+                        const isCircle = headStr.includes("o");
+                        const isHalfTop = headStr.includes("\\");
+                        const isHalfBottom = headStr.includes("/");
+                        const isAsync = headStr.includes(">>") || (!headStr.includes(">") && (isHalfTop || isHalfBottom));
+                        const isFullOpen = headStr.includes(">>") || (headStr.includes(">") && !headStr.includes("|>") && !isLost && !isCircle);
 
                         if (isLost) {
                             svg += `<line x1="${x - 5}" y1="${y - 5}" x2="${x + 5}" y2="${y + 5}" stroke="#A80036" stroke-width="2" />\n`;
@@ -285,17 +300,17 @@ export class LayoutPumlSvgRenderer {
                             svg += `<line x1="${currentX - 10 * direction}" y1="${y + 5}" x2="${currentX}" y2="${y}" stroke="#A80036" stroke-width="2" />\n`;
                         } else if (isFullOpen || isAsync) {
                             svg += `<path d="M ${currentX - 10 * direction} ${y - 5} L ${currentX} ${y} L ${currentX - 10 * direction} ${y + 5}" fill="none" stroke="#A80036" stroke-width="2" />\n`;
-                        } else if (headStr.includes('>') || headStr.includes('<')) {
+                        } else if (headStr.includes(">") || headStr.includes("<")) {
                             const headPath = `M ${currentX - 10 * direction} ${y - 5} L ${currentX} ${y} L ${currentX - 10 * direction} ${y + 5} Z`;
                             svg += `<path d="${headPath}" fill="#A80036" />\n`;
                         }
                     } else {
                         // Class Diagram specific heads
-                        let headType = 'default';
-                        if (headStr.includes('<|') || headStr.includes('|>')) headType = 'extend';
-                        else if (headStr.includes('*')) headType = 'compose';
-                        else if (headStr.includes('o')) headType = 'aggregate';
-                        else if (headStr.includes('>') || headStr.includes('<')) headType = 'nav';
+                        let headType = "default";
+                        if (headStr.includes("<|") || headStr.includes("|>")) headType = "extend";
+                        else if (headStr.includes("*")) headType = "compose";
+                        else if (headStr.includes("o")) headType = "aggregate";
+                        else if (headStr.includes(">") || headStr.includes("<")) headType = "nav";
 
                         const size = 10;
                         const dx = Math.cos(angle);
@@ -303,22 +318,22 @@ export class LayoutPumlSvgRenderer {
                         const px = -dy;
                         const py = dx;
 
-                        if (headType === 'extend') {
+                        if (headType === "extend") {
                             const p1x = x - size * 1.5 * dx - size * px;
                             const p1y = y - size * 1.5 * dy - size * py;
                             const p2x = x - size * 1.5 * dx + size * px;
                             const p2y = y - size * 1.5 * dy + size * py;
                             svg += `<path d="M ${x} ${y} L ${p1x} ${p1y} L ${p2x} ${p2y} Z" fill="white" stroke="#A80036" stroke-width="1.5" />\n`;
-                        } else if (headType === 'compose' || headType === 'aggregate') {
+                        } else if (headType === "compose" || headType === "aggregate") {
                             const p1x = x - size * dx - size * 0.6 * px;
                             const p1y = y - size * dy - size * 0.6 * py;
                             const p2x = x - size * 2 * dx;
                             const p2y = y - size * 2 * dy;
                             const p3x = x - size * dx + size * 0.6 * px;
                             const p3y = y - size * dy + size * 0.6 * py;
-                            const fill = headType === 'compose' ? '#A80036' : 'white';
+                            const fill = headType === "compose" ? "#A80036" : "white";
                             svg += `<path d="M ${x} ${y} L ${p1x} ${p1y} L ${p2x} ${p2y} L ${p3x} ${p3y} Z" fill="${fill}" stroke="#A80036" stroke-width="1.5" />\n`;
-                        } else if (headType === 'nav') {
+                        } else if (headType === "nav") {
                             const p1x = x - size * dx - size * px;
                             const p1y = y - size * dy - size * py;
                             const p2x = x - size * dx + size * px;
@@ -330,8 +345,8 @@ export class LayoutPumlSvgRenderer {
 
                 const dir = tx > ox ? 1 : -1;
                 
-                const hasEndHead = c.type.includes('>') || c.type.includes('*') || c.type.includes('o') || c.type.includes('\\') || c.type.includes('/') || c.type.includes('x') || c.type.includes(')');
-                const hasStartHead = c.type.includes('<') || (c.type.startsWith('o') && c.type.length > 1) || c.type.startsWith('*') || c.type.includes('(');
+                const hasEndHead = c.type.includes(">") || c.type.includes("*") || c.type.includes("o") || c.type.includes("\\") || c.type.includes("/") || c.type.includes("x") || c.type.includes(")");
+                const hasStartHead = c.type.includes("<") || (c.type.startsWith("o") && c.type.length > 1) || c.type.startsWith("*") || c.type.includes("(");
 
                 if (hasEndHead) {
                     drawHead(tx, ty, ox, oy, dir, c.type, false);
@@ -349,12 +364,12 @@ export class LayoutPumlSvgRenderer {
                 if (!isSequence) {
                     if (c.fromLabel) {
                         const fx = ox + (tx - ox) * 0.2;
-                        const fy = y + (endY - y) * 0.2;
+                        const fy = oy + (ty - oy) * 0.2;
                         svg += this.renderText(fx + 10, fy - 5, c.fromLabel, 10, "start");
                     }
                     if (c.toLabel) {
                         const fx = ox + (tx - ox) * 0.8;
-                        const fy = y + (endY - y) * 0.8;
+                        const fy = oy + (ty - oy) * 0.8;
                         svg += this.renderText(fx + 10, fy - 5, c.toLabel, 10, "start");
                     }
                 }
