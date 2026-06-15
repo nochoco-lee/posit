@@ -35,8 +35,8 @@ User *-- Order
         // Assert Relation 1
         expect(ast.statements[2]).toMatchObject({
             type: "edge",
-            from: "User",
-            to: "OrderHandler",
+            from: "OrderHandler",
+            to: "User",
             arrow: "<|--",
             label: "implements",
             layout: { x: 150, y: 250 }

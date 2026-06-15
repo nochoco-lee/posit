@@ -474,7 +474,7 @@ class SequenceParser extends CstParser {
                 { ALT: () => {
                     this.CONSUME(Order);
                     this.OR2([
-                        { ALT: () => this.CONSUME(Identifier, { LABEL: "order" }) },
+                        { ALT: () => this.CONSUME(IdentifierLike, { LABEL: "order" }) },
                         { ALT: () => this.CONSUME(StringLiteral, { LABEL: "order" }) }
                     ]);
                 }},
@@ -534,7 +534,19 @@ class SequenceParser extends CstParser {
             {
                 GATE: () => {
                     const t1 = this.LA(1).tokenType;
-                    return t1 === Visibility || t1 === Class || t1 === Interface || t1 === Enum || t1 === Struct || t1 === Annotation || t1 === Abstract || t1 === Circle || t1 === Diamond || t1 === Exception || t1 === Metaclass || t1 === Protocol || t1 === Record || t1 === Stereotype || t1 === Dataclass || t1 === ObjectKeyword || (t1 === LParen && this.LA(2).tokenType === RParen) || t1 === DiamondShort;
+                    const isClassKeyword = t1 === Visibility || t1 === Class || t1 === Interface || t1 === Enum || t1 === Struct || t1 === Annotation || t1 === Abstract || t1 === Circle || t1 === Diamond || t1 === Exception || t1 === Metaclass || t1 === Protocol || t1 === Record || t1 === Stereotype || t1 === Dataclass || t1 === ObjectKeyword || (t1 === LParen && this.LA(2).tokenType === RParen) || t1 === DiamondShort;
+                    if (!isClassKeyword) return false;
+                    
+                    // If followed by an arrow on the same line, it's a connection, not a declaration.
+                    let i = 2;
+                    if (t1 === LParen) i = 3;
+                    while (true) {
+                        const tok = this.LA(i).tokenType;
+                        if (tok === Arrow) return false;
+                        if (tok === Newline || tok === EndUml || tok === EOF) break;
+                        i++;
+                    }
+                    return true;
                 },
                 ALT: () => {
                     this.OPTION(() => this.CONSUME(Visibility));
@@ -582,6 +594,10 @@ class SequenceParser extends CstParser {
                                 ALT: () => this.SUBRULE2(this.name, { LABEL: "alias" }) 
                             },
                             {
+                                GATE: () => {
+                                    const next = this.LA(1).tokenType;
+                                    return next === Extends || next === Implements;
+                                },
                                 ALT: () => {
                                     this.OR4([
                                         { ALT: () => this.CONSUME(Extends) },
@@ -620,6 +636,30 @@ class SequenceParser extends CstParser {
                 }
             },
             {
+                GATE: () => {
+                    // Look ahead for "name {" or "name <<stereo>> {"
+                    let i = 1;
+                    while (true) {
+                        const tok = this.LA(i).tokenType;
+                        if (tok === Identifier || tok === Dot || tok === DoubleColon || tok === StringLiteral || (this as any).tokenMatcher(this.LA(i), IdentifierLike)) {
+                            i++;
+                        } else {
+                            break;
+                        }
+                    }
+                    // Skip stereotype
+                    if (this.LA(i).tokenType === LGuillemet) {
+                        i++;
+                        while (this.LA(i).tokenType !== RGuillemet && this.LA(i).tokenType !== Newline && this.LA(i).tokenType !== EOF) {
+                            i++;
+                        }
+                        if (this.LA(i).tokenType === RGuillemet) i++;
+                    }
+                    // Skip color
+                    if (this.LA(i).tokenType === Color) i++;
+                    
+                    return this.LA(i).tokenType === LBrace;
+                },
                 ALT: () => {
                     this.SUBRULE3(this.name, { LABEL: "name" });
                     this.MANY6(() => {
@@ -648,7 +688,7 @@ class SequenceParser extends CstParser {
                     // Skip name tokens
                     while (true) {
                         const tok = this.LA(i).tokenType;
-                        if (tok === Identifier || tok === Dot || tok === DoubleColon || tok === StringLiteral) {
+                        if (tok === Identifier || tok === Dot || tok === DoubleColon || tok === StringLiteral || (this as any).tokenMatcher(this.LA(i), IdentifierLike)) {
                             i++;
                         } else {
                             break;
@@ -717,7 +757,7 @@ class SequenceParser extends CstParser {
             },
             {
                 GATE: () => this.LA(1).tokenType === LBrace,
-                ALT: () => this.SUBRULE(this.anchor, { LABEL: "anchor" })
+                ALT: () => this.SUBRULE(this.anchorWithName, { ARGS: [inConnection] as any })
             },
             { ALT: () => this.CONSUME1(RBracket) },
             { ALT: () => this.CONSUME(QuestionMark) },
@@ -725,6 +765,7 @@ class SequenceParser extends CstParser {
                 ALT: () => {
                     this.SUBRULE3(this.name, { ARGS: [inConnection], LABEL: "name" });
                     this.OPTION8(() => this.SUBRULE(this.multilineLabel));
+                    this.SUBRULE(this.optionalAnchor);
                     this.OPTION2(() => {
                         this.OPTION3(() => this.CONSUME1(As));
                         this.CONSUME1(StringLiteral, { LABEL: "label" });
@@ -738,62 +779,75 @@ class SequenceParser extends CstParser {
         ]);
     });
 
+    public anchorWithName = this.RULE("anchorWithName", (inConnection: boolean = false) => {
+        this.SUBRULE(this.anchor, { LABEL: "anchor" });
+        this.OPTION(() => this.SUBRULE(this.name, { ARGS: [inConnection], LABEL: "name" }));
+    });
+
+    public optionalAnchor = this.RULE("optionalAnchor", () => {
+        this.OPTION(() => this.SUBRULE(this.anchor, { LABEL: "anchor" }));
+    });
+
     public connectionDeclaration = this.RULE("connectionDeclaration", () => {
-        this.OR([
+        this.OR1([
             { 
                 GATE: () => {
                     const next = this.LA(1).tokenType;
                     if (next === Dot) return !this.isStandaloneDot();
-                    return next !== Arrow && next !== LParen && next !== Visibility;
+                    return next !== Arrow && next !== Visibility;
                 },
                 ALT: () => {
-                    this.SUBRULE(this.endpoint, { ARGS: [true], LABEL: "from" });
+                    this.SUBRULE1(this.endpoint, { ARGS: [true], LABEL: "from" });
                 }
             },
-            { ALT: () => {} }
+            { 
+                // Implicit from (e.g. for incoming messages like -> Alice)
+                GATE: () => this.LA(1).tokenType === Arrow || this.LA(1).tokenType === Visibility || this.LA(1).tokenType === Dot,
+                ALT: () => {} 
+            }
         ]);
 
-        this.OPTION(() => {
+        this.OPTION1(() => {
             this.CONSUME(LParen);
-            this.MANY({
+            this.MANY1({
                 GATE: () => this.LA(1).tokenType !== RParen && this.LA(1).tokenType !== Newline,
                 DEF: () => this.SUBRULE(this.anyToken)
             });
             this.CONSUME(RParen);
         });
 
-        this.OR3([
-            { ALT: () => this.CONSUME2(Arrow, { LABEL: "arrow" }) },
-            { ALT: () => this.CONSUME2(Visibility, { LABEL: "arrow" }) },
-            { ALT: () => this.CONSUME2(Dot, { LABEL: "arrow" }) }
+        this.OR2([
+            { ALT: () => this.CONSUME1(Arrow, { LABEL: "arrow" }) },
+            { ALT: () => this.CONSUME(Visibility, { LABEL: "arrow" }) },
+            { ALT: () => this.CONSUME(Dot, { LABEL: "arrow" }) }
         ]);
 
-        this.OPTION1(() => {
+        this.OPTION2(() => {
             this.CONSUME1(LParen);
-            this.MANY1({
+            this.MANY2({
                 GATE: () => this.LA(1).tokenType !== RParen && this.LA(1).tokenType !== Newline,
                 DEF: () => this.SUBRULE1(this.anyToken)
             });
             this.CONSUME1(RParen);
         });
 
-        this.OPTION2(() => {
-            this.SUBRULE1(this.endpoint, { ARGS: [false], LABEL: "to" });
+        this.OPTION3(() => {
+            this.SUBRULE2(this.endpoint, { ARGS: [false], LABEL: "to" });
         });
 
-        this.MANY2(() => {
-            this.OR1([
+        this.MANY3(() => {
+            this.OR3([
                 { ALT: () => this.SUBRULE(this.colorValue) },
                 { ALT: () => this.CONSUME(Star) },
                 { ALT: () => this.CONSUME(Exclamation) },
-                { ALT: () => this.CONSUME(Visibility) },
-                { ALT: () => this.CONSUME1(Arrow) }
+                { ALT: () => this.CONSUME1(Visibility) },
+                { ALT: () => this.CONSUME2(Arrow) }
             ]);
         });
-        this.OPTION3(() => {
+        this.OPTION4(() => {
             this.SUBRULE(this.payload);
         });
-        this.OPTION4(() => {
+        this.OPTION5(() => {
             this.CONSUME(PosComment, { LABEL: "layout" });
         });
     });
@@ -1198,6 +1252,7 @@ class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(Remove) },
             { ALT: () => this.CONSUME(Restore) },
             { ALT: () => this.CONSUME(Autonumber) },
+            { ALT: () => this.CONSUME(Newpage) },
             { ALT: () => this.CONSUME(Ignore) },
             { ALT: () => this.CONSUME(Header) },
             { ALT: () => this.CONSUME(Footer) },
@@ -1248,7 +1303,7 @@ class SequenceParser extends CstParser {
             }
         ]);
         
-        const isTitle = this.LA(0).tokenType.name === "Title";
+        const isTitle = (this.LA(0) as any).tokenType === Title;
 
         this.MANY({
             GATE: () => {
@@ -1309,14 +1364,72 @@ class SequenceParser extends CstParser {
     });
 
     public statement = this.RULE("statement", () => {
-        this.OPTION(() => this.CONSUME(Ampersand));
+        this.OPTION({
+            GATE: () => this.LA(1).tokenType === Ampersand,
+            DEF: () => this.CONSUME(Ampersand)
+        });
         this.OR([
             { 
                 GATE: () => {
                     const t1 = this.LA(1).tokenType;
-                    if (t1 === LBrace) return this.LA(3).tokenType === RBrace;
-                    if (t1 === LParen) return this.LA(3).tokenType === RParen;
-                    return false;
+                    return t1 === Arrow || t1 === Visibility;
+                },
+                ALT: () => this.SUBRULE1(this.connectionDeclaration)
+            },
+            { 
+                GATE: () => {
+                    let i = 1;
+                    const t1 = this.LA(1).tokenType;
+                    if (t1 === Arrow || t1 === Visibility) return false;
+                    
+                    while (true) {
+                        const tok = this.LA(i);
+                        if ((this as any).tokenMatcher(tok, Arrow)) return true;
+                        if ((this as any).tokenMatcher(tok, Visibility) && i > 1) return true;
+                        if ((this as any).tokenMatcher(tok, Dot)) {
+                             if (i === 1) {
+                                 // Leading dot is fine if there is an arrow later.
+                                 let j = i + 1;
+                                 while (true) {
+                                     const t = this.LA(j);
+                                     if ((this as any).tokenMatcher(t, Arrow)) return true;
+                                     if ((this as any).tokenMatcher(t, Newline) || (this as any).tokenMatcher(t, EndUml) || (this as any).tokenMatcher(t, EOF)) break;
+                                     j++;
+                                 }
+                             } else {
+                                 return true;
+                             }
+                        }
+                        if ((this as any).tokenMatcher(tok, Newline) || (this as any).tokenMatcher(tok, EndUml) || (this as any).tokenMatcher(tok, EOF)) return false;
+                        i++;
+                        if (i > 20) return false; 
+                    }
+                },
+                ALT: () => this.SUBRULE2(this.connectionDeclaration) 
+            },
+            {
+                GATE: () => {
+                    const t1 = this.LA(1).tokenType;
+                    let isAnchor = false;
+                    let nextIdx = 1;
+                    if (t1 === LBrace) {
+                        isAnchor = this.LA(3).tokenType === RBrace;
+                        nextIdx = 4;
+                    } else if (t1 === LParen) {
+                        isAnchor = this.LA(3).tokenType === RParen;
+                        nextIdx = 4;
+                    }
+                    if (!isAnchor) return false;
+                    
+                    // If followed by an arrow on the same line, it's a connection, not a standalone anchor.
+                    let i = nextIdx;
+                    while (true) {
+                        const tok = this.LA(i).tokenType;
+                        if (tok === Arrow) return false;
+                        if (tok === Newline || tok === EndUml || tok === EOF) break;
+                        i++;
+                    }
+                    return true;
                 },
                 ALT: () => this.SUBRULE(this.anchor) 
             },
@@ -1342,9 +1455,56 @@ class SequenceParser extends CstParser {
             { 
                 GATE: () => {
                     const t1 = this.LA(1).tokenType;
-                    return t1 === Colon || t1 === LBracket || t1 === LParen;
+                    if (t1 !== Colon && t1 !== LBracket && t1 !== LParen) return false;
+                    
+                    // If followed by an arrow on the same line, it's a connection.
+                    let i = 2;
+                    while (true) {
+                        const tok = this.LA(i).tokenType;
+                        if (tok === Arrow) return false;
+                        if (tok === Newline || tok === EndUml || tok === EOF) break;
+                        i++;
+                    }
+                    return true;
                 },
                 ALT: () => this.SUBRULE(this.shortFormDeclaration) 
+            },
+            { 
+                GATE: () => {
+                    let i = 1;
+                    let t = this.LA(i).tokenType;
+                    if (t === Visibility) {
+                        i++;
+                        t = this.LA(i).tokenType;
+                    }
+                    const isClassKeyword = t === Class || t === Interface || t === Enum || t === Struct || t === Annotation || t === Abstract || t === Circle || t === Diamond || t === Exception || t === Metaclass || t === Protocol || t === Record || t === Stereotype || t === Dataclass || t === ObjectKeyword || (t === LParen && this.LA(i+1).tokenType === RParen) || t === DiamondShort;
+                    
+                    if (isClassKeyword) {
+                        // If followed by an arrow on the same line, it's a connection, not a declaration.
+                        let j = i + 1;
+                        if (t === LParen) j = i + 2;
+                        while (true) {
+                            const tok = this.LA(j).tokenType;
+                            if (tok === Arrow) return false;
+                            if (tok === Order) return false; // Sequence diagram specific
+                            if (tok === Newline || tok === EndUml || tok === EOF) break;
+                            j++;
+                        }
+                        return true;
+                    }
+
+                    // Check for "Name :" or "Visibility Name :" without an Arrow before it.
+                    i = 1;
+                    if (this.LA(i).tokenType === Visibility) i = 2;
+                    while (true) {
+                        const tok = this.LA(i).tokenType;
+                        if (tok === Colon) return true;
+                        if (tok === Arrow || tok === Visibility) return false;
+                        if (tok === Newline || tok === EndUml || tok === EOF) return false;
+                        i++;
+                    }
+                },
+                ALT: () => this.SUBRULE(this.classDeclaration) 
             },
             { 
                 GATE: () => {
@@ -1374,38 +1534,15 @@ class SequenceParser extends CstParser {
                     while (true) {
                         const tok = this.LA(i).tokenType;
                         if (tok === Arrow) return false;
-                        // If it has a brace or bracket, it's a container block
-                        if (tok === LBrace || tok === LBracket) return false;
+                        // If it has a brace, it's a container block.
+                        // LBracket could be a multiline title or a short form [component].
+                        if (tok === LBrace) return false;
                         if (tok === Newline || tok === EndUml || tok === EOF) break;
                         i++;
                     }
                     return true;
                 },
                 ALT: () => this.SUBRULE(this.participantDeclaration) 
-            },
-            { 
-                GATE: () => {
-                    let i = 1;
-                    let t = this.LA(i).tokenType;
-                    if (t === Visibility) {
-                        i++;
-                        t = this.LA(i).tokenType;
-                    }
-                    if (t === Class || t === Interface || t === Enum || t === Struct || t === Annotation || t === Abstract || t === Circle || t === Diamond || t === Exception || t === Metaclass || t === Protocol || t === Record || t === Stereotype || t === Dataclass || t === ObjectKeyword || (t === LParen && this.LA(i+1).tokenType === RParen) || t === DiamondShort) {
-                        return true;
-                    }
-                    // Check for "Name :" or "Visibility Name :" without an Arrow before it.
-                    i = 1;
-                    if (this.LA(i).tokenType === Visibility) i = 2;
-                    while (true) {
-                        const tok = this.LA(i).tokenType;
-                        if (tok === Colon) return true;
-                        if (tok === Arrow || tok === Visibility) return false;
-                        if (tok === Newline || tok === EndUml || tok === EOF) return false;
-                        i++;
-                    }
-                },
-                ALT: () => this.SUBRULE(this.classDeclaration) 
             },
             { ALT: () => this.SUBRULE(this.groupingBlock) },
             { 
@@ -1453,33 +1590,6 @@ class SequenceParser extends CstParser {
                         || t1 === Scale || t1 === Page || t1 === Left || t1 === Right || t1 === Top || t1 === Bottom || t1 === Set;
                 },
                 ALT: () => this.SUBRULE(this.ignoredStatement) 
-            },
-            { 
-                GATE: () => {
-                    let i = 1;
-                    while (true) {
-                        const tok = this.LA(i).tokenType;
-                        if (tok === Arrow) return true;
-                        if (tok === Visibility && i > 1) return true;
-                        if (tok === Dot) {
-                             if (i === 1) {
-                                 // Leading dot is fine if there is an arrow later.
-                                 let j = i + 1;
-                                 while (true) {
-                                     const t = this.LA(j).tokenType;
-                                     if (t === Arrow) return true;
-                                     if (t === Newline || t === EndUml || t === EOF) break;
-                                     j++;
-                                 }
-                             } else {
-                                 return true;
-                             }
-                        }
-                        if (tok === Newline || tok === EndUml || tok === EOF) return false;
-                        i++;
-                    }
-                },
-                ALT: () => this.SUBRULE(this.connectionDeclaration) 
             }
         ]);
         this.MANY(() => this.CONSUME(Newline));
@@ -1497,7 +1607,6 @@ class SequenceParser extends CstParser {
         this.CONSUME(EndUml);
         this.MANY2(() => this.CONSUME2(Newline));
     });
-
     private parsePosComment(commentStr: string) {
         const match = commentStr.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
         if (match) {

@@ -354,13 +354,9 @@ export class SequenceRenderer {
             });
         } else {
             const arrowStr = conn.type;
-            const isLeft = arrowStr.startsWith('<') && !arrowStr.endsWith('>') && !arrowStr.endsWith('>>') && !arrowStr.endsWith('|>');
             const isBidirectional = arrowStr.startsWith('<') && (arrowStr.endsWith('>') || arrowStr.endsWith('>>') || arrowStr.endsWith('|>') || arrowStr.endsWith('x'));
 
             let points = [originX, 0, targetX, 0];
-            if (isLeft) {
-                points = [targetX, 0, originX, 0];
-            }
 
             visualArrow = new Konva.Arrow({
                 // Y coordinates are now relative to the group (yPos)
@@ -464,12 +460,7 @@ export class SequenceRenderer {
                 const originalConn = this.map!.connections[connIndex];
                 const arrowStr = originalConn.type;
                 
-                const isLeft = arrowStr.startsWith('<') && !arrowStr.endsWith('>') && !arrowStr.endsWith('>>') && !arrowStr.endsWith('|>');
-                
                 let points = [originX, 0, targetX, 0];
-                if (isLeft) {
-                    points = [targetX, 0, originX, 0];
-                }
                 
                 conn.konvaObj.points(points);
                 

@@ -630,6 +630,21 @@ export class SequenceAstVisitor extends BaseVisitor {
             };
         }
 
+        let from = fromData.name;
+        let to = toData.name;
+        let fromLabel = fromData.label;
+        let toLabel = toData.label;
+
+        // Swap from/to if it's a left arrow like A <- B
+        // BUT only if it's not a bidirectional arrow like A <-> B
+        const isLeftArrow = arrow.startsWith("<") && !arrow.endsWith(">");
+        if (isLeftArrow) {
+            [from, to] = [to, from];
+            [fromLabel, toLabel] = [toLabel, fromLabel];
+            // Normalize arrow for internal representation?
+            // Actually, PlantUML renderer might expect the original arrow but with swapped nodes.
+        }
+
         let label: string | undefined = undefined;
         let payloadEndOffset: number | undefined = undefined;
         if (ctx.payload) {
@@ -682,10 +697,10 @@ export class SequenceAstVisitor extends BaseVisitor {
 
         return {
             type: "edge",
-            from: fromData.name,
-            fromLabel: fromData.label,
-            to: toData.name,
-            toLabel: toData.label,
+            from,
+            fromLabel,
+            to,
+            toLabel,
             arrow,
             label,
             color,
@@ -805,11 +820,21 @@ export class SequenceAstVisitor extends BaseVisitor {
             name = "?";
             label = "";
             endToken = startToken;
+        } else if (ctx.anchorWithName) {
+            return this.visit(ctx.anchorWithName[0]);
         } else {
             const nameToken = this.visit(ctx.name[0]);
             name = nameToken.image;
             startToken = nameToken;
             endToken = nameToken;
+
+            if (ctx.optionalAnchor) {
+                const anchorResult = this.visit(ctx.optionalAnchor[0]);
+                if (anchorResult && anchorResult.token) {
+                    const anchorToken = anchorResult.token;
+                    if (anchorToken.endOffset > endToken.endOffset) endToken = anchorToken;
+                }
+            }
         }
 
         return {
@@ -817,9 +842,47 @@ export class SequenceAstVisitor extends BaseVisitor {
             label,
             offset: {
                 start: startToken.startOffset,
-                end: endToken.endOffset,
-            },
-            lastToken: endToken
+                end: endToken.endOffset
+            }
+        };
+    }
+
+    optionalAnchor(ctx: any) {
+        if (ctx.anchor) {
+            const anchorToken = ctx.anchor[0];
+            return {
+                token: anchorToken,
+                offset: {
+                    start: anchorToken.startOffset,
+                    end: anchorToken.endOffset
+                }
+            };
+        }
+        return null;
+    }
+
+    anchorWithName(ctx: any) {
+        const anchorToken = ctx.anchor[0];
+        let name = "";
+        let startToken = anchorToken;
+        let endToken = anchorToken;
+
+        if (ctx.name) {
+            const nameToken = this.visit(ctx.name[0]);
+            name = nameToken.image;
+            endToken = nameToken;
+        } else {
+            // Standalone anchor used as node name
+            name = anchorToken.image || "";
+        }
+
+        return {
+            name,
+            label: "",
+            offset: {
+                start: startToken.startOffset,
+                end: endToken.endOffset
+            }
         };
     }
 

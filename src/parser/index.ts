@@ -1,7 +1,7 @@
 import { SequenceLexer } from "./lexer";
 import { parser } from "./parser";
 import { visitor } from "./visitor";
-import { IRDiagram, IRStatement, IRNode, IRContainer } from "../ir/types";
+import { IRDiagram, IRStatement, IRNode, IRContainer, IREdge } from "../ir/types";
 
 function unescapeHtml(text: string): string {
     return text
@@ -54,6 +54,7 @@ export function parsePlantUml(text: string): IRDiagram {
     const cst = parser.diagram();
 
     if (parser.errors.length > 0) {
+        console.log("RAW ERRORS:", parser.errors.map(e => e.message));
         const simplifiedErrors = parser.errors.map(formatParserError);
         throw new Error(`Parsing errors:\n${simplifiedErrors.join("\n")}`);
     }
