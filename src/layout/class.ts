@@ -21,11 +21,8 @@ export class ClassLayoutManager {
         // Pass 0: Collect all edges for layout hints
         this.collectEdges(ir.statements);
 
-        // Pass 1: Setup all explicit nodes and groups/containers
+        // Pass 1: Setup all nodes (explicit and implicit) and groups/containers
         this.processStatementsPass1(ir.statements, DEFAULTS.CLASS_START_X);
-
-        // Pass 1.5: Setup implicit nodes from connections
-        this.processStatementsPass1_5(ir.statements);
 
         // Pass 2: Setup connections, notes
         this.processStatementsPass2(ir.statements);
@@ -78,6 +75,14 @@ export class ClassLayoutManager {
             if (!statement) return;
             if (statement.type === "node") {
                 this.processNode(statement as IRNode, x);
+            } else if (statement.type === "edge") {
+                const edge = statement as IREdge;
+                if (!this.map.nodes[edge.from]) {
+                    this.processNode({ type: 'node', name: edge.from, shape: 'class' } as IRNode, x);
+                }
+                if (!this.map.nodes[edge.to]) {
+                    this.processNode({ type: 'node', name: edge.to, shape: 'class' } as IRNode, x);
+                }
             } else if (statement.type === "container") {
                 this.processContainerPass1(statement as IRContainer, x);
             } else if (statement.type === "group") {
@@ -132,23 +137,6 @@ export class ClassLayoutManager {
         const endY = this.currentClassY;
         this.map.groups[groupIndex].size.height = Math.max(100, endY - startY);
         this.currentClassY += 20;
-    }
-
-    private processStatementsPass1_5(statements: IRStatement[]) {
-        statements.forEach((statement: any) => {
-            if (!statement) return;
-            if (statement.type === "edge") {
-                const edge = statement as IREdge;
-                if (!this.map.nodes[edge.from]) {
-                    this.processNode({ type: 'node', name: edge.from, shape: 'class' } as IRNode, DEFAULTS.CLASS_START_X);
-                }
-                if (!this.map.nodes[edge.to]) {
-                    this.processNode({ type: 'node', name: edge.to, shape: 'class' } as IRNode, DEFAULTS.CLASS_START_X);
-                }
-            } else if (statement.type === "container") {
-                this.processStatementsPass1_5((statement as IRContainer).statements);
-            }
-        });
     }
 
     private processStatementsPass2(statements: IRStatement[]) {
