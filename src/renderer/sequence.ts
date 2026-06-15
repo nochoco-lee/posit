@@ -288,7 +288,7 @@ export class SequenceRenderer {
             if (this.onNodeMove) this.onNodeMove(`div-${div.label}`, Math.round(e.target.x()), Math.round(e.target.y()));
         });
         const text = new Konva.Text({ text: div.label, fontSize: 14, fontStyle: 'bold', width: div.size.width, align: 'center', fill: '#A80036', padding: 10 });
-    ...
+
         // Measure text to leave a gap
         const textWidth = text.getTextWidth() + 20;
         const midX = div.size.width / 2;
@@ -445,7 +445,6 @@ export class SequenceRenderer {
                 });
 
                 Object.values(this.activationRects).forEach(rectList => {
-                ...
             rectList.forEach(item => {
                 const { rect, def } = item;
                 let startY = rect.y(); let endY = rect.y() + rect.height();
@@ -474,7 +473,6 @@ private drawGroup(groupDef: LayoutGroup) {
     });
 
     const rect = new Konva.Rect({ 
-...
             width: groupDef.size.width, 
             height: groupDef.size.height, 
             stroke: groupDef.color || '#A80036', 
