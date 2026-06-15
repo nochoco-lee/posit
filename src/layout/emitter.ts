@@ -45,6 +45,20 @@ export class Emitter {
             } else if (matches.length > 0) {
                 const patch = this.createPatchContext(matches[0], layoutNode.position, syntax);
                 if (patch) patches.push(patch);
+            } else {
+                // Implicit node - auto-generate declaration for sequence diagrams
+                if (ir.diagramType === 'sequence') {
+                    const insertionPoint = this.findInsertionPoint(originalText, syntax);
+                    const declaration = syntax === 'mermaid' 
+                        ? `    participant ${id} %% @pos(${layoutNode.position.x}, ${layoutNode.position.y})\n`
+                        : `participant ${id} /' @pos(${layoutNode.position.x}, ${layoutNode.position.y}) '/\n`;
+                    
+                    patches.push({
+                        start: insertionPoint,
+                        end: insertionPoint,
+                        replacement: declaration
+                    });
+                }
             }
         }
 
@@ -160,6 +174,21 @@ export class Emitter {
                 end: offset.end + 1,
                 replacement: replacementStr
             };
+        }
+    }
+
+    private findInsertionPoint(originalText: string, syntax: 'plantuml' | 'mermaid'): number {
+        if (syntax === 'mermaid') {
+            const match = originalText.match(/sequenceDiagram/i);
+            return match ? match.index! + match[0].length + 1 : 0;
+        } else {
+            const match = originalText.match(/@startuml/i);
+            if (match) {
+                const afterStart = match.index! + match[0].length;
+                const nextNewline = originalText.indexOf('\n', afterStart);
+                return nextNewline !== -1 ? nextNewline + 1 : afterStart;
+            }
+            return 0;
         }
     }
 }
