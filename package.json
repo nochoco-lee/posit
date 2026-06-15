@@ -1,0 +1,28 @@
+{
+  "name": "posit",
+  "version": "1.0.0",
+  "description": "An experimental, interactive diagramming engine that aims to support a PlantUML-compatible representation.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "test": "vitest --run --pool=forks",
+    "build": "tsc",
+    "plantuml-sequence": "vitest --run --pool=forks -c vitest.coverage.config.ts test_scripts/syntax-coverage.test.ts",
+    "plantuml-class": "vitest --run --pool=forks -c vitest.class.coverage.config.ts test_scripts/class-syntax-coverage.test.ts",
+    "plantuml-deployment": "vitest --run --pool=forks -c vitest.deployment.coverage.config.ts test_scripts/deployment-syntax-coverage.test.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chevrotain": "^11.0.3",
+    "konva": "^10.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.37",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0",
+    "vitest": "^1.6.1"
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.txt
+gallery.html
+*.log
+.DS_Store
+.antigravitycli/
+coverage/
+puml_temp/
+plantuml.jar
+plantuml_class/
+plantuml_sequence/
+plantuml_deployment/
+debug_color.ts
