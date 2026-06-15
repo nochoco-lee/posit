@@ -17,19 +17,51 @@ export class DeploymentLayoutManager {
             notes: []
         };
 
+        const collectImplicitNodes = (statements: IRStatement[]) => {
+            statements.forEach(s => {
+                if (!s) return;
+                if (s.type === 'edge') {
+                    const edge = s as IREdge;
+                    if (!map.nodes[edge.from] && edge.from !== '[' && edge.from !== ']') {
+                        this.addNode(edge.from, 'box', map);
+                    }
+                    if (!map.nodes[edge.to] && edge.to !== '[' && edge.to !== ']') {
+                        this.addNode(edge.to, 'box', map);
+                    }
+                } else if (s.type === 'group') {
+                    collectImplicitNodes((s as IRGroup).sections[0].statements);
+                }
+            });
+        };
+
+        collectImplicitNodes(ir.statements);
         this.layoutStatements(ir.statements, map, 50, 50);
 
         return map;
     }
 
+    private addNode(id: string, shape: string, map: LayoutMap) {
+        const size = this.getNodeSize(shape);
+        map.nodes[id] = {
+            id,
+            type: shape,
+            origName: id,
+            position: { x: 0, y: 0 },
+            size
+        };
+    }
+
     private getNodeSize(type: string): { width: number, height: number } {
         switch (type) {
             case 'usecase':
+            case 'round':
+            case 'circle':
                 return { width: 140, height: 70 };
             case 'person':
                 return { width: 60, height: 90 };
             case 'database':
             case 'storage':
+            case 'cylinder':
                 return { width: 100, height: 80 };
             case 'folder':
                 return { width: 120, height: 90 };
@@ -39,6 +71,21 @@ export class DeploymentLayoutManager {
                 return { width: 150, height: 80 };
             case 'hexagon':
                 return { width: 120, height: 80 };
+            case 'diamond':
+            case 'rhombus':
+                return { width: 150, height: 100 };
+            case 'trapezoid':
+            case 'inv_trapezoid':
+                return { width: 140, height: 70 };
+            case 'parallelogram':
+            case 'inv_parallelogram':
+                return { width: 140, height: 70 };
+            case 'subroutine':
+                return { width: 140, height: 70 };
+            case 'stadium':
+                return { width: 140, height: 70 };
+            case 'asymmetric':
+                return { width: 140, height: 70 };
             case 'boundary':
             case 'control':
             case 'entity':
@@ -91,16 +138,16 @@ export class DeploymentLayoutManager {
                     label: edge.label,
                     position: edge.layout ? { x: edge.layout.x, y: edge.layout.y } : null
                 });
-            } else if (s.type === 'container') {
-                const container = s as IRContainer;
+            } else if (s.type === 'container' || s.type === 'group') {
+                const container = s as any;
                 const groupY = y;
                 
-                // Recursively layout children
+                const statements = s.type === 'container' ? container.statements : container.sections[0].statements;
                 const contentSize = this.layoutStatements(
-                    container.statements, 
+                    statements, 
                     map, 
                     x + this.padding, 
-                    y + this.padding + 20 // Space for label
+                    y + this.padding + 20 
                 );
 
                 const groupWidth = Math.max(this.minNodeWidth + 20, contentSize.width + 2 * this.padding);
@@ -113,14 +160,14 @@ export class DeploymentLayoutManager {
 
                 const group: LayoutGroup = {
                     type: 'group',
-                    id: container.name || `group-${Math.random()}`,
-                    keyword: container.keyword,
-                    label: container.name || '',
+                    id: container.name || container.label || `group-${Math.random()}`,
+                    keyword: container.keyword || 'subgraph',
+                    label: container.name || container.label || '',
                     stereotype: container.stereotype,
                     color: container.color,
                     position,
                     size: { width: groupWidth, height: groupHeight },
-                    sections: [{ statements: container.statements }],
+                    sections: s.type === 'container' ? [{ statements }] : container.sections,
                     dividerYs: []
                 };
                 map.groups.push(group);

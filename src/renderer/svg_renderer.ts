@@ -254,6 +254,44 @@ export class LayoutPumlSvgRenderer {
                 svg += `<path d="M ${bx+bw} ${by} L ${bx+bw+offset} ${by-offset} L ${bx+bw+offset} ${by+bh-offset} L ${bx+bw} ${by+bh} Z" fill="#D2D2E0" stroke="${stroke}" stroke-width="1.5" />\n`;
                 const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
                 svg += this.renderText(bx + bw/2, by + bh/2 + 5, text, 14);
+            } else if (n.type === 'round') {
+                svg += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" rx="20" />\n`;
+                svg += this.renderText(centerX, centerY + 5, n.origName, 14);
+            } else if (n.type === 'stadium') {
+                svg += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" rx="${h/2}" />\n`;
+                svg += this.renderText(centerX, centerY + 5, n.origName, 14);
+            } else if (n.type === 'subroutine') {
+                svg += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<line x1="${x+10}" y1="${y}" x2="${x+10}" y2="${y+h}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<line x1="${x+w-10}" y1="${y}" x2="${x+w-10}" y2="${y+h}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += this.renderText(centerX, centerY + 5, n.origName, 14);
+            } else if (n.type === 'cylinder') {
+                const ry = 10;
+                svg += `<path d="M ${x} ${y+ry} L ${x} ${y+h-ry} A ${w/2} ${ry} 0 0 0 ${x+w} ${y+h-ry} L ${x+w} ${y+ry} A ${w/2} ${ry} 0 0 0 ${x} ${y+ry} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<ellipse cx="${centerX}" cy="${y+ry}" rx="${w/2}" ry="${ry}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += this.renderText(centerX, centerY + 5, n.origName, 14);
+            } else if (n.type === 'circle') {
+                const r = Math.min(w, h) / 2;
+                svg += `<circle cx="${centerX}" cy="${centerY}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += this.renderText(centerX, centerY + 5, n.origName, 14);
+            } else if (n.type === 'asymmetric') {
+                svg += `<path d="M ${x} ${y} L ${x+w-15} ${y} L ${x+w} ${centerY} L ${x+w-15} ${y+h} L ${x} ${y+h} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += this.renderText(centerX - 7.5, centerY + 5, n.origName, 14);
+            } else if (n.type === 'diamond' || n.type === 'rhombus') {
+                svg += `<path d="M ${centerX} ${y} L ${x+w} ${centerY} L ${centerX} ${y+h} L ${x} ${centerY} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += this.renderText(centerX, centerY + 5, n.origName, 14);
+            } else if (n.type === 'parallelogram') {
+                svg += `<path d="M ${x+15} ${y} L ${x+w} ${y} L ${x+w-15} ${y+h} L ${x} ${y+h} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += this.renderText(centerX, centerY + 5, n.origName, 14);
+            } else if (n.type === 'inv_parallelogram') {
+                svg += `<path d="M ${x} ${y} L ${x+w-15} ${y} L ${x+w} ${y+h} L ${x+15} ${y+h} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += this.renderText(centerX, centerY + 5, n.origName, 14);
+            } else if (n.type === 'trapezoid') {
+                svg += `<path d="M ${x+15} ${y} L ${x+w-15} ${y} L ${x+w} ${y+h} L ${x} ${y+h} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += this.renderText(centerX, centerY + 5, n.origName, 14);
+            } else if (n.type === 'inv_trapezoid') {
+                svg += `<path d="M ${x} ${y} L ${x+w} ${y} L ${x+w-15} ${y+h} L ${x+15} ${y+h} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += this.renderText(centerX, centerY + 5, n.origName, 14);
             } else if (n.type === 'cloud') {
                 const r = Math.min(w, h) / 3;
                 svg += `<path d="M ${centerX - r*1.5} ${centerY} 

@@ -228,7 +228,25 @@ export class SequenceLayoutManager {
         let position = { x: 0, y: 0 };
         if (node.layout) position = { x: node.layout.x, y: node.layout.y };
         else { position = { x: this.currentSeqX, y: DEFAULTS.SEQUENCE_START_Y }; this.currentSeqX += width + 50; }
-        const layoutNode: LayoutNode = { id, origName: displayName, type: node.shape, position, size, lifelineX: position.x + size.width / 2, lifelineY: position.y + size.height };
+        
+        // Mermaid 'create' support: if isCreate, we don't start at the top
+        let lifelineY = position.y + size.height;
+        if ((node as any).isCreate) {
+            lifelineY = this.currentSequenceY; 
+            position.y = this.currentSequenceY;
+        }
+
+        const layoutNode: LayoutNode = { 
+            id, 
+            origName: displayName, 
+            type: node.shape, 
+            position, 
+            size, 
+            lifelineX: position.x + size.width / 2, 
+            lifelineY,
+            isCreate: (node as any).isCreate,
+            isDestroy: (node as any).isDestroy
+        };
         this.map.nodes[id] = layoutNode;
     }
 
@@ -239,6 +257,12 @@ export class SequenceLayoutManager {
         const targetNode = this.map.nodes[conn.to];
         const fromExternal = conn.from === '[' || conn.from === ']';
         const toExternal = conn.to === '[' || conn.to === ']';
+
+        // If target was created by this message (create participant Carl)
+        if (targetNode && (targetNode as any).isCreate && targetNode.position.y === DEFAULTS.SEQUENCE_START_Y) {
+            targetNode.position.y = this.currentSequenceY;
+            targetNode.lifelineY = this.currentSequenceY + targetNode.size.height;
+        }
         
         let labelHeight = 0;
         let finalLabel = conn.label || null;
@@ -274,10 +298,10 @@ export class SequenceLayoutManager {
         
         const isDashed = conn.arrow.includes('--') || conn.arrow.includes('..');
 
-        if (conn.arrow.includes('++') || conn.isCreation) {
+        if (conn.arrow.includes('++') || conn.isCreation || (targetNode && (targetNode as any).isCreate && targetNode.position.y === calculatedY)) {
             this.startActivation(conn.to, connIndex);
-        } else if (conn.arrow.includes('--') || conn.isDeletion) {
-            this.endActivation(conn.from, connIndex);
+        } else if (conn.arrow.includes('--') || conn.isDeletion || (originNode && (originNode as any).isDestroy)) {
+            this.endActivation(conn.from, connIndex, originNode && (originNode as any).isDestroy);
         } else if (this.autoactivate) {
              if (isDashed) {
                  // Check if this is a return message ending an auto-activation

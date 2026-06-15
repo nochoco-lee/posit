@@ -148,6 +148,20 @@ export class ClassLayoutManager {
             if (!statement) return;
             if (statement.type === "node") {
                 this.processNode(statement as IRNode, x);
+            } else if (statement.type === "member") {
+                const member = statement as any;
+                if (!this.map.nodes[member.className]) {
+                    this.processNode({ type: 'node', name: member.className, shape: 'class' } as IRNode, x);
+                }
+                const node = this.map.nodes[member.className];
+                if (node) {
+                    node.members = node.members || [];
+                    node.members.push(member.member);
+                    // Update height
+                    const fields = node.members.filter(m => m.isField);
+                    const methods = node.members.filter(m => m.isMethod);
+                    node.size.height = 30 + Math.max(20, fields.length * 20) + 5 + Math.max(20, methods.length * 20) + 5;
+                }
             } else if (statement.type === "edge") {
                 const edge = statement as IREdge;
                 if (!this.map.nodes[edge.from]) {
@@ -220,6 +234,8 @@ export class ClassLayoutManager {
             if (!statement) return;
             if (statement.type === "node") {
                 this.lastNodeId = (statement as IRNode).name;
+            } else if (statement.type === "member") {
+                this.lastNodeId = (statement as any).className;
             } else if (statement.type === "edge") {
                 this.processConnection(statement as IREdge);
             } else if (statement.type === "note") {

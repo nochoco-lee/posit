@@ -239,6 +239,49 @@ export class DeploymentRenderer {
                 g.add(head); g.add(bodyLine); g.add(arms); g.add(legs);
                 return g;
 
+            case 'round':
+                return new Konva.Rect({
+                    width, height, cornerRadius: 20,
+                    fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                });
+
+            case 'stadium':
+                return new Konva.Rect({
+                    width, height, cornerRadius: height / 2,
+                    fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                });
+
+            case 'subroutine':
+                const subRect = new Konva.Rect({
+                    width, height, fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                });
+                const subLeft = new Konva.Line({ points: [10, 0, 10, height], stroke: colors.stroke, strokeWidth: colors.strokeWidth });
+                const subRight = new Konva.Line({ points: [width - 10, 0, width - 10, height], stroke: colors.stroke, strokeWidth: colors.strokeWidth });
+                g.add(subRect); g.add(subLeft); g.add(subRight);
+                return g;
+
+            case 'cylinder':
+                return this.createShape('database', width, height, colors);
+
+            case 'circle':
+                return new Konva.Circle({
+                    x: width / 2, y: height / 2, radius: Math.min(width, height) / 2,
+                    fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                });
+
+            case 'asymmetric':
+                return new Konva.Path({
+                    data: `M 0 0 L ${width-15} 0 L ${width} ${height/2} L ${width-15} ${height} L 0 ${height} Z`,
+                    fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                });
+
+            case 'diamond':
+            case 'rhombus':
+                return new Konva.Line({
+                    points: [width / 2, 0, width, height / 2, width / 2, height, 0, height / 2],
+                    closed: true, fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                });
+
             case 'hexagon':
                 const side = width / 4;
                 const hex = new Konva.Line({
@@ -255,6 +298,30 @@ export class DeploymentRenderer {
                     }));
                 }
                 return g;
+
+            case 'parallelogram':
+                return new Konva.Line({
+                    points: [15, 0, width, 0, width-15, height, 0, height],
+                    closed: true, fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                });
+
+            case 'inv_parallelogram':
+                return new Konva.Line({
+                    points: [0, 0, width-15, 0, width, height, 15, height],
+                    closed: true, fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                });
+
+            case 'trapezoid':
+                return new Konva.Line({
+                    points: [15, 0, width-15, 0, width, height, 0, height],
+                    closed: true, fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                });
+
+            case 'inv_trapezoid':
+                return new Konva.Line({
+                    points: [0, 0, width, 0, width-15, height, 15, height],
+                    closed: true, fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                });
 
             case 'queue':
                 // Rectangle with open ends (drawn as path)

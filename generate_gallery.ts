@@ -2,13 +2,14 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { parsePlantUml } from "./src/parser/index";
+import { parseMermaid } from "./src/mermaid/index";
 import { LayoutManager } from "./src/layout/engine";
 import { LayoutPumlSvgRenderer } from "./src/renderer/svg_renderer";
 
 const testDirs = [
-    { name: "Sequence Diagrams", path: "test_scripts/plantuml_sequence", file: "gallery_sequence.html" },
-    { name: "Class Diagrams", path: "test_scripts/plantuml_class", file: "gallery_class.html" },
-    { name: "Deployment Diagrams", path: "test_scripts/plantuml_deployment", file: "gallery_deployment.html" }
+    { name: "Sequence Diagrams", path: "test_scripts/plantuml_sequence", mpath: "test_scripts/mermaid_sequence", file: "gallery_sequence.html" },
+    { name: "Class Diagrams", path: "test_scripts/plantuml_class", mpath: "test_scripts/mermaid_class", file: "gallery_class.html" },
+    { name: "Deployment Diagrams", path: "test_scripts/plantuml_deployment", mpath: "test_scripts/mermaid_flowchart", file: "gallery_deployment.html" }
 ];
 const localRenderDir = "local_renders";
 const ourRenderDir = path.join(localRenderDir, "our_renders");
@@ -42,69 +43,113 @@ if (hasLocalPlantUml) {
 const svgRenderer = new LayoutPumlSvgRenderer();
 
 testDirs.forEach(dirInfo => {
-    if (!fs.existsSync(dirInfo.path)) {
-        console.warn(`Directory ${dirInfo.path} not found, skipping...`);
-        return;
-    }
-
     const testCases: any[] = [];
     console.log(`Processing ${dirInfo.name}...`);
 
-    const files = fs.readdirSync(dirInfo.path)
-        .filter(f => f.endsWith(".puml"))
-        .sort((a, b) => {
-            const numA = parseInt(a.match(/\d+/)?.at(0) || "0");
-            const numB = parseInt(b.match(/\d+/)?.at(0) || "0");
-            return numA - numB;
-        });
+    // 1. Process PlantUML files
+    if (fs.existsSync(dirInfo.path)) {
+        const files = fs.readdirSync(dirInfo.path)
+            .filter(f => f.endsWith(".puml"))
+            .sort((a, b) => {
+                const numA = parseInt(a.match(/\d+/)?.at(0) || "0");
+                const numB = parseInt(b.match(/\d+/)?.at(0) || "0");
+                return numA - numB;
+            });
 
-    files.forEach(file => {
-        const filePath = path.join(dirInfo.path, file);
-        const content = fs.readFileSync(filePath, "utf-8");
-        
-        const baseName = `${dirInfo.name.replace(/\s+/g, '_')}_${file.replace(".puml", "")}`;
-        const officialPngName = `${baseName}_official.png`;
-        const ourSvgName = `${baseName}_our.svg`;
-        
-        const localOfficialPath = path.join(localRenderDir, officialPngName);
-        const localOurPath = path.join(ourRenderDir, ourSvgName);
+        files.forEach(file => {
+            const filePath = path.join(dirInfo.path, file);
+            const content = fs.readFileSync(filePath, "utf-8");
+            
+            const baseName = `puml_${dirInfo.name.replace(/\s+/g, '_')}_${file.replace(".puml", "")}`;
+            const officialPngName = `${baseName}_official.png`;
+            const ourSvgName = `${baseName}_our.svg`;
+            
+            const localOfficialPath = path.join(localRenderDir, officialPngName);
+            const localOurPath = path.join(ourRenderDir, ourSvgName);
 
-        // 1. Official Render
-        if (hasLocalPlantUml && !fs.existsSync(localOfficialPath)) {
+            // Official Render
+            if (hasLocalPlantUml && !fs.existsSync(localOfficialPath)) {
+                try {
+                    execSync(`${plantumlCmd} "${filePath}" -o "${path.resolve(localRenderDir)}"`, { stdio: 'ignore' });
+                    const defaultPngPath = path.join(localRenderDir, file.replace(".puml", ".png"));
+                    if (fs.existsSync(defaultPngPath)) {
+                        fs.renameSync(defaultPngPath, localOfficialPath);
+                    }
+                } catch (e) {}
+            }
+
+            // Our Render (SVG)
+            let ourRenderUrl = "";
+            let error = "";
+            let inferredType = "unknown";
             try {
-                execSync(`${plantumlCmd} "${filePath}" -o "${path.resolve(localRenderDir)}"`, { stdio: 'ignore' });
-                const defaultPngPath = path.join(localRenderDir, file.replace(".puml", ".png"));
-                if (fs.existsSync(defaultPngPath)) {
-                    fs.renameSync(defaultPngPath, localOfficialPath);
-                }
-            } catch (e) {}
-        }
+                const ast = parsePlantUml(content);
+                inferredType = ast.diagramType;
+                const layoutManager = new LayoutManager();
+                const map = layoutManager.process(ast);
+                const svg = svgRenderer.render(map);
+                fs.writeFileSync(localOurPath, svg);
+                ourRenderUrl = `./${localRenderDir}/our_renders/${ourSvgName}`;
+            } catch (e: any) {
+                error = e.message;
+            }
 
-        // 2. Our Render (SVG)
-        let ourRenderUrl = "";
-        let error = "";
-        let inferredType = "unknown";
-        try {
-            const ast = parsePlantUml(content);
-            inferredType = ast.diagramType;
-            const layoutManager = new LayoutManager();
-            const map = layoutManager.process(ast);
-            const svg = svgRenderer.render(map);
-            fs.writeFileSync(localOurPath, svg);
-            ourRenderUrl = `./${localRenderDir}/our_renders/${ourSvgName}`;
-        } catch (e: any) {
-            error = e.message;
-        }
-
-        testCases.push({
-            name: file,
-            source: content,
-            officialUrl: hasLocalPlantUml && fs.existsSync(localOfficialPath) ? `./${localRenderDir}/${officialPngName}` : "",
-            ourUrl: ourRenderUrl,
-            error: error,
-            inferredType: inferredType
+            testCases.push({
+                name: file,
+                source: content,
+                officialUrl: hasLocalPlantUml && fs.existsSync(localOfficialPath) ? `./${localRenderDir}/${officialPngName}` : "",
+                ourUrl: ourRenderUrl,
+                error: error,
+                inferredType: inferredType,
+                syntax: 'PlantUML'
+            });
         });
-    });
+    }
+
+    // 2. Process Mermaid files
+    if (fs.existsSync(dirInfo.mpath)) {
+        const mfiles = fs.readdirSync(dirInfo.mpath)
+            .filter(f => f.endsWith(".mmd"))
+            .sort((a, b) => {
+                const numA = parseInt(a.match(/\d+/)?.at(0) || "0");
+                const numB = parseInt(b.match(/\d+/)?.at(0) || "0");
+                return numA - numB;
+            });
+
+        mfiles.forEach(file => {
+            const filePath = path.join(dirInfo.mpath, file);
+            const content = fs.readFileSync(filePath, "utf-8");
+            
+            const baseName = `mermaid_${dirInfo.name.replace(/\s+/g, '_')}_${file.replace(".mmd", "")}`;
+            const ourSvgName = `${baseName}_our.svg`;
+            const localOurPath = path.join(ourRenderDir, ourSvgName);
+
+            let ourRenderUrl = "";
+            let error = "";
+            let inferredType = "unknown";
+            try {
+                const ast = parseMermaid(content);
+                inferredType = ast.diagramType;
+                const layoutManager = new LayoutManager();
+                const map = layoutManager.process(ast);
+                const svg = svgRenderer.render(map);
+                fs.writeFileSync(localOurPath, svg);
+                ourRenderUrl = `./${localRenderDir}/our_renders/${ourSvgName}`;
+            } catch (e: any) {
+                error = e.message;
+            }
+
+            testCases.push({
+                name: file,
+                source: content,
+                officialUrl: "", // No local mermaid renderer for now
+                ourUrl: ourRenderUrl,
+                error: error,
+                inferredType: inferredType,
+                syntax: 'Mermaid'
+            });
+        });
+    }
 
     // Generate HTML for this category
     let casesHtml = "";
@@ -112,16 +157,16 @@ testDirs.forEach(dirInfo => {
         casesHtml += `
             <div class="case">
                 <div class="case-header">
-                    <span>${testCase.name}</span>
+                    <span>[${testCase.syntax}] ${testCase.name}</span>
                     <span style="float:right; font-weight: normal; font-size: 0.8em; color: #666;">Inferred: ${testCase.inferredType}</span>
                 </div>
                 <div class="comparison-grid">
                     <div class="col">
-                        <div class="col-header">1. PlantUML Source</div>
+                        <div class="col-header">1. Source (${testCase.syntax})</div>
                         <div class="puml-source">${testCase.source.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
                     </div>
                     <div class="col">
-                        <div class="col-header">2. Official PlantUML</div>
+                        <div class="col-header">2. Official (Puml only)</div>
                         <div class="img-container">
                             ${testCase.officialUrl ? `<img src="${testCase.officialUrl}" alt="Official Render">` : '<span class="missing-info">No official render</span>'}
                         </div>
@@ -179,14 +224,14 @@ testDirs.forEach(dirInfo => {
 const indexHtml = `<!DOCTYPE html>
 <html>
 <head>
-    <title>PlantUML Evaluation Gallery</title>
+    <title>Diagram Evaluation Gallery</title>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 50px; }
         a { display: block; margin: 20px; font-size: 1.5em; color: #0066cc; text-decoration: none; }
     </style>
 </head>
 <body>
-    <h1>PlantUML Evaluation Gallery</h1>
+    <h1>Diagram Evaluation Gallery</h1>
     <a href="gallery_sequence.html">Sequence Diagrams</a>
     <a href="gallery_class.html">Class Diagrams</a>
     <a href="gallery_deployment.html">Deployment Diagrams</a>
