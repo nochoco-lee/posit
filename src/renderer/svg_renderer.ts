@@ -119,10 +119,14 @@ export class LayoutPumlSvgRenderer {
         // 1. Groups (background)
         map.groups.forEach(g => {
             svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${g.size.width}" height="${g.size.height}" fill="${g.color || 'none'}" fill-opacity="0.1" stroke="${g.color || '#A80036'}" stroke-width="2" stroke-dasharray="5,5" />\n`;
-            svg += `<rect x="${g.position.x}" y="${g.position.y}" width="40" height="15" fill="white" stroke="${g.color || '#A80036'}" stroke-width="1" />\n`;
-            svg += `<text x="${g.position.x + 5}" y="${g.position.y + 12}" font-family="sans-serif" font-size="10" font-weight="bold" fill="${g.color || '#A80036'}">${g.keyword}</text>\n`;
+            
+            // Measure keyword to size its box
+            const keywordWidth = g.keyword.length * 8 + 10;
+            svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${keywordWidth}" height="18" fill="#EEEEEE" stroke="${g.color || '#A80036'}" stroke-width="1" />\n`;
+            svg += `<text x="${g.position.x + 5}" y="${g.position.y + 13}" font-family="sans-serif" font-size="11" font-weight="bold" fill="black">${g.keyword}</text>\n`;
+            
             if (g.label) {
-                svg += this.renderText(g.position.x + g.size.width/2, g.position.y + 25, g.label, 12, "middle", g.color || "#A80036");
+                svg += `<text x="${g.position.x + keywordWidth + 5}" y="${g.position.y + 13}" font-family="sans-serif" font-size="11" font-weight="bold" fill="${g.color || '#A80036'}">[${g.label}]</text>\n`;
             }
             g.dividerYs?.forEach(dy => {
                 svg += `<line x1="${g.position.x}" y1="${dy}" x2="${g.position.x + g.size.width}" y2="${dy}" stroke="${g.color || '#A80036'}" stroke-width="1" stroke-dasharray="5,5" />\n`;

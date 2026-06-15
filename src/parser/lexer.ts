@@ -133,11 +133,11 @@ export const RAngle = createToken({ name: "RAngle", pattern: />/ });
 // Arrows (Sequence & Class Relations)
 export const Arrow = createToken({
     name: "Arrow",
-    pattern: /(?:\([^)\r\n]+\))?(?:(?:<\||<<|\/\/|\\\\|[<x\/\\o*^+#}0@])+[-=.~]{1,4}(?:\[[^\]\r\n]+\])?[-=.~]{0,4}(?:\|>|>>|\\\\|\/\/|[>x\/\\o*?^+#{0@|~=.-])*(?:\+|-)*|[-=.~]{1,4}(?:\[[^\]\r\n]+\])?[-=.~]{0,4}(?:\|>|>>|\\\\|\/\/|[>x\/\\o*?^+#{0@|~=.-])+(?:\+|-)*|[-=.~]{1,4}(?:(?:up|down|left|right|hidden|horizontal|vertical|[lrud]|le|ri|do)(?![a-zA-Z0-9_$])[-=.~]{0,4})+(?:\|>|>>|\\\\|\/\/|[>x\/\\o*?^+#{0@|~=.-])*(?:\+|-)*|[-=.~]{2,4}(?:\[[^\]\r\n]+\])?[-=.~]{0,4}(?:\+|-)*|=>|<->|<-|->)(?:\([^)\r\n]+\))?/
+    pattern: /(?:\([^)\r\n]+\))?(?:(?:<\||<<|\/\/|\\\\|[<x\/\\o*^+#}0@!~#])+[-=.~]{1,4}(?:\[[^\]\r\n]+\])?[-=.~]{0,4}(?:\|>|>>|\\\\|\/\/|[>x\/\\o*?^+#{0@!~#|~=.-])*(?:\+|-)*|[-=.~]{1,4}(?:\[[^\]\r\n]+\])?[-=.~]{0,4}(?:\|>|>>|\\\\|\/\/|[>x\/\\o*?^+#{0@!~#|~=.-])+(?:\+|-)*|[-=.~]{1,4}(?:(?:up|down|left|right|hidden|horizontal|vertical|[lrud]|le|ri|do)(?![a-zA-Z_$])[-=.~]{0,4})+(?:\|>|>>|\\\\|\/\/|[>x\/\\o*?^+#{0@!~#|~=.-])*(?:\+|-)*|[-=.~]{2,4}(?:\[[^\]\r\n]+\])?[-=.~]{0,4}(?:\+|-)*|=>|<->|<-|->|[0()]+[-=.~]{1,4}[0()\-.~]*|[-=.~]{1,4}(?!\([1-9])[0()\-.~]*[-=.~]+[0()\-.~]*)(?:\([^)\r\n]+\))?/
 });
 
 // Delimiters & Symbols
-export const Divider = createToken({ name: "Divider", pattern: /==+.*==+/ });
+export const Divider = createToken({ name: "Divider", pattern: /==+[ \t]*[^ \n\r\t:=]+[ \t]*==+/ });
 export const Delay = createToken({ name: "Delay", pattern: /\.\.\.[^.\n]*\.\.\.|\.\.\./ });
 
 export const Dot = createToken({ name: "Dot", pattern: /\./, longer_alt: [Arrow, Delay] });

@@ -199,8 +199,10 @@ class SequenceParser extends CstParser {
 
     public endpoint = this.RULE("endpoint", (inConnection: boolean = false) => {
         this.OR([
+            { GATE: () => this.LA(1).tokenType === Colon, ALT: () => { this.CONSUME2(Colon); this.SUBRULE4(this.name, { ARGS: [inConnection], LABEL: "name" }); this.CONSUME3(Colon); } },
+            { GATE: () => this.LA(1).tokenType === LParen && this.LA(2).tokenType === RParen, ALT: () => { this.CONSUME1(LParen); this.CONSUME1(RParen); this.MANY2(() => this.SUBRULE5(this.name, { ARGS: [inConnection], LABEL: "name" })); } },
             { GATE: () => this.LA(1).tokenType === StringLiteral, ALT: () => { this.CONSUME(StringLiteral, { LABEL: "label" }); this.OPTION7(() => { this.CONSUME(Slash); this.SUBRULE(this.anyToken); }); this.OPTION(() => { this.OPTION1(() => this.CONSUME(As)); this.SUBRULE(this.nodeIdentifier, { LABEL: "name" }); }); } },
-            { GATE: () => this.LA(1).tokenType === Quote, ALT: () => { this.CONSUME1(Quote, { LABEL: "q1" }); this.MANY(() => this.CONSUME2(Identifier, { LABEL: "labelTokens" })); this.CONSUME2(Quote, { LABEL: "q2" }); this.OPTION4(() => { this.OPTION5(() => this.CONSUME2(As)); this.SUBRULE2(this.nodeIdentifier, { LABEL: "name" }); }); } },
+            { GATE: () => this.LA(1).tokenType === Quote, ALT: () => { this.CONSUME1(Quote, { LABEL: "q1" }); this.MANY(() => { this.CONSUME2(Identifier, { LABEL: "labelTokens" }); }); this.CONSUME2(Quote, { LABEL: "q2" }); this.OPTION4(() => { this.OPTION5(() => this.CONSUME2(As)); this.SUBRULE2(this.nodeIdentifier, { LABEL: "name" }); }); } },
             { GATE: () => this.LA(1).tokenType === LParen, ALT: () => { this.CONSUME(LParen); this.SUBRULE1(this.name, { ARGS: [inConnection], LABEL: "part1" }); this.MANY1(() => { this.CONSUME(Comma); this.SUBRULE2(this.name, { ARGS: [inConnection], LABEL: "parts" }); }); this.CONSUME(RParen); } },
             { GATE: () => this.LA(1).tokenType === LBracket, ALT: () => { this.CONSUME(LBracket); this.OPTION6(() => { this.SUBRULE3(this.nodeIdentifier, { LABEL: "name" }); this.CONSUME(RBracket); }); } },
             { GATE: () => this.LA(1).tokenType === LBrace, ALT: () => this.SUBRULE(this.anchorWithName, { ARGS: [inConnection] as any }) },

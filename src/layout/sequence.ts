@@ -196,7 +196,7 @@ export class SequenceLayoutManager {
         const size = { width, height };
         let position = { x: 0, y: 0 };
         if (node.layout) position = { x: node.layout.x, y: node.layout.y };
-        else { position = { x: this.currentSeqX, y: DEFAULTS.SEQUENCE_START_Y }; this.currentSeqX += width + 50; }
+        else { position = { x: this.currentSeqX, y: DEFAULTS.SEQUENCE_START_Y }; this.currentSeqX += width + 100; }
         const layoutNode: LayoutNode = { id, origName: displayName, type: node.shape, position, size, lifelineX: position.x + size.width / 2, lifelineY: position.y + size.height };
         this.map.nodes[id] = layoutNode;
     }
@@ -256,7 +256,7 @@ export class SequenceLayoutManager {
             } else {
                 const targetId = (note.placement === "right") ? targets[targets.length - 1] : targets[0];
                 const targetNode = this.map.nodes[targetId];
-                if (targetNode) { if (note.placement === "left") x = targetNode.position.x - width - 20; else if (note.placement === "right") x = targetNode.position.x + targetNode.size.width + 20; else x = targetNode.position.x; }
+                if (targetNode) { if (note.placement === "left") x = targetNode.position.x - width - 10; else if (note.placement === "right") x = targetNode.position.x + targetNode.size.width + 10; else x = targetNode.position.x; }
             }
         }
         const textSize = measureText(note.text, 12, 'sans-serif');
@@ -275,6 +275,9 @@ export class SequenceLayoutManager {
         const startY = isBox ? DEFAULTS.SEQUENCE_START_Y - 10 : this.currentSequenceY;
         const dividerYs: number[] = [];
         if (!isBox) this.currentSequenceY += 40;
+        
+        const noteCountBefore = this.map.notes.length;
+
         const participantsInGroup = new Set<string>();
         const collectParticipants = (statements: IRStatement[]) => {
             statements.forEach(s => {
@@ -296,11 +299,22 @@ export class SequenceLayoutManager {
         if (participantsInGroup.size > 0) {
             const nodes = Array.from(participantsInGroup).map(id => this.map.nodes[id]).filter(Boolean);
             if (nodes.length > 0) { 
-                const padding = isBox ? 20 : (this.groupDepth * 10);
+                const padding = isBox ? 20 : Math.max(10, 40 - (this.groupDepth * 10));
                 minX = Math.min(...nodes.map(n => n.position.x)) - padding; 
                 maxX = Math.max(...nodes.map(n => n.position.x + n.size.width)) + padding; 
             }
         }
+
+        // Include notes in group boundaries
+        const groupNotes = this.map.notes.slice(noteCountBefore);
+        if (groupNotes.length > 0) {
+            const padding = isBox ? 20 : 10;
+            const noteMinX = Math.min(...groupNotes.map(n => n.position.x)) - padding;
+            const noteMaxX = Math.max(...groupNotes.map(n => n.position.x + n.size.width)) + padding;
+            minX = Math.min(minX, noteMinX);
+            maxX = Math.max(maxX, noteMaxX);
+        }
+
         const layoutGroup: LayoutGroup = { type: "group", id: group.label || `group-${Math.random()}`, keyword: group.keyword, label: group.label || "", sections: group.sections, position: { x: minX, y: startY }, size: { width: Math.max(100, maxX - minX), height: Math.max(50, endY - startY) }, dividerYs, color: group.color };
         this.map.groups.push(layoutGroup);
         if (!isBox) this.currentSequenceY += 20;

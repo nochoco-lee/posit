@@ -404,7 +404,11 @@ export class SequenceAstVisitor extends BaseVisitor {
         let label = "";
         let startToken: IToken;
         let endToken: IToken;
-        if (ctx.label && ctx.name) {
+        if (ctx.Colon) {
+            startToken = ctx.Colon[0];
+            name = ":" + this.visit(ctx.name[0]).image + ":";
+            endToken = ctx.Colon[1];
+        } else if (ctx.label && ctx.name) {
             const labelToken = ctx.label[0];
             const nameToken = this.visit(ctx.name[0]);
             label = this.unquoteString(labelToken.image);
@@ -436,10 +440,16 @@ export class SequenceAstVisitor extends BaseVisitor {
             endToken = endRef;
         } else if (ctx.LParen) {
             startToken = ctx.LParen[0];
-            const part1Token = this.visit(ctx.part1[0]);
-            name = "(" + part1Token.image;
-            if (ctx.parts) ctx.parts.forEach((p: any) => { name += ", " + this.visit(p).image; });
-            name += ")";
+            if (ctx.part1) {
+                const part1Token = this.visit(ctx.part1[0]);
+                name = "(" + part1Token.image;
+                if (ctx.parts) ctx.parts.forEach((p: any) => { name += ", " + this.visit(p).image; });
+                name += ")";
+            } else if (ctx.name) {
+                name = "() " + this.visit(ctx.name[0]).image;
+            } else {
+                name = "()";
+            }
             endToken = ctx.RParen[0];
         } else if (ctx.LBracket) {
             startToken = ctx.LBracket[0];
