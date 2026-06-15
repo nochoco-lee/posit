@@ -31,6 +31,7 @@ export class SequenceLayoutManager {
 
     public process(ir: IRDiagram): LayoutMap {
         const declaredNodes = new Set<string>();
+        const orderedParticipants: string[] = [];
         this.activeActivations = {};
         this.activationStack = [];
         this.autoactivate = false;
@@ -44,12 +45,28 @@ export class SequenceLayoutManager {
         this.lastConnectionY = null;
         this.lastConnectionParticipants = [];
 
-        ir.statements.filter(s => s && s.type === "node").forEach((statement: any) => {
-            declaredNodes.add((statement as IRNode).name);
-            this.processNode(statement as IRNode);
-        });
+        const collectDeclaredNodes = (statements: IRStatement[]) => {
+            statements.forEach(s => {
+                if (!s) return;
+                if (s.type === "node") {
+                    const node = s as IRNode;
+                    if (!declaredNodes.has(node.name)) {
+                        declaredNodes.add(node.name);
+                        orderedParticipants.push(node.name);
+                        this.processNode(node);
+                    }
+                } else if (s.type === "group") {
+                    const group = s as IRGroup;
+                    group.sections.forEach(sec => collectDeclaredNodes(sec.statements));
+                } else if (s.type === "container") {
+                    const container = s as IRContainer;
+                    collectDeclaredNodes(container.statements);
+                }
+            });
+        };
 
-        this.processImplicitNodes(ir.statements, declaredNodes);
+        collectDeclaredNodes(ir.statements);
+        this.processImplicitNodes(ir.statements, declaredNodes, orderedParticipants);
 
         const maxNodeHeight = Math.max(...Object.values(this.map.nodes).map(n => n.size.height), DEFAULTS.PARTICIPANT_HEIGHT);
         this.currentSequenceY = DEFAULTS.SEQUENCE_START_Y + maxNodeHeight + 100;
@@ -58,21 +75,25 @@ export class SequenceLayoutManager {
             this.processStatement(statement);
         });
 
+        this.currentSequenceY += 50; // Trailing space for lifelines
+        (this.map as any).totalHeight = this.currentSequenceY;
+
         // Post-process: Set box heights and adjust nested groups
         this.map.groups.filter(g => g.keyword === 'box').forEach(g => {
-            g.size.height = Math.max(g.size.height, this.currentSequenceY - g.position.y);
+            g.size.height = Math.max(g.size.height, this.currentSequenceY - g.position.y - 20);
         });
 
         return this.map;
     }
 
-    private processImplicitNodes(statements: IRStatement[], declaredNodes: Set<string>) {
+    private processImplicitNodes(statements: IRStatement[], declaredNodes: Set<string>, orderedParticipants: string[]) {
         statements.forEach((statement: IRStatement) => {
             if (!statement) return;
             if (statement.type === "node") {
                 const node = statement as IRNode;
                 if (!declaredNodes.has(node.name)) {
                     declaredNodes.add(node.name);
+                    orderedParticipants.push(node.name);
                     this.processNode(node);
                 }
             } else if (statement.type === "edge") {
@@ -80,16 +101,18 @@ export class SequenceLayoutManager {
                 const isExternal = (id: string) => id === "[" || id === "]";
                 if (!declaredNodes.has(edge.from) && !isExternal(edge.from)) {
                     declaredNodes.add(edge.from);
+                    orderedParticipants.push(edge.from);
                     this.processNode({ type: "node", shape: "participant", name: edge.from });
                 }
                 if (!declaredNodes.has(edge.to) && !isExternal(edge.to)) {
                     declaredNodes.add(edge.to);
+                    orderedParticipants.push(edge.to);
                     this.processNode({ type: "node", shape: "participant", name: edge.to });
                 }
             } else if (statement.type === "group") {
                 const group = statement as IRGroup;
                 group.sections.forEach(section => {
-                    this.processImplicitNodes(section.statements, declaredNodes);
+                    this.processImplicitNodes(section.statements, declaredNodes, orderedParticipants);
                 });
             }
         });
@@ -191,12 +214,12 @@ export class SequenceLayoutManager {
         const id = node.name;
         const displayName = node.origName || node.name;
         const textSize = measureText(displayName, 14, 'sans-serif');
-        const width = Math.max(DEFAULTS.PARTICIPANT_WIDTH, textSize.width + 20);
+        const width = Math.max(DEFAULTS.PARTICIPANT_WIDTH, textSize.width + 40);
         const height = Math.max(DEFAULTS.PARTICIPANT_HEIGHT, textSize.height + 20);
         const size = { width, height };
         let position = { x: 0, y: 0 };
         if (node.layout) position = { x: node.layout.x, y: node.layout.y };
-        else { position = { x: this.currentSeqX, y: DEFAULTS.SEQUENCE_START_Y }; this.currentSeqX += DEFAULTS.ACTOR_PADDING_X; }
+        else { position = { x: this.currentSeqX, y: DEFAULTS.SEQUENCE_START_Y }; this.currentSeqX += width + 50; }
         const layoutNode: LayoutNode = { id, origName: displayName, type: node.shape, position, size, lifelineX: position.x + size.width / 2, lifelineY: position.y + size.height };
         this.map.nodes[id] = layoutNode;
     }
@@ -240,9 +263,26 @@ export class SequenceLayoutManager {
         this.lastConnectionParticipants = [conn.from, conn.to];
         const connIndex = this.map.connections.length;
         this.map.connections.push(layoutConn);
-        if (conn.arrow.includes('++')) this.startActivation(conn.to, connIndex);
-        else if (conn.arrow.includes('--')) this.endActivation(conn.from, connIndex);
-        else if (this.autoactivate && !conn.arrow.includes('..') && !conn.arrow.includes('--')) this.startActivation(conn.to, connIndex);
+        
+        const isDashed = conn.arrow.includes('--') || conn.arrow.includes('..');
+
+        if (conn.arrow.includes('++') || conn.isCreation) {
+            this.startActivation(conn.to, connIndex);
+        } else if (conn.arrow.includes('--') || conn.isDeletion) {
+            this.endActivation(conn.from, connIndex);
+        } else if (this.autoactivate) {
+             if (isDashed) {
+                 // Check if this is a return message ending an auto-activation
+                 if (this.activationStack.length > 0) {
+                     const currentActive = this.activationStack[this.activationStack.length - 1];
+                     if (conn.from === currentActive) {
+                         this.endActivation(conn.from, connIndex);
+                     }
+                 }
+             } else {
+                 this.startActivation(conn.to, connIndex);
+             }
+        }
     }
 
     private processNote(note: IRNote) {
@@ -252,7 +292,17 @@ export class SequenceLayoutManager {
         if (targets.length > 0) {
             if (note.placement === "over") {
                 const targetNodes = targets.map(t => this.map.nodes[t]).filter(Boolean);
-                if (targetNodes.length > 0) { const minX = Math.min(...targetNodes.map(n => n.position.x)); const maxX = Math.max(...targetNodes.map(n => n.position.x + n.size.width)); x = minX + 10; width = Math.max(DEFAULTS.NOTE_WIDTH, maxX - minX - 20); }
+                if (targetNodes.length > 0) { 
+                    const minX = Math.min(...targetNodes.map(n => n.position.x + n.size.width / 2)); 
+                    const maxX = Math.max(...targetNodes.map(n => n.position.x + n.size.width / 2)); 
+                    x = minX - width / 2;
+                    if (targetNodes.length > 1) {
+                         const actualMinX = Math.min(...targetNodes.map(n => n.position.x));
+                         const actualMaxX = Math.max(...targetNodes.map(n => n.position.x + n.size.width));
+                         width = Math.max(DEFAULTS.NOTE_WIDTH, actualMaxX - actualMinX);
+                         x = actualMinX;
+                    }
+                }
             } else {
                 const targetId = (note.placement === "right") ? targets[targets.length - 1] : targets[0];
                 const targetNode = this.map.nodes[targetId];
@@ -272,7 +322,7 @@ export class SequenceLayoutManager {
     private processGroup(group: IRGroup) {
         this.groupDepth++;
         const isBox = group.keyword === 'box';
-        const startY = isBox ? DEFAULTS.SEQUENCE_START_Y - 10 : this.currentSequenceY;
+        const startY = isBox ? DEFAULTS.SEQUENCE_START_Y - 20 : this.currentSequenceY;
         const dividerYs: number[] = [];
         if (!isBox) this.currentSequenceY += 40;
         
@@ -282,19 +332,27 @@ export class SequenceLayoutManager {
         const collectParticipants = (statements: IRStatement[]) => {
             statements.forEach(s => {
                 if (!s) return;
-                if (s.type === "edge") { participantsInGroup.add((s as IREdge).from); participantsInGroup.add((s as IREdge).to); }
+                if (s.type === "edge") { 
+                    const edge = s as IREdge;
+                    if (edge.from !== '[' && edge.from !== ']') participantsInGroup.add(edge.from); 
+                    if (edge.to !== '[' && edge.to !== ']') participantsInGroup.add(edge.to); 
+                }
                 else if (s.type === "node") participantsInGroup.add((s as IRNode).name);
-                else if (s.type === "note") (s as IRNote).targets?.forEach(t => participantsInGroup.add(t));
+                else if (s.type === "note") (s as IRNote).targets?.forEach(t => { if (t !== '[' && t !== ']') participantsInGroup.add(t); });
                 else if (s.type === "group") (s as IRGroup).sections.forEach(sec => collectParticipants(sec.statements));
             });
         };
         group.sections.forEach(section => collectParticipants(section.statements));
         group.sections.forEach((section, index) => {
             section.statements.forEach(s => this.processStatement(s));
-            if (!isBox) { if (index < group.sections.length - 1) { this.currentSequenceY += 10; dividerYs.push(this.currentSequenceY); this.currentSequenceY += 10; } else this.currentSequenceY += 20; }
+            if (!isBox) { 
+                if (index < group.sections.length - 1) { 
+                    this.currentSequenceY += 30; // More space for else labels
+                    dividerYs.push(this.currentSequenceY - 15); 
+                } else this.currentSequenceY += 20; 
+            }
         });
         let endY = this.currentSequenceY;
-        if (isBox) endY = Math.max(endY, 1000);
         let minX = 50; let maxX = 550;
         if (participantsInGroup.size > 0) {
             const nodes = Array.from(participantsInGroup).map(id => this.map.nodes[id]).filter(Boolean);
