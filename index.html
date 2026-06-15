@@ -68,9 +68,67 @@
         color: #cccccc;
         border-bottom: 1px solid #333;
       }
+
+      /* ── Loading Overlay — visible before JS executes ─────────── */
+      #loading-overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #1e1e1e;
+        z-index: 9999;
+        gap: 20px;
+        transition: opacity 0.35s ease, visibility 0.35s ease;
+      }
+      #loading-overlay.hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      #loading-overlay .logo {
+        font-size: 28px;
+        font-weight: 700;
+        color: #cccccc;
+        letter-spacing: 3px;
+        font-family: 'Consolas', 'Courier New', monospace;
+        animation: logo-pulse 1.6s ease-in-out infinite;
+      }
+      #loading-overlay .logo span {
+        color: #569cd6;
+      }
+      #loading-overlay .spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid #333;
+        border-top-color: #569cd6;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      #loading-overlay .status {
+        font-size: 12px;
+        color: #555;
+        font-family: 'Consolas', monospace;
+        letter-spacing: 0.5px;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      @keyframes logo-pulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.45; }
+      }
     </style>
   </head>
   <body>
+    <!-- Loading overlay — rendered immediately by the browser, dismissed by JS after init -->
+    <div id="loading-overlay" aria-live="polite" aria-label="Loading Posit diagram engine">
+      <div class="logo">POS<span>IT</span></div>
+      <div class="spinner"></div>
+      <div class="status">Loading diagram engine…</div>
+    </div>
+
     <div id="app">
       <div id="editor-panel">
         <div class="header">

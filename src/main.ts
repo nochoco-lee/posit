@@ -56,6 +56,14 @@ function refreshDiagram() {
 // Initial draw
 refreshDiagram();
 
+// Dismiss the loading overlay now that the diagram engine is ready
+const loadingOverlay = document.getElementById('loading-overlay');
+if (loadingOverlay) {
+    loadingOverlay.classList.add('hidden');
+    // Remove from DOM after transition completes to free memory
+    loadingOverlay.addEventListener('transitionend', () => loadingOverlay.remove(), { once: true });
+}
+
 // Live update on type with debounce
 let debounceTimer: any = null;
 editor.addEventListener('input', () => {

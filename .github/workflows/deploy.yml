@@ -41,6 +41,8 @@ jobs:
         # Copy gallery files and renders into the Vite dist directory
         cp gallery*.html ./dist/
         cp -r local_renders ./dist/
+        # Prevent GitHub Pages Jekyll processing (avoids server-side delay)
+        touch ./dist/.nojekyll
         
     - name: Upload Pages artifact
       uses: actions/upload-pages-artifact@v3
