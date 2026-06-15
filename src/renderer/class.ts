@@ -145,6 +145,43 @@ export class ClassRenderer {
         this.layer.add(group);
     }
 
+    private getIntersection(p1: { x: number, y: number }, p2: { x: number, y: number }, rect: { x: number, y: number, width: number, height: number }): { x: number, y: number } {
+        const { x, y, width, height } = rect;
+        const left = x;
+        const right = x + width;
+        const top = y;
+        const bottom = y + height;
+
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+
+        if (dx === 0 && dy === 0) return p2;
+
+        let tMin = -Infinity;
+        let tMax = Infinity;
+
+        if (dx !== 0) {
+            const t1 = (left - p1.x) / dx;
+            const t2 = (right - p1.x) / dx;
+            tMin = Math.max(tMin, Math.min(t1, t2));
+            tMax = Math.min(tMax, Math.max(t1, t2));
+        } else if (p1.x < left || p1.x > right) return p2;
+
+        if (dy !== 0) {
+            const t1 = (top - p1.y) / dy;
+            const t2 = (bottom - p1.y) / dy;
+            tMin = Math.max(tMin, Math.min(t1, t2));
+            tMax = Math.min(tMax, Math.max(t1, t2));
+        } else if (p1.y < top || p1.y > bottom) return p2;
+
+        if (tMin <= tMax && tMax >= 0 && tMax <= 1) {
+            const t = tMin > 0 ? tMin : 0;
+            return { x: p1.x + t * dx, y: p1.y + t * dy };
+        }
+
+        return p2;
+    }
+
     private drawConnection(conn: LayoutConnection) {
         if (!this.map) return;
         const originNode = this.map.nodes[conn.from];
@@ -157,6 +194,12 @@ export class ClassRenderer {
         const targetCenterX = targetNode.position.x + (targetNode.size.width / 2);
         const targetCenterY = targetNode.position.y + (targetNode.size.height / 2);
 
+        const originRect = { x: originNode.position.x, y: originNode.position.y, width: originNode.size.width, height: originNode.size.height };
+        const targetRect = { x: targetNode.position.x, y: targetNode.position.y, width: targetNode.size.width, height: targetNode.size.height };
+
+        const startPt = this.getIntersection({ x: targetCenterX, y: targetCenterY }, { x: originCenterX, y: originCenterY }, originRect);
+        const endPt = this.getIntersection({ x: originCenterX, y: originCenterY }, { x: targetCenterX, y: targetCenterY }, targetRect);
+
         const isDashed = conn.type.includes('..');
         
         let arrowType = 'default';
@@ -166,7 +209,7 @@ export class ClassRenderer {
 
         // MVP just standard arrow shapes for class diagrams, can be elaborated later
         const arrow = new Konva.Arrow({
-            points: [originCenterX, originCenterY, targetCenterX, targetCenterY],
+            points: [startPt.x, startPt.y, endPt.x, endPt.y],
             pointerLength: arrowType !== 'default' ? 15 : 10,
             pointerWidth: arrowType !== 'default' ? 15 : 10,
             fill: arrowType === 'extend' ? 'white' : (arrowType === 'compose' ? 'black' : (arrowType === 'aggregate' ? 'white' : '#A80036')),
@@ -179,8 +222,8 @@ export class ClassRenderer {
 
         let labelTextObj: Konva.Text | undefined;
         if (conn.label) {
-            const midX = (originCenterX + targetCenterX) / 2;
-            const midY = (originCenterY + targetCenterY) / 2;
+            const midX = (startPt.x + endPt.x) / 2;
+            const midY = (startPt.y + endPt.y) / 2;
 
             labelTextObj = new Konva.Text({
                 x: midX + 5,
@@ -194,8 +237,8 @@ export class ClassRenderer {
 
         // Draw Cardinality
         if (conn.fromLabel) {
-            const cardX = originCenterX + (targetCenterX - originCenterX) * 0.1;
-            const cardY = originCenterY + (targetCenterY - originCenterY) * 0.1;
+            const cardX = startPt.x + (endPt.x - startPt.x) * 0.1;
+            const cardY = startPt.y + (endPt.y - startPt.y) * 0.1;
             const fromCard = new Konva.Text({
                 x: cardX + 5,
                 y: cardY - 15,
@@ -207,8 +250,8 @@ export class ClassRenderer {
         }
 
         if (conn.toLabel) {
-            const cardX = originCenterX + (targetCenterX - originCenterX) * 0.9;
-            const cardY = originCenterY + (targetCenterY - originCenterY) * 0.9;
+            const cardX = startPt.x + (endPt.x - startPt.x) * 0.9;
+            const cardY = startPt.y + (endPt.y - startPt.y) * 0.9;
             const toCard = new Konva.Text({
                 x: cardX + 5,
                 y: cardY - 15,
@@ -234,39 +277,31 @@ export class ClassRenderer {
 
         if (!draggedGroup || !draggedNodeBase) return;
 
-        const draggedCenterX = draggedGroup.x() + (draggedNodeBase.size.width / 2);
-        const draggedCenterY = draggedGroup.y() + (draggedNodeBase.size.height / 2);
-
         this.connectionArrows.forEach(conn => {
-            if (conn.originId === nodeId) {
-                const targetBase = this.map!.nodes[conn.targetId];
-                const targetGroup = this.nodeGroups[conn.targetId];
-                if (!targetGroup || !targetBase) return;
-                const targetCenterX = targetGroup.x() + (targetBase.size.width / 2);
-                const targetCenterY = targetGroup.y() + (targetBase.size.height / 2);
+            const originBase = this.map!.nodes[conn.originId];
+            const originGroup = this.nodeGroups[conn.originId];
+            const targetBase = this.map!.nodes[conn.targetId];
+            const targetGroup = this.nodeGroups[conn.targetId];
 
-                (conn.konvaObj as Konva.Arrow).points([draggedCenterX, draggedCenterY, targetCenterX, targetCenterY]);
+            if (!originGroup || !originBase || !targetGroup || !targetBase) return;
 
-                if (conn.labelObj) {
-                    const midX = (draggedCenterX + targetCenterX) / 2;
-                    const midY = (draggedCenterY + targetCenterY) / 2;
-                    conn.labelObj.position({ x: midX + 5, y: midY - 15 });
-                }
-            } else if (conn.targetId === nodeId) {
-                const originBase = this.map!.nodes[conn.originId];
-                const originGroup = this.nodeGroups[conn.originId];
+            const originCenterX = originGroup.x() + (originBase.size.width / 2);
+            const originCenterY = originGroup.y() + (originBase.size.height / 2);
+            const targetCenterX = targetGroup.x() + (targetBase.size.width / 2);
+            const targetCenterY = targetGroup.y() + (targetBase.size.height / 2);
 
-                if (!originGroup || !originBase) return;
-                const originCenterX = originGroup.x() + (originBase.size.width / 2);
-                const originCenterY = originGroup.y() + (originBase.size.height / 2);
+            const originRect = { x: originGroup.x(), y: originGroup.y(), width: originBase.size.width, height: originBase.size.height };
+            const targetRect = { x: targetGroup.x(), y: targetGroup.y(), width: targetBase.size.width, height: targetBase.size.height };
 
-                (conn.konvaObj as Konva.Arrow).points([originCenterX, originCenterY, draggedCenterX, draggedCenterY]);
+            const startPt = this.getIntersection({ x: targetCenterX, y: targetCenterY }, { x: originCenterX, y: originCenterY }, originRect);
+            const endPt = this.getIntersection({ x: originCenterX, y: originCenterY }, { x: targetCenterX, y: targetCenterY }, targetRect);
 
-                if (conn.labelObj) {
-                    const midX = (originCenterX + draggedCenterX) / 2;
-                    const midY = (originCenterY + draggedCenterY) / 2;
-                    conn.labelObj.position({ x: midX + 5, y: midY - 15 });
-                }
+            (conn.konvaObj as Konva.Arrow).points([startPt.x, startPt.y, endPt.x, endPt.y]);
+
+            if (conn.labelObj) {
+                const midX = (startPt.x + endPt.x) / 2;
+                const midY = (startPt.y + endPt.y) / 2;
+                conn.labelObj.position({ x: midX + 5, y: midY - 15 });
             }
         });
     }
