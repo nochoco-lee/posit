@@ -77,6 +77,14 @@ export class Emitter {
             }
         }
 
+        for (const note of layoutMap.notes) {
+            const irNote = statements.find((s: IRStatement) => s.type === 'note' && (s as IRNote).text === note.text);
+            if (irNote && irNote.offset && note.position) {
+                const patch = this.createPatchContext(irNote, note.position);
+                if (patch) patches.push(patch);
+            }
+        }
+
         // Sort patches in reverse order by start index to avoid invalidating offsets!
         patches.sort((a, b) => b.start - a.start);
 

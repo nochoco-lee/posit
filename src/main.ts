@@ -116,6 +116,11 @@ renderer.onMove((id, newX, newY) => {
         const label = id.substring(4);
         const div = currentLayoutMap.dividers?.find((d: any) => d.label === label);
         if (div) div.position = { x: newX, y: newY };
+    } else if (id.startsWith('note-')) {
+        // Find note by prefix of text
+        const prefix = id.substring(5);
+        const note = currentLayoutMap.notes.find((n: any) => n.text.startsWith(prefix));
+        if (note) note.position = { x: newX, y: newY };
     } else if (currentLayoutMap.groups.find((g: any) => g.id === id)) {
         const group = currentLayoutMap.groups.find((g: any) => g.id === id);
         if (group) group.position = { x: newX, y: newY };

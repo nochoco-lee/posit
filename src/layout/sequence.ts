@@ -287,8 +287,12 @@ export class SequenceLayoutManager {
 
     private processNote(note: IRNote) {
         let x = 100; let y = this.currentSequenceY; let width = DEFAULTS.NOTE_WIDTH;
-        if ((note.placement === "right" || note.placement === "left") && this.lastConnectionY !== null) y = this.lastConnectionY - 10;
+        if ((note.placement === "right" || note.placement === "left") && this.lastConnectionY !== null) {
+            y = this.lastConnectionY - 10;
+        }
+
         const targets = (note.targets && note.targets.length > 0) ? note.targets : this.lastConnectionParticipants;
+        
         if (targets.length > 0) {
             if (note.placement === "over") {
                 const targetNodes = targets.map(t => this.map.nodes[t]).filter(Boolean);
@@ -304,9 +308,49 @@ export class SequenceLayoutManager {
                     }
                 }
             } else {
-                const targetId = (note.placement === "right") ? targets[targets.length - 1] : targets[0];
-                const targetNode = this.map.nodes[targetId];
-                if (targetNode) { if (note.placement === "left") x = targetNode.position.x - width - 10; else if (note.placement === "right") x = targetNode.position.x + targetNode.size.width + 10; else x = targetNode.position.x; }
+                // Determine boundaries based on current map state
+                const getRightBoundary = (id: string, yPos: number): number => {
+                    const node = this.map.nodes[id];
+                    if (!node) return 0;
+                    const centerX = node.position.x + node.size.width / 2;
+                    const activations = this.map.activations?.filter(a => a.nodeId === id) || [];
+                    const activeAtY = activations.filter(a => {
+                        const startY = a.startPosition.y;
+                        const endY = startY + a.size.height;
+                        return yPos >= startY && yPos <= endY;
+                    });
+                    if (activeAtY.length === 0) return centerX;
+                    const maxDepth = Math.max(...activeAtY.map(a => a.depth || 0));
+                    return centerX + 5 + (maxDepth * 5); // 5 is half actWidth
+                };
+
+                const getLeftBoundary = (id: string, yPos: number): number => {
+                    const node = this.map.nodes[id];
+                    if (!node) return 0;
+                    const centerX = node.position.x + node.size.width / 2;
+                    const activations = this.map.activations?.filter(a => a.nodeId === id) || [];
+                    const activeAtY = activations.filter(a => {
+                        const startY = a.startPosition.y;
+                        const endY = startY + a.size.height;
+                        return yPos >= startY && yPos <= endY;
+                    });
+                    if (activeAtY.length === 0) return centerX;
+                    return centerX - 5;
+                };
+
+                const padding = 5; // Reduced padding
+                if (note.placement === "right") {
+                    // Rightmost of all targets
+                    const maxX = Math.max(...targets.map(t => getRightBoundary(t, y)));
+                    x = maxX + padding;
+                } else if (note.placement === "left") {
+                    // Leftmost of all targets
+                    const minX = Math.min(...targets.map(t => getLeftBoundary(t, y)));
+                    x = minX - width - padding;
+                } else {
+                    const targetNode = this.map.nodes[targets[0]];
+                    if (targetNode) x = targetNode.position.x;
+                }
             }
         }
         const textSize = measureText(note.text, 12, 'sans-serif');
