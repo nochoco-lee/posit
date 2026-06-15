@@ -3,12 +3,17 @@ import { parseMermaid } from "./mermaid/index";
 import { detectLanguage, Language } from "./detector";
 import { LayoutManager } from "./layout/engine";
 import { LayoutPumlRenderer } from "./renderer/renderer";
+import { LayoutPumlSvgRenderer } from "./renderer/svg_renderer";
 import { Emitter } from "./layout/emitter";
 import { DEFAULTS } from "./layout/types";
 
 const editor = document.getElementById('editor') as HTMLTextAreaElement;
 const errorPanel = document.getElementById('error-panel') as HTMLDivElement;
+const pngButton = document.getElementById('download-png') as HTMLButtonElement;
+const svgButton = document.getElementById('download-svg') as HTMLButtonElement;
+
 const renderer = new LayoutPumlRenderer('canvas-container');
+const svgRenderer = new LayoutPumlSvgRenderer();
 
 let currentAst: any = null;
 let currentLayoutMap: any = null;
@@ -58,6 +63,37 @@ editor.addEventListener('input', () => {
     debounceTimer = setTimeout(() => {
         refreshDiagram();
     }, 200);
+});
+
+// Download PNG
+pngButton.addEventListener('click', () => {
+    if (!renderer.stage) return;
+    
+    // High-quality export
+    const dataURL = renderer.stage.toDataURL({ pixelRatio: 2 });
+    const link = document.createElement('a');
+    link.download = `posit_diagram_${Date.now()}.png`;
+    link.href = dataURL;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
+
+// Download SVG
+svgButton.addEventListener('click', () => {
+    if (!currentLayoutMap) return;
+    
+    const svg = svgRenderer.render(currentLayoutMap);
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.download = `posit_diagram_${Date.now()}.svg`;
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 });
 
 // For Phase 4 (Two-Way sync)
