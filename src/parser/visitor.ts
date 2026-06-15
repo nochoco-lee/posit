@@ -236,6 +236,16 @@ export class SequenceAstVisitor extends BaseVisitor {
         }
         const members: IRMember[] = [];
         if (ctx.classMember) ctx.classMember.forEach((cm: any) => { members.push(this.visit(cm)); });
+        
+        if (ctx.member) {
+            const memberLabelCtx = ctx.member[0].children;
+            let allTokens: IToken[] = [];
+            if (memberLabelCtx.anyToken) allTokens = memberLabelCtx.anyToken.map((at: any) => this.visit(at));
+            
+            // Re-use logic from classMember or call a helper
+            members.push(this.processMemberFromTokens(allTokens));
+        }
+
         const parents: string[] = [];
         if (ctx.parents) ctx.parents.forEach((p: any) => { parents.push(this.visit(p).image); });
         const startToken = ctx.Visibility ? ctx.Visibility[0] : (ctx.Class ? ctx.Class[0] : ctx.Interface ? ctx.Interface[0] : ctx.Enum ? ctx.Enum[0] : ctx.Struct ? ctx.Struct[0] : ctx.Annotation ? ctx.Annotation[0] : ctx.Abstract ? ctx.Abstract[0] : ctx.Circle ? ctx.Circle[0] : ctx.Diamond ? ctx.Diamond[0] : ctx.Exception ? ctx.Exception[0] : ctx.Metaclass ? ctx.Metaclass[0] : ctx.Protocol ? ctx.Protocol[0] : ctx.Record ? ctx.Record[0] : ctx.Stereotype ? ctx.Stereotype[0] : ctx.Dataclass ? ctx.Dataclass[0] : ctx.ObjectKeyword ? ctx.ObjectKeyword[0] : ctx.LParen ? ctx.LParen[0] : ctx.DiamondShort ? ctx.DiamondShort[0] : nameToken);
@@ -246,8 +256,105 @@ export class SequenceAstVisitor extends BaseVisitor {
         };
     }
 
+    private processMemberFromTokens(allTokens: IToken[]): IRMember {
+        let visibility = undefined;
+        let isStatic = false;
+        let isAbstract = false;
+        let isField = false;
+        let isMethod = false;
+
+        // Strip known markers from the start of tokens if they are there
+        let startIndex = 0;
+        while (startIndex < allTokens.length) {
+            const t = allTokens[startIndex];
+            const typeName = t.tokenType ? t.tokenType.name : (t as any).name;
+            if (typeName === "Visibility") {
+                visibility = t.image;
+                startIndex++;
+            } else if (typeName === "StaticModifier") {
+                isStatic = true;
+                startIndex++;
+            } else if (typeName === "AbstractModifier") {
+                isAbstract = true;
+                startIndex++;
+            } else if (typeName === "FieldMarker") {
+                isField = true;
+                startIndex++;
+            } else if (typeName === "MethodMarker") {
+                isMethod = true;
+                startIndex++;
+            } else if (typeName === "Newline") {
+                startIndex++;
+            } else {
+                break;
+            }
+        }
+
+        const tokens = allTokens.slice(startIndex);
+        let typeSeparatorIndex = -1;
+        let parenDepth = 0;
+        for (let i = 0; i < tokens.length; i++) {
+            const t = tokens[i];
+            const typeName = t.tokenType ? t.tokenType.name : (t as any).name;
+            if (typeName === "LParen") parenDepth++;
+            else if (typeName === "RParen") parenDepth--;
+            else if (typeName === "Colon" && parenDepth === 0) typeSeparatorIndex = i;
+        }
+
+        let name = "";
+        let type = undefined;
+        let parameters: string[] | undefined = undefined;
+
+        if (typeSeparatorIndex !== -1) {
+            const nameTokens = tokens.slice(0, typeSeparatorIndex);
+            const typeTokens = tokens.slice(typeSeparatorIndex + 1);
+            name = this.processUnquotedLabel(nameTokens);
+            type = this.processUnquotedLabel(typeTokens);
+        } else {
+            name = this.processUnquotedLabel(tokens);
+        }
+
+        name = name.trim();
+
+        // Fallback: Strip markers that might have leaked into name string
+        if (!isStatic && name.includes("{static}")) { isStatic = true; name = name.replace("{static}", "").trim(); }
+        if (!isAbstract && name.includes("{abstract}")) { isAbstract = true; name = name.replace("{abstract}", "").trim(); }
+        if (!isMethod && name.includes("()")) { isMethod = true; } // don't strip () yet
+
+        if (!visibility) {
+            if (/^[+#\-~] /.test(name)) {
+                visibility = name[0];
+                name = name.substring(2).trim();
+            } else if (/^[+#\-~]/.test(name) && !name.startsWith("--") && !name.startsWith("++")) {
+                visibility = name[0];
+                name = name.substring(1).trim();
+            }
+        }
+
+        if (name.includes("(") && name.includes(")")) {
+            const openParen = name.indexOf("(");
+            const closeParen = name.lastIndexOf(")");
+            const paramsStr = name.substring(openParen + 1, closeParen).trim();
+            name = name.substring(0, openParen).trim();
+            parameters = paramsStr ? paramsStr.split(",").map(s => s.trim()) : [];
+        }
+
+        const hasParens = parameters !== undefined;
+        const isMethodGuessed = isMethod || (hasParens && !isField);
+        return { 
+            visibility, 
+            isStatic, 
+            isAbstract, 
+            isField: isField || (!isMethodGuessed && !hasParens), 
+            isMethod: isMethodGuessed, 
+            name, 
+            type, 
+            parameters 
+        };
+    }
+
     classMember(ctx: any): IRMember {
-        let visibility = ctx.Visibility ? ctx.Visibility[0].image : undefined;
+        const visibility = ctx.Visibility ? ctx.Visibility[0].image : undefined;
         const isStatic = !!ctx.StaticModifier;
         const isAbstract = !!ctx.AbstractModifier;
         const isField = !!ctx.FieldMarker;
@@ -257,49 +364,23 @@ export class SequenceAstVisitor extends BaseVisitor {
             const memberLabelCtx = ctx.tokens[0].children;
             if (memberLabelCtx.anyToken) allTokens = memberLabelCtx.anyToken.map((at: any) => this.visit(at));
         }
-        let typeSeparatorIndex = -1;
-        let parenDepth = 0;
-        for (let i = 0; i < allTokens.length; i++) {
-            const t = allTokens[i];
-            const typeName = t.tokenType ? t.tokenType.name : (t as any).name;
-            if (typeName === "LParen") parenDepth++;
-            else if (typeName === "RParen") parenDepth--;
-            else if (typeName === "Colon" && parenDepth === 0) typeSeparatorIndex = i;
+        
+        const member = this.processMemberFromTokens(allTokens);
+        // Explicitly matched markers in classMember rule take precedence
+        if (visibility) member.visibility = visibility;
+        if (isStatic) member.isStatic = isStatic;
+        if (isAbstract) member.isAbstract = isAbstract;
+        if (isField) member.isField = isField;
+        if (isMethod) member.isMethod = isMethod;
+        
+        // Re-apply guessing logic if no markers were present at all
+        if (!member.visibility && !member.isStatic && !member.isAbstract && !member.isField && !member.isMethod) {
+             const hasParens = member.parameters !== undefined;
+             member.isMethod = hasParens;
+             member.isField = !hasParens;
         }
-        let name = "";
-        let type = undefined;
-        let parameters: string[] | undefined = undefined;
-        if (typeSeparatorIndex !== -1) {
-            const nameTokens = allTokens.slice(0, typeSeparatorIndex);
-            const typeTokens = allTokens.slice(typeSeparatorIndex + 1);
-            name = this.processUnquotedLabel(nameTokens);
-            type = this.processUnquotedLabel(typeTokens);
-        } else {
-            name = this.processUnquotedLabel(allTokens);
-        }
-        if (!visibility && allTokens.length > 0) {
-            const firstToken = allTokens[0];
-            const firstTypeName = firstToken.tokenType ? firstToken.tokenType.name : (firstToken as any).name;
-            if (firstTypeName === "Color") {
-                const colorImage = firstToken.image;
-                if (colorImage.startsWith("#")) {
-                    visibility = "#";
-                    if (name.startsWith("#")) {
-                        name = name.substring(1).trim();
-                    }
-                }
-            }
-        }
-        if (name.includes("(") && name.includes(")")) {
-            const openParen = name.indexOf("(");
-            const closeParen = name.lastIndexOf(")");
-            const paramsStr = name.substring(openParen + 1, closeParen).trim();
-            name = name.substring(0, openParen).trim();
-            parameters = paramsStr ? paramsStr.split(",").map(s => s.trim()) : [];
-        }
-        const hasParens = parameters !== undefined;
-        const isMethodGuessed = isMethod || (hasParens && !isField);
-        return { visibility, isStatic, isAbstract, isField: isField || (!isMethodGuessed && !hasParens), isMethod: isMethodGuessed, name, type, parameters };
+
+        return member;
     }
 
     memberLabel(ctx: any): null { return null; }

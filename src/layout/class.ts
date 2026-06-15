@@ -91,26 +91,29 @@ export class ClassLayoutManager {
 
     private processNode(node: IRNode) {
         const id = node.name;
-        if (this.map.nodes[id] && node.members && node.members.length > 0) {
-            // Update existing implicit node if we now have more info
+        if (this.map.nodes[id]) {
+            // Update existing node (explicit or implicit)
             const existing = this.map.nodes[id];
-            existing.members = node.members;
-            const fields = node.members.filter(m => m.isField);
-            const methods = node.members.filter(m => m.isMethod);
-            let height = 30 + (node.members.length * 20) + 10;
-            if (fields.length > 0 && methods.length > 0) height += 5;
-            existing.size.height = height;
+            if (node.members && node.members.length > 0) {
+                existing.members = [...(existing.members || []), ...node.members];
+            }
+            if (node.shape && node.shape !== 'class') existing.type = node.shape;
+            
+            // Re-calculate height based on all members
+            const allMembers = existing.members || [];
+            const fields = allMembers.filter(m => m.isField);
+            const methods = allMembers.filter(m => m.isMethod);
+            const fieldsHeight = Math.max(20, fields.length * 20);
+            const methodsHeight = Math.max(20, methods.length * 20);
+            existing.size.height = 30 + fieldsHeight + 5 + methodsHeight + 5;
             return;
         }
-        if (this.map.nodes[id]) return;
         
-        let height = DEFAULTS.CLASS_HEIGHT;
-        if (node.members && node.members.length > 0) {
-            const fields = node.members.filter(m => m.isField);
-            const methods = node.members.filter(m => m.isMethod);
-            height = 30 + (node.members.length * 20) + 10;
-            if (fields.length > 0 && methods.length > 0) height += 5;
-        }
+        const fields = (node.members || []).filter(m => m.isField);
+        const methods = (node.members || []).filter(m => m.isMethod);
+        const fieldsHeight = Math.max(20, fields.length * 20);
+        const methodsHeight = Math.max(20, methods.length * 20);
+        const height = 30 + fieldsHeight + 5 + methodsHeight + 5;
 
         const size = {
             width: DEFAULTS.CLASS_WIDTH,
@@ -161,19 +164,43 @@ export class ClassLayoutManager {
         let y = this.currentClassY;
 
         if (note.targets && note.targets.length > 0) {
-            const firstTarget = this.map.nodes[note.targets[0]];
+            let targetId = note.targets[0];
+            let memberName = undefined;
+            if (targetId.includes("::")) {
+                const parts = targetId.split("::");
+                targetId = parts[0];
+                memberName = parts[1];
+            }
+
+            const firstTarget = this.map.nodes[targetId];
             if (firstTarget) {
+                // If it's a member-specific note, we can try to offset Y
+                let yOffset = 0;
+                if (memberName && firstTarget.members) {
+                    const memberIndex = firstTarget.members.findIndex(m => m.name === memberName);
+                    if (memberIndex !== -1) {
+                        yOffset = 35 + (memberIndex * 20);
+                    }
+                }
+
                 if (note.placement === "left" || note.placement === "left of") {
                     x = firstTarget.position.x - DEFAULTS.NOTE_WIDTH - 20;
-                    y = firstTarget.position.y;
+                    y = firstTarget.position.y + yOffset;
                 } else if (note.placement === "right" || note.placement === "right of") {
                     x = firstTarget.position.x + firstTarget.size.width + 20;
-                    y = firstTarget.position.y;
+                    y = firstTarget.position.y + yOffset;
                 } else {
                     x = firstTarget.position.x;
                     y = firstTarget.position.y - DEFAULTS.NOTE_HEIGHT - 20;
                 }
+
+                // Avoid overlap with existing notes at same position
+                while (this.map.notes.some(n => Math.abs(n.position.x - x) < 5 && Math.abs(n.position.y - y) < 5)) {
+                    y += (DEFAULTS.NOTE_HEIGHT + 10);
+                }
             }
+        } else {
+            this.currentClassY += DEFAULTS.NOTE_HEIGHT + 20;
         }
 
         const layoutNote: LayoutNote = {
@@ -185,7 +212,6 @@ export class ClassLayoutManager {
             size: { width: DEFAULTS.NOTE_WIDTH, height: DEFAULTS.NOTE_HEIGHT }
         };
 
-        this.currentClassY += layoutNote.size.height + 20;
         this.map.notes.push(layoutNote);
     }
 

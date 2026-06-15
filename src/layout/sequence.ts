@@ -196,7 +196,7 @@ export class SequenceLayoutManager {
         const size = { width, height };
         let position = { x: 0, y: 0 };
         if (node.layout) position = { x: node.layout.x, y: node.layout.y };
-        else { position = { x: this.currentSeqX, y: DEFAULTS.SEQUENCE_START_Y }; this.currentSeqX += width + 100; }
+        else { position = { x: this.currentSeqX, y: DEFAULTS.SEQUENCE_START_Y }; this.currentSeqX += DEFAULTS.ACTOR_PADDING_X; }
         const layoutNode: LayoutNode = { id, origName: displayName, type: node.shape, position, size, lifelineX: position.x + size.width / 2, lifelineY: position.y + size.height };
         this.map.nodes[id] = layoutNode;
     }

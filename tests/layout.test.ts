@@ -60,8 +60,8 @@ class User {
         const layout = new LayoutManager().process(ast);
         const userNode = layout.nodes["User"];
         
-        // height = 30 (header) + (2 * 20) (members) + 10 (padding) = 80
-        expect(userNode.size.height).toBe(80);
+        // height = 30 (header) + 40 (fields) + 5 (sep) + 20 (methods) + 5 (padding) = 100
+        expect(userNode.size.height).toBe(100);
         expect(userNode.members?.length).toBe(2);
     });
 

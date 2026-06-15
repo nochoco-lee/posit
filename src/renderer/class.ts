@@ -116,31 +116,31 @@ export class ClassRenderer {
         }
 
         // Draw members
-        if (nodeDef.members) {
-            const fields = nodeDef.members.filter(m => m.isField);
-            const methods = nodeDef.members.filter(m => m.isMethod);
+        const allMembers = nodeDef.members || [];
+        const fields = allMembers.filter((m: any) => m.isField);
+        const methods = allMembers.filter((m: any) => m.isMethod);
 
-            let currentY = 35;
-            fields.forEach((member: any) => {
-                group.add(this.createMemberLabel(member, currentY, nodeDef.size.width));
-                currentY += 20;
-            });
+        let currentY = 35;
+        fields.forEach((member: any) => {
+            group.add(this.createMemberLabel(member, currentY, nodeDef.size.width));
+            currentY += 20;
+        });
 
-            if (fields.length > 0 && methods.length > 0) {
-                const sep = new Konva.Line({
-                    points: [0, currentY, nodeDef.size.width, currentY],
-                    stroke: stroke,
-                    strokeWidth: 1
-                });
-                group.add(sep);
-                currentY += 5;
-            }
+        const fieldsSectionHeight = Math.max(20, fields.length * 20);
+        const separatorY = 30 + fieldsSectionHeight;
 
-            methods.forEach((member: any) => {
-                group.add(this.createMemberLabel(member, currentY, nodeDef.size.width));
-                currentY += 20;
-            });
-        }
+        const sep = new Konva.Line({
+            points: [0, separatorY, nodeDef.size.width, separatorY],
+            stroke: stroke,
+            strokeWidth: 1
+        });
+        group.add(sep);
+
+        currentY = separatorY + 5;
+        methods.forEach((member: any) => {
+            group.add(this.createMemberLabel(member, currentY, nodeDef.size.width));
+            currentY += 20;
+        });
 
         this.nodeGroups[nodeDef.id] = group;
         this.layer.add(group);
@@ -148,7 +148,14 @@ export class ClassRenderer {
 
     private createMemberLabel(member: any, y: number, width: number): Konva.Text {
         let memberText = "";
-        if (member.visibility) memberText += member.visibility + " ";
+        if (member.visibility === "+" || member.visibility === "-" || member.visibility === "#" || member.visibility === "~") {
+            memberText += member.visibility + " ";
+        } else if (member.visibility === "public") memberText += "+ ";
+        else if (member.visibility === "private") memberText += "- ";
+        else if (member.visibility === "protected") memberText += "# ";
+        else if (member.visibility === "package") memberText += "~ ";
+        else if (member.visibility) memberText += member.visibility + " ";
+
         if (member.isStatic) memberText += "{static} ";
         if (member.isAbstract) memberText += "{abstract} ";
         memberText += member.name;
@@ -247,9 +254,21 @@ export class ClassRenderer {
             const midX = (startPt.x + endPt.x) / 2;
             const midY = (startPt.y + endPt.y) / 2;
 
+            const dx = endPt.x - startPt.x;
+            const dy = endPt.y - startPt.y;
+
+            let offsetX = 5;
+            let offsetY = -15;
+
+            if (Math.abs(dy) > Math.abs(dx)) {
+                // More vertical
+                offsetX = 10;
+                offsetY = -10;
+            }
+
             labelTextObj = new Konva.Text({
-                x: midX + 5,
-                y: midY - 15,
+                x: midX + offsetX,
+                y: midY + offsetY,
                 text: conn.label,
                 fontSize: 12,
                 fill: '#000',
@@ -261,9 +280,16 @@ export class ClassRenderer {
         if (conn.fromLabel) {
             const cardX = startPt.x + (endPt.x - startPt.x) * 0.1;
             const cardY = startPt.y + (endPt.y - startPt.y) * 0.1;
+            
+            const dx = endPt.x - startPt.x;
+            const dy = endPt.y - startPt.y;
+            let offsetX = 5;
+            let offsetY = -15;
+            if (Math.abs(dy) > Math.abs(dx)) { offsetX = 10; offsetY = -10; }
+
             const fromCard = new Konva.Text({
-                x: cardX + 5,
-                y: cardY - 15,
+                x: cardX + offsetX,
+                y: cardY + offsetY,
                 text: conn.fromLabel,
                 fontSize: 10,
                 fontStyle: 'italic'
@@ -274,9 +300,16 @@ export class ClassRenderer {
         if (conn.toLabel) {
             const cardX = startPt.x + (endPt.x - startPt.x) * 0.9;
             const cardY = startPt.y + (endPt.y - startPt.y) * 0.9;
+
+            const dx = endPt.x - startPt.x;
+            const dy = endPt.y - startPt.y;
+            let offsetX = 5;
+            let offsetY = -15;
+            if (Math.abs(dy) > Math.abs(dx)) { offsetX = 10; offsetY = -10; }
+
             const toCard = new Konva.Text({
-                x: cardX + 5,
-                y: cardY - 15,
+                x: cardX + offsetX,
+                y: cardY + offsetY,
                 text: conn.toLabel,
                 fontSize: 10,
                 fontStyle: 'italic'
