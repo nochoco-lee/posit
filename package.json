@@ -1,6 +1,7 @@
 {
   "name": "posit",
   "version": "1.0.0",
+  "type": "module",
   "description": "An experimental, interactive diagramming engine that aims to support a PlantUML-compatible representation.",
   "main": "index.js",
   "scripts": {
