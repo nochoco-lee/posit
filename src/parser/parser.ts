@@ -1,10 +1,27 @@
-import { CstParser, EOF } from "chevrotain";
+import { CstParser, EOF, defaultParserErrorProvider } from "chevrotain";
 import {
     allTokens, IdentifierLike, StartUml, EndUml, Participant, Actor, Order, Boundary, Control, Entity, Database, Collections, Queue, Artifact, Storage, Rectangle, Card, FileKeyword, Stack, Hexagon, Person, Process, Agent, LabelKeyword, Usecase, Component, Action, Port, PortIn, PortOut, Class, Interface, Enum, Struct, Annotation, Abstract, Circle, Diamond, Exception, Metaclass, Protocol, Record, Stereotype, Dataclass, ObjectKeyword, Package, Namespace, Folder, Cloud, Frame, Rect, NodeKeyword, DiamondShort, DoubleColon, LAngle, RAngle, Alt, Else, Opt, Loop, Par, Group, Partition, Box, Endhnote, Endrnote, EndNote, Endref, End, Hnote, Rnote, Note, Ref, Autonumber, Newpage, Ignore, Skinparam, Header, Footer, Title, Hide, Show, Remove, Restore, Empty, Members, Fields, Methods, Left, Right, Top, Bottom, Over, Across, Of, As, Scale, Page, To, Direction, Set, Separator, None, Width, Height, Activate, Deactivate, Destroy, Autoactivate, Return, Create, Mainframe, On, Off, Allowmixing, MapKeyword, State, Json, Together, Extends, Implements, Divider, Comma, LBrace, RBrace, LParen, RParen, LBracket, RBracket, LGuillemet, RGuillemet, Colon, Dot, Arrow, Delay, Quote, Backslash, Slash, PosComment, Exclamation, QuestionMark, Ampersand, VerticalBar, Other, StringLiteral, Visibility, StaticModifier, AbstractModifier, FieldMarker, MethodMarker, Generic, Color, Star, Identifier, NumberToken, Newline
 } from "./lexer";
 
+const fastErrorProvider = {
+    ...defaultParserErrorProvider,
+    buildNoViableAltMessage: (options) => {
+        return `Expecting one of the possible Token sequences, but found: '${options.actual[0].image}'`;
+    }
+};
+
 class SequenceParser extends CstParser {
-    constructor() { super(allTokens); this.performSelfAnalysis(); }
+    constructor() {
+        // skipValidations: true disables the expensive grammar self-analysis
+        // (validateAmbiguousAlternationAlternatives) that only serves development
+        // purposes and causes multi-second main-thread blocking + 639KB console output.
+        // The grammar has already been validated during development.
+        super(allTokens, { 
+            skipValidations: true,
+            errorMessageProvider: fastErrorProvider
+        });
+        this.performSelfAnalysis();
+    }
 
     public anyToken = this.RULE("anyToken", () => {
         this.OR([
