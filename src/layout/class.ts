@@ -21,6 +21,7 @@ export class ClassLayoutManager {
 
     private nodesByRow = new Map<number, string[]>();
     private rowInfo = new Map<number, {startX: number, baseY: number}>();
+    private lastNodeId: string | null = null;
 
     public process(ir: IRDiagram): LayoutMap {
         this.edges = [];
@@ -28,6 +29,7 @@ export class ClassLayoutManager {
         this.rowOccupancy.clear();
         this.nodesByRow.clear();
         this.rowInfo.clear();
+        this.lastNodeId = null;
         this.currentClassY = DEFAULTS.CLASS_START_Y;
 
         // Pass 0: Collect all edges for layout hints
@@ -216,7 +218,9 @@ export class ClassLayoutManager {
     private processStatementsPass2(statements: IRStatement[]) {
         statements.forEach((statement: IRStatement) => {
             if (!statement) return;
-            if (statement.type === "edge") {
+            if (statement.type === "node") {
+                this.lastNodeId = (statement as IRNode).name;
+            } else if (statement.type === "edge") {
                 this.processConnection(statement as IREdge);
             } else if (statement.type === "note") {
                 this.processNote(statement as IRNote);
@@ -359,8 +363,13 @@ export class ClassLayoutManager {
         let x = 100;
         let y = this.currentClassY;
 
-        if (note.targets && note.targets.length > 0) {
-            let targetId = note.targets[0];
+        let targets = note.targets || [];
+        if (targets.length === 0 && this.lastNodeId) {
+            targets = [this.lastNodeId];
+        }
+
+        if (targets.length > 0) {
+            let targetId = targets[0];
             let memberName = undefined;
             if (targetId.includes("::")) {
                 const parts = targetId.split("::");
@@ -385,6 +394,12 @@ export class ClassLayoutManager {
                 } else if (note.placement === "right" || note.placement === "right of") {
                     x = firstTarget.position.x + firstTarget.size.width + 20;
                     y = firstTarget.position.y + yOffset;
+                } else if (note.placement === "top") {
+                    x = firstTarget.position.x;
+                    y = firstTarget.position.y - DEFAULTS.NOTE_HEIGHT - 20;
+                } else if (note.placement === "bottom") {
+                    x = firstTarget.position.x;
+                    y = firstTarget.position.y + firstTarget.size.height + 20;
                 } else {
                     x = firstTarget.position.x;
                     y = firstTarget.position.y - DEFAULTS.NOTE_HEIGHT - 20;
@@ -402,7 +417,7 @@ export class ClassLayoutManager {
         const layoutNote: LayoutNote = {
             type: "note",
             placement: note.placement,
-            targets: note.targets || [],
+            targets: targets,
             text: note.text,
             position: { x, y },
             size: { width: DEFAULTS.NOTE_WIDTH, height: DEFAULTS.NOTE_HEIGHT }
