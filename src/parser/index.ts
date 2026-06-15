@@ -3,9 +3,47 @@ import { parser } from "./parser";
 import { visitor } from "./visitor";
 import { IRDiagram, IRStatement, IRNode, IRContainer } from "../ir/types";
 
+function unescapeHtml(text: string): string {
+    return text
+        .replace(/&quot;/g, '"')
+        .replace(/&#34;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&');
+}
+
+function formatParserError(error: any): string {
+    let msg = error.message;
+    const token = error.token;
+    const line = token ? token.startLine : (error.previousToken ? error.previousToken.startLine : undefined);
+    const lineSuffix = line !== undefined ? ` at line ${line}` : "";
+
+    // Simplify "Expecting one of these possible Token sequences"
+    if (msg.includes("Expecting: one of these possible Token sequences")) {
+        let foundPart = "";
+        if (token && token.image) {
+            foundPart = ` (found '${token.image}')`;
+        }
+        return `Unexpected input or incomplete statement${lineSuffix}${foundPart}.`;
+    }
+
+    // Simplify "Expecting token of type --> X <-- but found --> Y <--"
+    const match = msg.match(/Expecting token of type --> (.*?) <-- but found --> (.*?) <--/);
+    if (match) {
+        return `Expected ${match[1]} but found '${match[2]}'${lineSuffix}.`;
+    }
+
+    return msg + lineSuffix;
+}
+
 export function parsePlantUml(text: string): IRDiagram {
+    // 0. Pre-process (unescape HTML from potential scrapes)
+    const processedText = unescapeHtml(text);
+
     // 1. Lexing
-    const lexingResult = SequenceLexer.tokenize(text);
+    const lexingResult = SequenceLexer.tokenize(processedText);
 
     if (lexingResult.errors.length > 0) {
         throw new Error(`Lexing errors:\n${lexingResult.errors.map(e => e.message).join("\n")}`);
@@ -16,7 +54,8 @@ export function parsePlantUml(text: string): IRDiagram {
     const cst = parser.diagram();
 
     if (parser.errors.length > 0) {
-        throw new Error(`Parsing errors:\n${parser.errors.map(e => e.message).join("\n")}`);
+        const simplifiedErrors = parser.errors.map(formatParserError);
+        throw new Error(`Parsing errors:\n${simplifiedErrors.join("\n")}`);
     }
 
     // 3. Visiting to create AST

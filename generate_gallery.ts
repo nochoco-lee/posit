@@ -67,7 +67,7 @@ testDirs.forEach(dirInfo => {
         const localOurPath = path.join(ourRenderDir, ourSvgName);
 
         // 1. Official Render
-        if (hasLocalPlantUml) {
+        if (hasLocalPlantUml && !fs.existsSync(localOfficialPath)) {
             try {
                 execSync(`${plantumlCmd} "${filePath}" -o "${path.resolve(localRenderDir)}"`, { stdio: 'ignore' });
                 const defaultPngPath = path.join(localRenderDir, file.replace(".puml", ".png"));
