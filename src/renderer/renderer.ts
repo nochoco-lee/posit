@@ -16,8 +16,8 @@ export class LayoutPumlRenderer {
     constructor(containerId: string) {
         this.stage = new Konva.Stage({
             container: containerId,
-            width: window.innerWidth - 400, // Subtract editor width
-            height: window.innerHeight,
+            width: 3000,
+            height: 3000,
         });
 
         this.layer = new Konva.Layer();
@@ -26,12 +26,6 @@ export class LayoutPumlRenderer {
         this.sequenceRenderer = new SequenceRenderer(this.stage, this.layer);
         this.classRenderer = new ClassRenderer(this.stage, this.layer);
         this.deploymentRenderer = new DeploymentRenderer(this.stage, this.layer);
-
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            this.stage.width(window.innerWidth - 400);
-            this.stage.height(window.innerHeight);
-        });
     }
 
     public onMove(callback: (id: string, newX: number, newY: number) => void) {

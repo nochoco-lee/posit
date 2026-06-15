@@ -43,8 +43,38 @@ export class Emitter {
                 const patch = this.createPatchContext(connStatement, conn.position);
                 if (patch) patches.push(patch);
             }
-            // If connection has no position in LayoutMap, it might have been deleted, or it's default auto-routed. 
-            // We only emit where position is explicitly provided by the layout manager.
+        }
+
+        for (const group of layoutMap.groups) {
+            // Recursive search for group in IR
+            const findGroup = (stmts: IRStatement[]): any => {
+                for (const s of stmts) {
+                    if (s.type === 'group') {
+                        const g = s as IRGroup;
+                        if (g.label === group.label && g.keyword === group.keyword) return g;
+                    }
+                    if (s.type === 'group') {
+                         const res = findGroup((s as IRGroup).sections.flatMap(sec => sec.statements));
+                         if (res) return res;
+                    }
+                }
+                return null;
+            };
+            const irGroup = findGroup(statements);
+            if (irGroup && irGroup.offset && group.position) {
+                const patch = this.createPatchContext(irGroup, group.position);
+                if (patch) patches.push(patch);
+            }
+        }
+
+        if (layoutMap.dividers) {
+            for (const div of layoutMap.dividers) {
+                const irDiv = statements.find((s: IRStatement) => s.type === 'divider' && (s as IRDivider).label === div.label);
+                if (irDiv && irDiv.offset && div.position) {
+                    const patch = this.createPatchContext(irDiv, div.position);
+                    if (patch) patches.push(patch);
+                }
+            }
         }
 
         // Sort patches in reverse order by start index to avoid invalidating offsets!

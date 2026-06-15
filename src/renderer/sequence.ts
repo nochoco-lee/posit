@@ -76,6 +76,14 @@ export class SequenceRenderer {
                 rect.y(startY); rect.height(Math.max(5, endY - startY));
             });
         });
+        // Sync Groups
+        this.groupVisuals.forEach(visual => {
+            const { group, rect, def } = visual;
+            group.position(def.position);
+            rect.size(def.size);
+            // Optionally update labels/dividers if they changed in map, 
+            // but for now we assume only position/size change via dragging
+        });
         this.layer.batchDraw();
     }
 
@@ -268,9 +276,19 @@ export class SequenceRenderer {
     }
 
     private drawDivider(div: LayoutDivider) {
-        const group = new Konva.Group({ x: div.position.x, y: div.position.y });
+        const group = new Konva.Group({ 
+            x: div.position.x, 
+            y: div.position.y,
+            draggable: true,
+            id: `div-${div.label}` 
+        });
+        group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
+        group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });
+        group.on('dragend', (e: any) => {
+            if (this.onNodeMove) this.onNodeMove(`div-${div.label}`, Math.round(e.target.x()), Math.round(e.target.y()));
+        });
         const text = new Konva.Text({ text: div.label, fontSize: 14, fontStyle: 'bold', width: div.size.width, align: 'center', fill: '#A80036', padding: 10 });
-        
+    ...
         // Measure text to leave a gap
         const textWidth = text.getTextWidth() + 20;
         const midX = div.size.width / 2;
@@ -375,7 +393,6 @@ export class SequenceRenderer {
                      const originCenter = originGroup.x() + originBase.size.width / 2;
                      targetX = conn.targetId === ']' ? originCenter + 100 : originCenter - 100;
                 }
-                
                 conn.konvaObj.points([originX, 0, targetX, 0]);
                 if (conn.labelObj) { 
                     const midX = (originX + targetX) / 2; 
@@ -384,9 +401,51 @@ export class SequenceRenderer {
                     conn.labelObj.offsetX(conn.labelObj.width() / 2); 
                     conn.labelObj.position({ x: midX, y: -conn.labelObj.height() - 5 }); 
                 }
-            }
-        });
-        Object.values(this.activationRects).forEach(rectList => {
+                }
+                });
+
+                // Update Groups
+                this.groupVisuals.forEach(visual => {
+                const { group, rect, def } = visual;
+                if (def.participants && def.participants.includes(nodeId)) {
+                const nodes = def.participants.map(pId => ({
+                    group: this.nodeGroups[pId],
+                    base: this.map!.nodes[pId]
+                })).filter(n => n.group && n.base);
+
+                if (nodes.length > 0) {
+                    const padding = def.keyword === 'box' ? 20 : 10;
+                    const minX = Math.min(...nodes.map(n => n.group.x())) - padding;
+                    const maxX = Math.max(...nodes.map(n => n.group.x() + n.base.size.width)) + padding;
+
+                    group.x(minX);
+                    rect.width(Math.max(100, maxX - minX));
+
+                    // Update internal elements like labels and dividers
+                    const children = group.getChildren();
+                    children.forEach(child => {
+                        if (child instanceof Konva.Text) {
+                            if (child.align() === 'center') {
+                                child.width(rect.width());
+                            }
+                        } else if (child instanceof Konva.Line && child !== rect) {
+                            // Update dividers
+                            const points = child.points();
+                            points[2] = rect.width();
+                            child.points(points);
+                        } else if (child instanceof Konva.Rect && child !== rect) {
+                            // Keyword rect or initialization box
+                            if (child.width() === rect.width()) {
+                                // likely not what we want, but let's see
+                            }
+                        }
+                    });
+                }
+                }
+                });
+
+                Object.values(this.activationRects).forEach(rectList => {
+                ...
             rectList.forEach(item => {
                 const { rect, def } = item;
                 let startY = rect.y(); let endY = rect.y() + rect.height();
@@ -396,13 +455,26 @@ export class SequenceRenderer {
             });
         });
     }
+private drawGroup(groupDef: LayoutGroup) {
+    const group = new Konva.Group({ 
+        x: groupDef.position.x, 
+        y: groupDef.position.y,
+        draggable: true,
+        id: groupDef.id
+    });
+    const isBox = groupDef.keyword === 'box';
+    const isRef = groupDef.keyword === 'ref';
 
-    private drawGroup(groupDef: LayoutGroup) {
-        const group = new Konva.Group({ x: groupDef.position.x, y: groupDef.position.y });
-        const isBox = groupDef.keyword === 'box';
-        const isRef = groupDef.keyword === 'ref';
-        
-        const rect = new Konva.Rect({ 
+    group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
+    group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });
+    group.on('dragend', (e: any) => {
+        const newX = Math.round(e.target.x());
+        const newY = Math.round(e.target.y());
+        if (this.onNodeMove) this.onNodeMove(groupDef.id, newX, newY);
+    });
+
+    const rect = new Konva.Rect({ 
+...
             width: groupDef.size.width, 
             height: groupDef.size.height, 
             stroke: groupDef.color || '#A80036', 

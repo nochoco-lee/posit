@@ -7,7 +7,14 @@ export class ClassRenderer {
     protected map: LayoutMap | null = null;
     protected onNodeMove?: (id: string, newX: number, newY: number) => void;
     protected nodeGroups: Record<string, Konva.Group> = {};
-    protected connectionArrows: { originId: string, targetId: string, konvaObj: Konva.Arrow | Konva.Line, labelObj?: Konva.Text }[] = [];
+    protected connectionArrows: { 
+        originId: string, 
+        targetId: string, 
+        konvaObj: Konva.Arrow | Konva.Line, 
+        labelObj?: Konva.Text,
+        fromLabelObj?: Konva.Text,
+        toLabelObj?: Konva.Text
+    }[] = [];
 
     constructor(stage: Konva.Stage, layer: Konva.Layer) {
         this.stage = stage;
@@ -277,6 +284,7 @@ export class ClassRenderer {
         }
 
         // Draw Cardinality
+        let fromLabelObj: Konva.Text | undefined;
         if (conn.fromLabel) {
             const cardX = startPt.x + (endPt.x - startPt.x) * 0.1;
             const cardY = startPt.y + (endPt.y - startPt.y) * 0.1;
@@ -287,16 +295,17 @@ export class ClassRenderer {
             let offsetY = -15;
             if (Math.abs(dy) > Math.abs(dx)) { offsetX = 10; offsetY = -10; }
 
-            const fromCard = new Konva.Text({
+            fromLabelObj = new Konva.Text({
                 x: cardX + offsetX,
                 y: cardY + offsetY,
                 text: conn.fromLabel,
                 fontSize: 10,
                 fontStyle: 'italic'
             });
-            this.layer.add(fromCard);
+            this.layer.add(fromLabelObj);
         }
 
+        let toLabelObj: Konva.Text | undefined;
         if (conn.toLabel) {
             const cardX = startPt.x + (endPt.x - startPt.x) * 0.9;
             const cardY = startPt.y + (endPt.y - startPt.y) * 0.9;
@@ -307,21 +316,23 @@ export class ClassRenderer {
             let offsetY = -15;
             if (Math.abs(dy) > Math.abs(dx)) { offsetX = 10; offsetY = -10; }
 
-            const toCard = new Konva.Text({
+            toLabelObj = new Konva.Text({
                 x: cardX + offsetX,
                 y: cardY + offsetY,
                 text: conn.toLabel,
                 fontSize: 10,
                 fontStyle: 'italic'
             });
-            this.layer.add(toCard);
+            this.layer.add(toLabelObj);
         }
 
         this.connectionArrows.push({
             originId: conn.from,
             targetId: conn.to,
             konvaObj: arrow,
-            labelObj: labelTextObj
+            labelObj: labelTextObj,
+            fromLabelObj,
+            toLabelObj
         });
     }
 
@@ -357,6 +368,26 @@ export class ClassRenderer {
                 const midX = (startPt.x + endPt.x) / 2;
                 const midY = (startPt.y + endPt.y) / 2;
                 conn.labelObj.position({ x: midX + 5, y: midY - 15 });
+            }
+
+            if (conn.fromLabelObj) {
+                const cardX = startPt.x + (endPt.x - startPt.x) * 0.1;
+                const cardY = startPt.y + (endPt.y - startPt.y) * 0.1;
+                const dx = endPt.x - startPt.x;
+                const dy = endPt.y - startPt.y;
+                let offsetX = 5; let offsetY = -15;
+                if (Math.abs(dy) > Math.abs(dx)) { offsetX = 10; offsetY = -10; }
+                conn.fromLabelObj.position({ x: cardX + offsetX, y: cardY + offsetY });
+            }
+
+            if (conn.toLabelObj) {
+                const cardX = startPt.x + (endPt.x - startPt.x) * 0.9;
+                const cardY = startPt.y + (endPt.y - startPt.y) * 0.9;
+                const dx = endPt.x - startPt.x;
+                const dy = endPt.y - startPt.y;
+                let offsetX = 5; let offsetY = -15;
+                if (Math.abs(dy) > Math.abs(dx)) { offsetX = 10; offsetY = -10; }
+                conn.toLabelObj.position({ x: cardX + offsetX, y: cardY + offsetY });
             }
         });
     }

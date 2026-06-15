@@ -68,6 +68,7 @@ export interface LayoutGroup {
     size: Size;
     dividerYs: number[]; // Y-offsets relative to group position or absolute
     color?: string;
+    participants?: string[];
 }
 
 export interface LayoutDivider {

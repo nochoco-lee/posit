@@ -373,7 +373,18 @@ export class SequenceLayoutManager {
             maxX = Math.max(maxX, noteMaxX);
         }
 
-        const layoutGroup: LayoutGroup = { type: "group", id: group.label || `group-${Math.random()}`, keyword: group.keyword, label: group.label || "", sections: group.sections, position: { x: minX, y: startY }, size: { width: Math.max(100, maxX - minX), height: Math.max(50, endY - startY) }, dividerYs, color: group.color };
+        const layoutGroup: LayoutGroup = { 
+            type: "group", 
+            id: group.label || `group-${Math.random()}`, 
+            keyword: group.keyword, 
+            label: group.label || "", 
+            sections: group.sections, 
+            position: { x: minX, y: startY }, 
+            size: { width: Math.max(100, maxX - minX), height: Math.max(50, endY - startY) }, 
+            dividerYs, 
+            color: group.color,
+            participants: Array.from(participantsInGroup)
+        };
         this.map.groups.push(layoutGroup);
         if (!isBox) this.currentSequenceY += 20;
         this.groupDepth--;

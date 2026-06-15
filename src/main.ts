@@ -112,6 +112,13 @@ renderer.onMove((id, newX, newY) => {
     // 2. Update the in-memory coordinate location for the dragged Element
     if (currentLayoutMap.nodes[id]) {
         currentLayoutMap.nodes[id].position = { x: newX, y: newY };
+    } else if (id.startsWith('div-')) {
+        const label = id.substring(4);
+        const div = currentLayoutMap.dividers?.find((d: any) => d.label === label);
+        if (div) div.position = { x: newX, y: newY };
+    } else if (currentLayoutMap.groups.find((g: any) => g.id === id)) {
+        const group = currentLayoutMap.groups.find((g: any) => g.id === id);
+        if (group) group.position = { x: newX, y: newY };
     } else if (id.startsWith('conn-')) {
         // ID format: `conn-${conn.from}-${conn.to}-${conn.label || ''}`
         const parts = id.split('-');
