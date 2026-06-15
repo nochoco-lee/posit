@@ -6,10 +6,13 @@ import { IRDiagram } from "../ir/types";
 export function parseMermaid(text: string): IRDiagram {
     // 1. Lexing
     const lexingResult = MermaidLexer.tokenize(text);
-
     if (lexingResult.errors.length > 0) {
+        console.error("Lexing tokens:", lexingResult.tokens.map(t => ({ type: t.tokenType.name, image: t.image })));
         throw new Error(`Lexing errors:\n${lexingResult.errors.map(e => e.message).join("\n")}`);
     }
+
+    // console.log("Lexing tokens:", lexingResult.tokens.map(t => ({ type: t.tokenType.name, image: t.image })));
+
 
     // 2. Parsing
     parser.input = lexingResult.tokens;
