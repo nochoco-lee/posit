@@ -1,0 +1,7 @@
+@startuml
+together {
+  class ClassA {
+    +field1
+  }
+}
+@enduml

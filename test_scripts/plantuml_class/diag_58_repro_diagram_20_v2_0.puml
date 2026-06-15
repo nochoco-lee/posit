@@ -1,0 +1,4 @@
+@startuml
+class Object << general >>
+Object <|--- ArrayList
+@enduml

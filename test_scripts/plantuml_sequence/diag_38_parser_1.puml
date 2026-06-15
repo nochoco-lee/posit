@@ -1,0 +1,4 @@
+@startuml
+Alice -> Bob : "Authentication\\nRequest"
+Bob --> Alice : "Authentication Response"
+@enduml

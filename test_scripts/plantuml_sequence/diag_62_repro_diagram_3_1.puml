@@ -1,0 +1,7 @@
+@startuml
+Class11 &lt;|.. Class12
+Class13 --&gt; Class14
+Class15 ..&gt; Class16
+Class17 ..|&gt; Class18
+Class19 &lt;--* Class20
+@enduml

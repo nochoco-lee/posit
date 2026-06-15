@@ -1,0 +1,3 @@
+@startuml
+class User /' @pos(10, 20) '/
+@enduml

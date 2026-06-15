@@ -1,0 +1,9 @@
+@startuml
+A ->> B : Head 1
+B -->> A : Head 2
+A ->+ B : Activate shortcut
+B -->- A : Deactivate shortcut
+A -x B : Lost
+B x--x A : Both lost
+A ->o B : Open circle
+@enduml

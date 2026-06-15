@@ -1,0 +1,4 @@
+@startuml
+class Database
+class Server
+@enduml

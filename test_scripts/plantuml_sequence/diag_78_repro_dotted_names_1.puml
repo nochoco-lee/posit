@@ -1,0 +1,3 @@
+@startuml
+net.sourceforge.plantuml.Object <|-- net.sourceforge.plantuml.ArrayList
+@enduml

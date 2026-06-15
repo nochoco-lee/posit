@@ -11,7 +11,4 @@ gallery_*.html
 .antigravitycli/
 puml_temp/
 plantuml.jar
-test_scripts/plantuml_class/
-test_scripts/plantuml_sequence/
-test_scripts/plantuml_deployment/
 debug_color.ts

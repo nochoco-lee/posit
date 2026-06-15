@@ -1,0 +1,7 @@
+@startuml
+alt success
+    A -> B : ok
+else failure
+    A -> B : error
+end
+@enduml

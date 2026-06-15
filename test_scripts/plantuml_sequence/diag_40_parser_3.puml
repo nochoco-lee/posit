@@ -1,0 +1,4 @@
+@startuml
+participant "External User" as EU
+EU -> Alice : Hello
+@enduml

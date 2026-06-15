@@ -1,0 +1,6 @@
+@startuml
+node server
+database db
+server -> db : connect
+db -> server : ok
+@enduml

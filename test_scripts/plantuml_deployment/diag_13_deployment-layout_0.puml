@@ -1,0 +1,4 @@
+@startuml
+node n1
+database d1
+@enduml

@@ -1,0 +1,6 @@
+@startuml
+usecase UC1
+person P1
+database DB1
+node N1
+@enduml

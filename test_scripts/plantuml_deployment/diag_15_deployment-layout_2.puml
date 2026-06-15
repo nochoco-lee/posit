@@ -1,0 +1,6 @@
+@startuml
+node n1 <<stereo1>>
+cloud c1 <<stereo2>> {
+  artifact a1 <<stereo3>>
+}
+@enduml

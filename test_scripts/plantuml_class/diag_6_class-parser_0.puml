@@ -1,0 +1,6 @@
+@startuml
+class User /' @pos(100, 200) '/
+interface OrderHandler
+User <|-- OrderHandler : implements /' @pos(150, 250) '/
+User *-- Order
+@enduml

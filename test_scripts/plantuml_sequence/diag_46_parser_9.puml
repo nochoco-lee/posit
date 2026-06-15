@@ -1,0 +1,6 @@
+@startuml
+skinparam handwritten true
+hide footbox
+Alice -> Bob : Hello
+skinparam backgroundColor #EEE
+@enduml

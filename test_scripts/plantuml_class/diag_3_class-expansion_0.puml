@@ -1,0 +1,10 @@
+@startuml
+class User {
+    - id : string
+    + name : string
+    # role : string
+    ~ internal : bool
+    {static} + create() : User
+    {abstract} # update(id: string) : void
+}
+@enduml

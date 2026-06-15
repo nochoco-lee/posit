@@ -1,0 +1,4 @@
+@startuml
+A -> B : message /' @pos(50, 50) '/
+C *-- D
+@enduml

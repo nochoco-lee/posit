@@ -1,0 +1,5 @@
+@startuml
+node n1 {
+  artifact a1
+}
+@enduml

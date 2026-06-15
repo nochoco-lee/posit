@@ -1,0 +1,10 @@
+@startuml
+package "My Package" {
+  class ClassA {
+    +field1
+  }
+  class ClassB {
+    +field2
+  }
+}
+@enduml

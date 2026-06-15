@@ -1,0 +1,10 @@
+@startuml
+class Foo
+note left: On last defined class
+
+note top of Foo
+  In java, <size:18>every</size> <u>class</u>
+  <b>extends</b>
+  <i>this</i> one.
+end note
+@enduml
