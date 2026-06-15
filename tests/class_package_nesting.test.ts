@@ -63,8 +63,9 @@ package "My Package" {
         expect(classB.position.y).toBeGreaterThanOrEqual(pkg.position.y);
         expect(classB.position.y + classB.size.height).toBeLessThanOrEqual(pkg.position.y + pkg.size.height);
 
-        // ClassB should be below ClassA
-        expect(classB.position.y).toBeGreaterThan(classA.position.y + classA.size.height);
+        // ClassB should be horizontal to ClassA since they are independent
+        expect(classB.position.y).toBe(classA.position.y);
+        expect(classB.position.x).toBeGreaterThan(classA.position.x);
     });
 
     it("should handle 'together' blocks in class diagrams", () => {

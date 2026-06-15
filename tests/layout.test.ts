@@ -31,7 +31,7 @@ participant LockedObject /' @pos(500, 600) '/
         expect(layout.nodes["LockedObject"].position).toEqual({ x: 500, y: 600 });
     });
 
-    it("should process default class layouts vertically", () => {
+    it("should process default class layouts horizontally for independent classes", () => {
         const ast = parsePlantUml(`
 @startuml
 class Database
@@ -43,8 +43,8 @@ class Server
         const nodes = layout.nodes;
 
         expect(nodes["Database"].position).toEqual({ x: DEFAULTS.CLASS_START_X, y: DEFAULTS.CLASS_START_Y });
-        // Default height 80 + 50 padding = 130. 100 + 130 = 230
-        expect(nodes["Server"].position).toEqual({ x: DEFAULTS.CLASS_START_X, y: 100 + 130 });
+        // They should be on the same line now
+        expect(nodes["Server"].position).toEqual({ x: DEFAULTS.CLASS_START_X + DEFAULTS.CLASS_WIDTH + 100, y: DEFAULTS.CLASS_START_Y });
     });
 
     it("should assign dynamic height to classes with members", () => {

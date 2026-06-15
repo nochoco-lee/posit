@@ -6,6 +6,8 @@ export class ClassLayoutManager {
     private currentClassY = DEFAULTS.CLASS_START_Y;
     private edges: IREdge[] = [];
     private rowOccupancy = new Map<number, number>();
+    private nodeRanks = new Map<string, number>();
+    private containerStartY: number | null = null;
 
     constructor() {
         this.map = {
@@ -18,8 +20,16 @@ export class ClassLayoutManager {
     }
 
     public process(ir: IRDiagram): LayoutMap {
+        this.edges = [];
+        this.nodeRanks.clear();
+        this.rowOccupancy.clear();
+        this.currentClassY = DEFAULTS.CLASS_START_Y;
+
         // Pass 0: Collect all edges for layout hints
         this.collectEdges(ir.statements);
+        
+        // Pass 0.5: Calculate ranks
+        this.calculateRanks(ir.statements);
 
         // Pass 1: Setup all nodes (explicit and implicit) and groups/containers
         this.processStatementsPass1(ir.statements, DEFAULTS.CLASS_START_X);
@@ -28,6 +38,64 @@ export class ClassLayoutManager {
         this.processStatementsPass2(ir.statements);
 
         return this.map;
+    }
+
+    private calculateRanks(statements: IRStatement[]) {
+        const allNodes = new Set<string>();
+        const collectNodes = (stmts: IRStatement[]) => {
+            stmts.forEach((s: any) => {
+                if (!s) return;
+                if (s.type === 'node') allNodes.add(s.name);
+                else if (s.type === 'edge') { allNodes.add(s.from); allNodes.add(s.to); }
+                else if (s.type === 'container') collectNodes(s.statements);
+                else if (s.type === 'group') s.sections.forEach((sec: any) => collectNodes(sec.statements));
+            });
+        };
+        collectNodes(statements);
+
+        allNodes.forEach(n => this.nodeRanks.set(n, 0));
+
+        const maxIter = Math.max(allNodes.size, 100);
+        for (let i = 0; i < maxIter; i++) {
+            let changed = false;
+            this.edges.forEach(edge => {
+                const rFrom = this.nodeRanks.get(edge.from);
+                const rTo = this.nodeRanks.get(edge.to);
+                if (rFrom === undefined || rTo === undefined) return;
+
+                if (this.isHorizontal(edge.arrow)) {
+                    if (rFrom !== rTo) {
+                        const m = Math.max(rFrom, rTo);
+                        this.nodeRanks.set(edge.from, m);
+                        this.nodeRanks.set(edge.to, m);
+                        changed = true;
+                    }
+                } else {
+                    // Vertical
+                    let head = edge.from;
+                    let tail = edge.to;
+                    
+                    // Heuristic: determine which node is "above"
+                    // If arrow points to 'to' (e.g. A --|> B), B is head (above)
+                    // If arrow points to 'from' (e.g. A <|-- B), A is head (above)
+                    if (edge.arrow.includes('|>' ) || edge.arrow.endsWith('>') || edge.arrow.endsWith(')')) {
+                        head = edge.to;
+                        tail = edge.from;
+                    } else if (edge.arrow.startsWith('<|') || edge.arrow.startsWith('<') || edge.arrow.startsWith('(')) {
+                        head = edge.from;
+                        tail = edge.to;
+                    }
+
+                    const rh = this.nodeRanks.get(head)!;
+                    const rt = this.nodeRanks.get(tail)!;
+                    if (rt < rh + 1) {
+                        this.nodeRanks.set(tail, rh + 1);
+                        changed = true;
+                    }
+                }
+            });
+            if (!changed) break;
+        }
     }
 
     private collectEdges(statements: IRStatement[]) {
@@ -54,23 +122,10 @@ export class ClassLayoutManager {
         return false;
     }
 
-    private getHorizontalPredecessor(nodeId: string): string | null {
-        for (const edge of this.edges) {
-            if (edge.to === nodeId && this.isHorizontal(edge.arrow)) {
-                if (this.map.nodes[edge.from] && this.map.nodes[edge.from].position) {
-                    return edge.from;
-                }
-            }
-            if (edge.from === nodeId && this.isHorizontal(edge.arrow)) {
-                if (this.map.nodes[edge.to] && this.map.nodes[edge.to].position) {
-                    return edge.to;
-                }
-            }
-        }
-        return null;
-    }
-
     private processStatementsPass1(statements: IRStatement[], x: number) {
+        const oldContainerY = this.containerStartY;
+        this.containerStartY = this.currentClassY;
+
         statements.forEach((statement: any) => {
             if (!statement) return;
             if (statement.type === "node") {
@@ -89,6 +144,8 @@ export class ClassLayoutManager {
                 this.processGroupPass1(statement as IRGroup, x);
             }
         });
+
+        this.containerStartY = oldContainerY;
     }
 
     private processContainerPass1(container: IRContainer, x: number) {
@@ -106,6 +163,7 @@ export class ClassLayoutManager {
         const groupIndex = this.map.groups.length;
         this.map.groups.push(layoutGroup);
 
+        const oldY = this.currentClassY;
         this.currentClassY += 40; // Header padding
         this.processStatementsPass1(container.statements, x + 20);
         
@@ -189,19 +247,15 @@ export class ClassLayoutManager {
         if (node.layout) {
             position = { x: node.layout.x, y: node.layout.y };
         } else {
-            const horizontalPredId = this.getHorizontalPredecessor(id);
-            if (horizontalPredId) {
-                const pred = this.map.nodes[horizontalPredId];
-                const currentX = this.rowOccupancy.get(pred.position.y) || (pred.position.x + pred.size.width);
-                const newX = currentX + 50;
-                position = { x: newX, y: pred.position.y };
-                this.rowOccupancy.set(pred.position.y, newX + size.width);
-                this.currentClassY = Math.max(this.currentClassY, position.y + size.height + 50);
-            } else {
-                position = { x, y: this.currentClassY };
-                this.rowOccupancy.set(position.y, position.x + size.width);
-                this.currentClassY += (size.height + 50); 
-            }
+            const rank = this.nodeRanks.get(id) || 0;
+            const baseY = this.containerStartY || DEFAULTS.CLASS_START_Y;
+            
+            // Determine Y based on rank. We use 200px as a rough row height.
+            const targetY = baseY + (rank * 200);
+            
+            const currentX = this.rowOccupancy.get(targetY) || x;
+            position = { x: currentX, y: targetY };
+            this.rowOccupancy.set(targetY, currentX + size.width + 100);
         }
 
         const layoutNode: LayoutNode = {
@@ -214,6 +268,7 @@ export class ClassLayoutManager {
         };
 
         this.map.nodes[id] = layoutNode;
+        this.currentClassY = Math.max(this.currentClassY, position.y + size.height + 50);
     }
 
     private processConnection(conn: IREdge) {
