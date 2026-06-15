@@ -5,68 +5,44 @@ import { IRDiagram, IRStatement, IRNode, IRContainer, IREdge } from "../ir/types
 
 function unescapeHtml(text: string): string {
     return text
-        .replace(/&quot;/g, '"')
-        .replace(/&#34;/g, '"')
-        .replace(/&apos;/g, "'")
-        .replace(/&#39;/g, "'")
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&');
-}
-
-function formatParserError(error: any): string {
-    let msg = error.message;
-    const token = error.token;
-    const line = token ? token.startLine : (error.previousToken ? error.previousToken.startLine : undefined);
-    const lineSuffix = line !== undefined ? ` at line ${line}` : "";
-
-    // Simplify "Expecting one of these possible Token sequences"
-    if (msg.includes("Expecting: one of these possible Token sequences")) {
-        let foundPart = "";
-        if (token && token.image) {
-            foundPart = ` (found '${token.image}')`;
-        }
-        return `Unexpected input or incomplete statement${lineSuffix}${foundPart}.`;
-    }
-
-    // Simplify "Expecting token of type --> X <-- but found --> Y <--"
-    const match = msg.match(/Expecting token of type --> (.*?) <-- but found --> (.*?) <--/);
-    if (match) {
-        return `Expected ${match[1]} but found '${match[2]}'${lineSuffix}.`;
-    }
-
-    return msg + lineSuffix;
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#34;/g, '"')
+        .replace(/&#39;/g, "'");
 }
 
 export function parsePlantUml(text: string): IRDiagram {
-    // 0. Pre-process (unescape HTML from potential scrapes)
-    const processedText = unescapeHtml(text);
-
-    // 1. Lexing
-    const lexingResult = SequenceLexer.tokenize(processedText);
-
-    if (lexingResult.errors.length > 0) {
-        throw new Error(`Lexing errors:\n${lexingResult.errors.map(e => e.message).join("\n")}`);
+    const unescapedText = unescapeHtml(text);
+    const lexResult = SequenceLexer.tokenize(unescapedText);
+    
+    if (lexResult.errors.length > 0) {
+        // console.error("RAW ERRORS:", lexResult.errors.map(e => e.message));
     }
 
-    // 2. Parsing
-    parser.input = lexingResult.tokens;
-    const cst = parser.diagram();
+    parser.input = lexResult.tokens;
+    const cst = (parser as any).diagram();
 
     if (parser.errors.length > 0) {
-        console.log("RAW ERRORS:", parser.errors.map(e => e.message));
-        const simplifiedErrors = parser.errors.map(formatParserError);
-        throw new Error(`Parsing errors:\n${simplifiedErrors.join("\n")}`);
+        throw new Error("Parsing errors: " + parser.errors.map(e => e.message).join(", "));
     }
 
-    // 3. Visiting to create AST
     const ast = visitor.visit(cst);
+    if (!ast) {
+        throw new Error("Parsing errors: Visitor returned null ast");
+    }
 
     // Auto-detect diagram type based on elements
     let diagramType: 'sequence' | 'class' | 'deployment' | 'unknown' = 'unknown';
     
-    const sequenceKeywords = [
-        'participant', 'actor', 'boundary', 'control', 'entity'
+    const sequenceOnlyKeywords = [
+        'participant', 'actor', 'boundary', 'control', 'entity',
+        'autonumber', 'newpage', 'box', 'alt', 'opt', 'loop', 'par', 'break', 'critical', 'group'
+    ];
+    
+    const sharedKeywords = [
+        'database', 'collections', 'queue', 'stack'
     ];
     
     const classKeywords = [
@@ -77,8 +53,7 @@ export function parsePlantUml(text: string): IRDiagram {
         'artifact', 'cloud', 'component', 'node', 'storage', 
         'rectangle', 'card', 'file', 'hexagon', 'person', 'process', 
         'agent', 'label', 'usecase', 'action', 'map', 'state',
-        'frame', 'rect', 'package', 'namespace', 'folder',
-        'database', 'collections', 'queue', 'stack'
+        'frame', 'rect', 'package', 'namespace', 'folder'
     ];
 
     let scores = {
@@ -93,31 +68,40 @@ export function parsePlantUml(text: string): IRDiagram {
             
             if (statement.type === 'node') {
                 const node = statement as IRNode;
-                if (sequenceKeywords.includes(node.shape)) {
-                    scores.sequence += 5;
-                } else if (classKeywords.includes(node.shape)) {
-                    scores.class += 5;
-                } else if (deploymentKeywords.includes(node.shape)) {
+                if (sequenceOnlyKeywords.includes(node.shape)) {
+                    scores.sequence += 30;
+                } else if (sharedKeywords.includes(node.shape)) {
+                    scores.sequence += 10;
                     scores.deployment += 5;
+                } else if (classKeywords.includes(node.shape)) {
+                    scores.class += 30;
+                } else if (deploymentKeywords.includes(node.shape)) {
+                    scores.deployment += 30;
                 }
                 
                 if (node.members && node.members.length > 0) {
-                    scores.class += 20;
+                    scores.class += 40;
                 }
                 if (node.parents && node.parents.length > 0) {
-                    scores.class += 20;
+                    scores.class += 40;
                 }
                 if (node.isCreation) {
-                    scores.sequence += 20;
+                    scores.sequence += 30;
+                }
+                if (node.name.includes('()')) {
+                    scores.sequence += 10;
                 }
             } else if (statement.type === 'container') {
                 const container = statement as IRContainer;
-                if (sequenceKeywords.includes(container.keyword)) {
-                    scores.sequence += 5;
-                } else if (classKeywords.includes(container.keyword)) {
-                    scores.class += 5;
-                } else if (deploymentKeywords.includes(container.keyword)) {
+                if (sequenceOnlyKeywords.includes(container.keyword)) {
+                    scores.sequence += 30;
+                } else if (sharedKeywords.includes(container.keyword)) {
+                    scores.sequence += 10;
                     scores.deployment += 5;
+                } else if (classKeywords.includes(container.keyword)) {
+                    scores.class += 30;
+                } else if (deploymentKeywords.includes(container.keyword)) {
+                    scores.deployment += 30;
                 }
                 checkType(container.statements);
             } else if (statement.type === 'edge') {
@@ -137,38 +121,82 @@ export function parsePlantUml(text: string): IRDiagram {
                                          arrow.includes('[->') || arrow.includes('<-]') ||
                                          arrow.includes('->+') || arrow.includes('-->-') ||
                                          arrow.includes('->*') || arrow.includes('!->');
+                
+                const hasDirection = arrow.includes('-up-') || arrow.includes('-down-') || 
+                                   arrow.includes('-left-') || arrow.includes('-right-') ||
+                                   arrow.match(/-[udlr]-/);
+                
+                const hasBracketStyle = arrow.includes('[') && arrow.includes(']');
+                const hasColor = arrow.includes('#');
 
                 if (isClassSpecific) {
-                    scores.class += 20;
+                    scores.class += 30;
                 } else if (isSequenceSpecific) {
-                    scores.sequence += 20;
+                    scores.sequence += 30;
+                } else if (hasDirection) {
+                    if (scores.deployment > scores.class) scores.deployment += 40;
+                    else scores.class += 40;
+                } else if (hasBracketStyle) {
+                    if (hasColor) {
+                        scores.sequence += 15;
+                    } else {
+                        if (scores.deployment > scores.class) scores.deployment += 40;
+                        else scores.class += 40;
+                    }
                 } else if (arrow.includes('>') || arrow.includes('<')) {
-                    // Generic arrows
-                    if (edge.label) scores.sequence += 5; 
-                    else scores.sequence += 2;
-                } else if (arrow === '--' || arrow === '..' || arrow.includes('|')) {
-                    if (edge.label) scores.deployment += 5;
-                    else scores.class += 2;
+                    if (edge.label) {
+                        // Very strong sequence indicator if it looks like a message
+                        scores.sequence += 40;
+
+                        // But also could be deployment if we already have deployment shapes
+                        if (scores.deployment > 0) scores.deployment += 20;
+                        if (scores.class > 0) scores.class += 10;
+                    }
+                    else {
+                        if (scores.class > 0 || scores.deployment > 0) {
+                            if (scores.deployment > scores.class) scores.deployment += 10;
+                            else scores.class += 10;
+                        } else {
+                            scores.sequence += 5;
+                        }
+                    }
+                }
+ else if (arrow === '--' || arrow === '..' || arrow.includes('|')) {
+                    if (edge.label) {
+                        if (scores.deployment > 0) scores.deployment += 25;
+                        else scores.class += 20;
+                    }
+                    else {
+                        if (scores.deployment > 0) scores.deployment += 15;
+                        else scores.class += 15;
+                    }
                 }
 
                 if (edge.fromLabel || edge.toLabel) {
-                    scores.class += 20;
+                    scores.class += 40;
                 }
                 if (edge.isCreation || edge.isDeletion) {
-                    scores.sequence += 20;
+                    scores.sequence += 40;
                 }
             } else if (['activation', 'return', 'autoactivate', 'autonumber', 'divider', 'delay', 'ref'].includes(statement.type)) {
-                scores.sequence += 15;
+                scores.sequence += 30;
             } else if (statement.type === 'group') {
                 const group = statement as any;
                 if (['alt', 'opt', 'loop', 'par', 'group', 'box'].includes(group.keyword)) {
-                    scores.sequence += 10;
+                    scores.sequence += 30;
                 }
             } else if (statement.type === 'note') {
                 const note = statement as any;
                 if (note.placement === 'over' || note.placement === 'across' || 
                     note.placement === 'left of' || note.placement === 'right of') {
-                    scores.sequence += 10;
+                    scores.sequence += 25;
+                } else if (note.placement === 'on link') {
+                    scores.class += 30;
+                    scores.deployment += 20;
+                } else {
+                    if (scores.class > 0) scores.class += 10;
+                    else if (scores.deployment > 0) scores.deployment += 10;
+                    else scores.sequence += 5;
                 }
             }
         }
@@ -176,6 +204,18 @@ export function parsePlantUml(text: string): IRDiagram {
 
     checkType(ast.statements);
     
+    // Check for sequence specific top-level markers
+    const lowerText = unescapedText.toLowerCase();
+    if (lowerText.includes('header') || lowerText.includes('footer') || lowerText.includes('title')) {
+        if (scores.sequence > 0 || (scores.class === 0 && scores.deployment === 0)) {
+            scores.sequence += 10;
+        }
+    }
+    if (lowerText.includes('skinparam') || lowerText.includes('left to right direction')) {
+        if (scores.class > 0) scores.class += 10;
+        if (scores.deployment > 0) scores.deployment += 10;
+    }
+
     // Final decision based on scores
     if (scores.sequence >= scores.class && scores.sequence >= scores.deployment && scores.sequence > 0) {
         diagramType = 'sequence';
