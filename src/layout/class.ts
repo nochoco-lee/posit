@@ -4,6 +4,8 @@ import { IRDiagram, IRNode, IREdge, IRStatement, IRNote, IRGroup, IRContainer } 
 export class ClassLayoutManager {
     private map: LayoutMap;
     private currentClassY = DEFAULTS.CLASS_START_Y;
+    private edges: IREdge[] = [];
+    private rowOccupancy = new Map<number, number>();
 
     constructor() {
         this.map = {
@@ -16,6 +18,9 @@ export class ClassLayoutManager {
     }
 
     public process(ir: IRDiagram): LayoutMap {
+        // Pass 0: Collect all edges for layout hints
+        this.collectEdges(ir.statements);
+
         // Pass 1: Setup all explicit nodes and groups/containers
         this.processStatementsPass1(ir.statements, DEFAULTS.CLASS_START_X);
 
@@ -26,6 +31,46 @@ export class ClassLayoutManager {
         this.processStatementsPass2(ir.statements);
 
         return this.map;
+    }
+
+    private collectEdges(statements: IRStatement[]) {
+        statements.forEach((s: any) => {
+            if (!s) return;
+            if (s.type === 'edge') {
+                this.edges.push(s as IREdge);
+            } else if (s.type === 'container') {
+                this.collectEdges((s as IRContainer).statements);
+            } else if (s.type === 'group') {
+                (s as IRGroup).sections.forEach(sec => this.collectEdges(sec.statements));
+            }
+        });
+    }
+
+    private isHorizontal(arrow: string): boolean {
+        if (arrow.includes('left') || arrow.includes('right') || arrow.includes('horizontal')) return true;
+        if (arrow.includes('up') || arrow.includes('down') || arrow.includes('vertical')) return false;
+
+        const match = arrow.match(/([-=.~]{1,4})/);
+        if (match) {
+            return match[1].length === 1;
+        }
+        return false;
+    }
+
+    private getHorizontalPredecessor(nodeId: string): string | null {
+        for (const edge of this.edges) {
+            if (edge.to === nodeId && this.isHorizontal(edge.arrow)) {
+                if (this.map.nodes[edge.from] && this.map.nodes[edge.from].position) {
+                    return edge.from;
+                }
+            }
+            if (edge.from === nodeId && this.isHorizontal(edge.arrow)) {
+                if (this.map.nodes[edge.to] && this.map.nodes[edge.to].position) {
+                    return edge.to;
+                }
+            }
+        }
+        return null;
     }
 
     private processStatementsPass1(statements: IRStatement[], x: number) {
@@ -156,8 +201,19 @@ export class ClassLayoutManager {
         if (node.layout) {
             position = { x: node.layout.x, y: node.layout.y };
         } else {
-            position = { x, y: this.currentClassY };
-            this.currentClassY += (size.height + 50); 
+            const horizontalPredId = this.getHorizontalPredecessor(id);
+            if (horizontalPredId) {
+                const pred = this.map.nodes[horizontalPredId];
+                const currentX = this.rowOccupancy.get(pred.position.y) || (pred.position.x + pred.size.width);
+                const newX = currentX + 50;
+                position = { x: newX, y: pred.position.y };
+                this.rowOccupancy.set(pred.position.y, newX + size.width);
+                this.currentClassY = Math.max(this.currentClassY, position.y + size.height + 50);
+            } else {
+                position = { x, y: this.currentClassY };
+                this.rowOccupancy.set(position.y, position.x + size.width);
+                this.currentClassY += (size.height + 50); 
+            }
         }
 
         const layoutNode: LayoutNode = {
