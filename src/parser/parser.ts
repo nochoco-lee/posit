@@ -16,8 +16,10 @@ class SequenceParser extends CstParser {
         // (validateAmbiguousAlternationAlternatives) that only serves development
         // purposes and causes multi-second main-thread blocking + 639KB console output.
         // The grammar has already been validated during development.
+        // We set maxLookahead: 1 to prevent exponential pre-computation times in preComputeLookaheadFunctions.
         super(allTokens, { 
             skipValidations: true,
+            maxLookahead: 1,
             errorMessageProvider: fastErrorProvider
         });
         this.performSelfAnalysis();
