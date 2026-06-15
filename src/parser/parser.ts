@@ -1498,27 +1498,15 @@ class SequenceParser extends CstParser {
         this.MANY2(() => this.CONSUME2(Newline));
     });
 
-    private isAtTypeSeparatorColon(): boolean {
-        let i = 1;
-        let parenDepth = 0;
-        while (true) {
-            const token = this.LA(i);
-            const type = token.tokenType;
-            if (type.name === "EOF" || type.name === "Newline" || type.name === "RBrace" || type.name === "EndUml") {
-                break;
-            }
-            if (type.name === "LParen") {
-                parenDepth++;
-            } else if (type.name === "RParen") {
-                parenDepth--;
-            } else if (type.name === "Colon") {
-                if (parenDepth === 0) {
-                    return i === 1;
-                }
-            }
-            i++;
+    private parsePosComment(commentStr: string) {
+        const match = commentStr.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
+        if (match) {
+            return {
+                x: parseInt(match[1], 10),
+                y: parseInt(match[2], 10),
+            };
         }
-        return false;
+        return undefined;
     }
 }
 

@@ -48,16 +48,16 @@ Posit isn't a "drag-as-you-edit" tool. It's a "finish writing, then polish" tool
 
 3. **Verify Implementation**:
    ```bash
-   npm run test -- --run  # Run Vitest suite
-   npx tsx generate_gallery.ts  # Generate a side-by-side comparison gallery
+   npm test  # Run Vitest suite
+   npx vite-node generate_gallery.ts  # Generate a static comparison gallery
    ```
 
-## Workflow
+## Recent Improvements
 
-1. **Write**: Author your diagram in your preferred code-based format (PlantUML, Mermaid, etc.).
-2. **Polish**: Open it in Posit and drag elements to their optimal positions.
-3. **Save**: Your source file is automatically updated with coordinate metadata in comments.
-4. **Publish**: Commit your polished source and export for documentation.
+- **Robust Parsing**: Enhanced Class Diagram member parsing, correctly identifying fields, methods, and parameters.
+- **Generics Support**: Full support for generic types (e.g., `List~T~`) in PlantUML class declarations.
+- **Static Gallery**: New SVG-based static renderer allows for generating a complete comparison gallery without a live dev server.
+- **Typing Performance**: Implemented debouncing (200ms) and parser optimizations to ensure a smooth typing experience even on complex diagrams.
 
 ---
 

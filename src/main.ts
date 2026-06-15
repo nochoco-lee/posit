@@ -51,9 +51,13 @@ function refreshDiagram() {
 // Initial draw
 refreshDiagram();
 
-// Live update on type
+// Live update on type with debounce
+let debounceTimer: any = null;
 editor.addEventListener('input', () => {
-    refreshDiagram();
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        refreshDiagram();
+    }, 200);
 });
 
 // For Phase 4 (Two-Way sync)

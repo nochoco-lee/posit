@@ -1,16 +1,23 @@
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
+import { parsePlantUml } from "./src/parser/index";
+import { LayoutManager } from "./src/layout/engine";
+import { LayoutPumlSvgRenderer } from "./src/renderer/svg_renderer";
 
 const testDirs = [
     { name: "Sequence Diagrams", path: "test_scripts/plantuml_sequence" },
     { name: "Class Diagrams", path: "test_scripts/plantuml_class" }
 ];
 const localRenderDir = "local_renders";
+const ourRenderDir = path.join(localRenderDir, "our_renders");
 
-// Ensure local render directory exists
+// Ensure render directories exist
 if (!fs.existsSync(localRenderDir)) {
     fs.mkdirSync(localRenderDir);
+}
+if (!fs.existsSync(ourRenderDir)) {
+    fs.mkdirSync(ourRenderDir);
 }
 
 // Check if plantuml command or jar is available
@@ -28,10 +35,11 @@ let hasLocalPlantUml = plantumlCmd !== "";
 if (hasLocalPlantUml) {
     console.log(`Local PlantUML found (${plantumlCmd}). Generating official renders...`);
 } else {
-    console.warn("Local PlantUML not found (tried 'plantuml' command and 'plantuml.jar'). 'Official' column will be empty.");
+    console.warn("Local PlantUML not found. 'Official' column will be empty.");
 }
 
 const testCases: any[] = [];
+const svgRenderer = new LayoutPumlSvgRenderer();
 
 testDirs.forEach(dirInfo => {
     if (!fs.existsSync(dirInfo.path)) {
@@ -51,40 +59,91 @@ testDirs.forEach(dirInfo => {
         const filePath = path.join(dirInfo.path, file);
         const content = fs.readFileSync(filePath, "utf-8");
         
-        // Use a unique name for the PNG to avoid collisions between directories
-        const pngName = `${dirInfo.name.replace(/\s+/g, '_')}_${file.replace(".puml", ".png")}`;
-        const localPngPath = path.join(localRenderDir, pngName);
+        const baseName = `${dirInfo.name.replace(/\s+/g, '_')}_${file.replace(".puml", "")}`;
+        const officialPngName = `${baseName}_official.png`;
+        const ourSvgName = `${baseName}_our.svg`;
+        
+        const localOfficialPath = path.join(localRenderDir, officialPngName);
+        const localOurPath = path.join(ourRenderDir, ourSvgName);
 
+        // 1. Official Render
         if (hasLocalPlantUml) {
             try {
-                // Render locally. PlantUML usually outputs to the same name as the file but with .png
-                // We use -o to specify output dir, and -filename to control name if needed, 
-                // but simpler to just rename after if needed.
-                // However, plantuml command doesn't easily allow renaming the output file directly in one go with -o.
-                // It will be file.png in localRenderDir.
                 execSync(`${plantumlCmd} "${filePath}" -o "${path.resolve(localRenderDir)}"`, { stdio: 'ignore' });
                 const defaultPngPath = path.join(localRenderDir, file.replace(".puml", ".png"));
-                if (fs.existsSync(defaultPngPath) && defaultPngPath !== localPngPath) {
-                    fs.renameSync(defaultPngPath, localPngPath);
+                if (fs.existsSync(defaultPngPath)) {
+                    fs.renameSync(defaultPngPath, localOfficialPath);
                 }
             } catch (e) {
-                console.error(`Failed to render ${file} locally.`);
+                // console.error(`Failed to render ${file} locally.`);
             }
+        }
+
+        // 2. Our Render (SVG)
+        let ourRenderUrl = "";
+        let error = "";
+        try {
+            const ast = parsePlantUml(content);
+            const layoutManager = new LayoutManager();
+            const map = layoutManager.process(ast);
+            const svg = svgRenderer.render(map);
+            fs.writeFileSync(localOurPath, svg);
+            ourRenderUrl = `./${localRenderDir}/our_renders/${ourSvgName}`;
+        } catch (e: any) {
+            error = e.message;
         }
 
         testCases.push({
             category: dirInfo.name,
             name: file,
             source: content,
-            localUrl: `./${localRenderDir}/${pngName}`
+            officialUrl: hasLocalPlantUml && fs.existsSync(localOfficialPath) ? `./${localRenderDir}/${officialPngName}` : "",
+            ourUrl: ourRenderUrl,
+            error: error
         });
     });
+});
+
+let casesHtml = "";
+let currentCategory = "";
+
+testCases.forEach(testCase => {
+    if (testCase.category !== currentCategory) {
+        currentCategory = testCase.category;
+        casesHtml += `<div class="category-header">${currentCategory}</div>`;
+    }
+
+    casesHtml += `
+        <div class="case">
+            <div class="case-header">
+                <span>${testCase.name}</span>
+            </div>
+            <div class="comparison-grid">
+                <div class="col">
+                    <div class="col-header">1. PlantUML Source</div>
+                    <div class="puml-source">${testCase.source.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+                </div>
+                <div class="col">
+                    <div class="col-header">2. Official PlantUML</div>
+                    <div class="img-container">
+                        ${testCase.officialUrl ? `<img src="${testCase.officialUrl}" alt="Official Render">` : '<span class="missing-info">No official render</span>'}
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="col-header">3. Our Renderer (SVG)</div>
+                    <div class="img-container">
+                        ${testCase.error ? `<div class="error"><strong>Error:</strong> ${testCase.error}</div>` : `<img src="${testCase.ourUrl}" alt="Our Render">`}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
 });
 
 let galleryHtml = `<!DOCTYPE html>
 <html>
 <head>
-    <title>PlantUML Evaluation Gallery (Local Render)</title>
+    <title>PlantUML Evaluation Gallery</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
         h1 { text-align: center; color: #333; }
@@ -110,8 +169,6 @@ let galleryHtml = `<!DOCTYPE html>
             padding: 10px 20px; 
             font-weight: bold; 
             border-bottom: 1px solid #ddd;
-            display: flex;
-            justify-content: space-between;
         }
         .comparison-grid { 
             display: grid; 
@@ -135,91 +192,15 @@ let galleryHtml = `<!DOCTYPE html>
         }
         .img-container { text-align: center; flex-grow: 1; display: flex; align-items: center; justify-content: center; overflow: auto; min-height: 200px; border: 1px dashed #ccc; }
         .img-container img { max-width: 100%; height: auto; border: 1px solid #eee; }
-        .canvas-container { 
-            width: 100%; 
-            height: 500px; 
-            border: 1px solid #eee; 
-            overflow: auto;
-            position: relative;
-        }
         .error { color: #d9534f; font-size: 14px; padding: 10px; background: #f2dede; border-radius: 4px; }
         .missing-info { color: #999; font-style: italic; }
     </style>
 </head>
 <body>
-    <h1>PlantUML Evaluation Gallery (Local Render)</h1>
-    <div id="gallery"></div>
-
-    <script type="module">
-        import { parsePlantUml } from "./src/parser/index.ts";
-        import { LayoutManager } from "./src/layout/engine.ts";
-        import { LayoutPumlRenderer } from "./src/renderer/renderer.ts";
-
-        const gallery = document.getElementById('gallery');
-        const testCases = ${JSON.stringify(testCases)};
-
-        let currentCategory = "";
-
-        async function createTestCase(testCase) {
-            if (testCase.category !== currentCategory) {
-                currentCategory = testCase.category;
-                const catHeader = document.createElement('div');
-                catHeader.className = 'category-header';
-                catHeader.textContent = currentCategory;
-                gallery.appendChild(catHeader);
-            }
-
-            const container = document.createElement('div');
-            container.className = 'case';
-            
-            const safeId = 'canvas-' + testCase.category.replace(/\\s+/g, '_') + '-' + testCase.name.replace(/\\./g, '-');
-            
-            container.innerHTML = \`
-                <div class="case-header">
-                    <span>\${testCase.name}</span>
-                </div>
-                <div class="comparison-grid">
-                    <div class="col">
-                        <div class="col-header">1. PlantUML Source</div>
-                        <div class="puml-source">\${testCase.source}</div>
-                    </div>
-                    <div class="col">
-                        <div class="col-header">2. Official PlantUML (Local)</div>
-                        <div class="img-container">
-                            <img src="\${testCase.localUrl}" alt="No local render found" onerror="this.style.display='none'; this.parentElement.innerHTML='<span class=\\"missing-info\\">Local render missing (Java/PlantUML not found during generation)</span>'">
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="col-header">3. Our Renderer</div>
-                        <div id="\${safeId}" class="canvas-container"></div>
-                    </div>
-                </div>
-            \`;
-            
-            gallery.appendChild(container);
-
-            try {
-                const ast = parsePlantUml(testCase.source);
-                const layoutManager = new LayoutManager();
-                const map = layoutManager.process(ast);
-                
-                const renderer = new LayoutPumlRenderer(safeId);
-                const stage = renderer.stage;
-                if (stage) {
-                    stage.width(container.querySelector('.canvas-container').clientWidth);
-                    stage.height(500);
-                }
-                renderer.render(map);
-            } catch (e) {
-                const canvasDiv = document.getElementById(safeId);
-                canvasDiv.innerHTML = \`<div class="error"><strong>Error:</strong> \${e.message}</div>\`;
-            }
-        }
-
-        for (const testCase of testCases) {
-            await createTestCase(testCase);
-        }
-    </script>
+    <h1>PlantUML Evaluation Gallery</h1>
+    <div id="gallery">
+        ${casesHtml}
+    </div>
 </body>
 </html>
 `;
