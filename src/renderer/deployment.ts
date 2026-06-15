@@ -247,6 +247,15 @@ export class DeploymentRenderer {
                 });
                 return hex;
 
+            case 'collections':
+                for (let i = 1; i >= 0; i--) {
+                    g.add(new Konva.Rect({
+                        x: i * 10, y: -i * 10, width: width - 10, height: height - 10,
+                        fill: colors.fill, stroke: colors.stroke, strokeWidth: colors.strokeWidth
+                    }));
+                }
+                return g;
+
             case 'queue':
                 // Rectangle with open ends (drawn as path)
                 const queue = new Konva.Path({

@@ -6,20 +6,26 @@ export class LayoutPumlSvgRenderer {
 
     constructor() {}
 
-    private renderText(x: number, y: number, text: string, fontSize: number, anchor: string = "middle", color: string = "black"): string {
+    private renderText(x: number, y: number, text: string, fontSize: number, anchor: string = "middle", color: string = "black", isAbstract: boolean = false, isStatic: boolean = false): string {
         const lines = text.split('\n');
+        const style = `${isAbstract ? 'font-style="italic"' : ''} ${isStatic ? 'text-decoration="underline"' : ''}`;
         if (lines.length === 1) {
-            return `<text x="${x}" y="${y}" font-family="sans-serif" font-size="${fontSize}" text-anchor="${anchor}" fill="${color}">${text}</text>\n`;
+            return `<text x="${x}" y="${y}" font-family="sans-serif" font-size="${fontSize}" text-anchor="${anchor}" fill="${color}" ${style}>${text}</text>\n`;
         }
         // Offset y to roughly center the lines vertically around the original y
         const totalHeight = lines.length * fontSize * 1.2;
         let currentY = y - (totalHeight / 2) + (fontSize);
-        let svg = `<text x="${x}" y="${currentY}" font-family="sans-serif" font-size="${fontSize}" text-anchor="${anchor}" fill="${color}">\n`;
+        let svg = `<text x="${x}" y="${currentY}" font-family="sans-serif" font-size="${fontSize}" text-anchor="${anchor}" fill="${color}" ${style}>\n`;
         lines.forEach((line, i) => {
             svg += `<tspan x="${x}" dy="${i === 0 ? 0 : fontSize * 1.2}">${line}</tspan>\n`;
         });
         svg += `</text>\n`;
         return svg;
+    }
+
+    private getMemberSvg(x: number, y: number, member: any): string {
+        const text = this.getMemberText(member);
+        return this.renderText(x + 5, y, text, 10, "start", "black", member.isAbstract, member.isStatic);
     }
 
     private getAdjustedX(map: LayoutMap, nodeId: string, otherX: number, yPos: number): number {
@@ -80,6 +86,24 @@ export class LayoutPumlSvgRenderer {
         return p2;
     }
 
+    private getMemberText(member: any): string {
+        let memberText = "";
+        const v = member.visibility;
+        if (v === "+" || v === "-" || v === "#" || v === "~") memberText += v + " ";
+        else if (v === "public") memberText += "+ ";
+        else if (v === "private") memberText += "- ";
+        else if (v === "protected") memberText += "# ";
+        else if (v === "package") memberText += "~ ";
+        else if (v) memberText += v + " ";
+
+        if (member.isStatic) memberText += "{static} ";
+        if (member.isAbstract) memberText += "{abstract} ";
+        memberText += member.name;
+        if (member.parameters) memberText += "(" + member.parameters.join(", ") + ")";
+        if (member.type) memberText += " : " + member.type;
+        return memberText;
+    }
+
     public render(map: LayoutMap): string {
         // Calculate bounds
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -115,9 +139,34 @@ export class LayoutPumlSvgRenderer {
         let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${this.width}" height="${this.height}" viewBox="${minX} ${minY} ${this.width} ${this.height}">\n`;
         svg += `<rect x="${minX}" y="${minY}" width="${this.width}" height="${this.height}" fill="white" />\n`;
 
+        const isSequence = map.diagramType === 'sequence' || map.diagramType === 'unknown';
+
         // 1. Groups (background)
         map.groups.forEach(g => {
-            if (g.keyword === 'package' || g.keyword === 'namespace' || g.keyword === 'folder') {
+            if (isSequence) {
+                const isBox = g.keyword === 'box';
+                const isRef = g.keyword === 'ref';
+                const fill = g.color || (isBox ? '#DDDDDD' : 'none');
+                const fillOpacity = g.color ? 0.1 : (isBox ? 0.3 : 0);
+                const stroke = g.color || '#A80036';
+                
+                svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${g.size.width}" height="${g.size.height}" fill="${fill}" fill-opacity="${fillOpacity}" stroke="${stroke}" stroke-width="2" />\n`;
+                
+                if (!isBox) {
+                    const keyword = g.keyword === 'group' ? 'alt' : g.keyword;
+                    const keywordWidth = keyword.length * 9 + 10;
+                    svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${keywordWidth}" height="18" fill="#EEEEEE" stroke="${stroke}" stroke-width="1" />\n`;
+                    svg += `<text x="${g.position.x + 5}" y="${g.position.y + 13}" font-family="sans-serif" font-size="11" font-weight="bold" fill="black">${keyword}</text>\n`;
+                    
+                    if (isRef) {
+                        svg += this.renderText(g.position.x + g.size.width/2, g.position.y + g.size.height/2, g.label || "", 12, "middle", "black");
+                    } else if (g.label) {
+                        svg += `<text x="${g.position.x + keywordWidth + 5}" y="${g.position.y + 13}" font-family="sans-serif" font-size="11" font-weight="bold" fill="${stroke}">[${g.label}]</text>\n`;
+                    }
+                } else if (g.label) {
+                    svg += this.renderText(g.position.x + g.size.width/2, g.position.y + 15, g.label, 14, "middle", "black");
+                }
+            } else if (g.keyword === 'package' || g.keyword === 'namespace' || g.keyword === 'folder') {
                 // Classic package shape with a tab
                 const tabWidth = Math.min(g.size.width * 0.4, 100);
                 const tabHeight = 20;
@@ -173,91 +222,181 @@ export class LayoutPumlSvgRenderer {
 
         // 4. Nodes
         Object.values(map.nodes).forEach(n => {
-            if (n.type === 'actor') {
-                const centerX = n.position.x + n.size.width / 2;
+            const x = n.position.x;
+            const y = n.position.y;
+            const w = n.size.width;
+            const h = n.size.height;
+            const centerX = x + w / 2;
+            const centerY = y + h / 2;
+            const fill = n.color || (isSequence ? '#E2E2F0' : '#FEFECE');
+            const stroke = '#A80036';
+
+            if (n.type === 'actor' || n.type === 'person') {
                 const headRadius = 10;
-                const headY = n.position.y + headRadius;
-                svg += `<circle cx="${centerX}" cy="${headY}" r="${headRadius}" fill="#E2E2F0" stroke="#A80036" stroke-width="2" />\n`;
-                svg += `<line x1="${centerX}" y1="${headY + headRadius}" x2="${centerX}" y2="${headY + headRadius + 20}" stroke="#A80036" stroke-width="2" />\n`;
-                svg += `<line x1="${centerX - 15}" y1="${headY + headRadius + 5}" x2="${centerX + 15}" y2="${headY + headRadius + 5}" stroke="#A80036" stroke-width="2" />\n`;
-                svg += `<line x1="${centerX - 10}" y1="${headY + headRadius + 35}" x2="${centerX}" y2="${headY + headRadius + 20}" stroke="#A80036" stroke-width="2" />\n`;
-                svg += `<line x1="${centerX + 10}" y1="${headY + headRadius + 35}" x2="${centerX}" y2="${headY + headRadius + 20}" stroke="#A80036" stroke-width="2" />\n`;
+                const headY = y + headRadius;
+                svg += `<circle cx="${centerX}" cy="${headY}" r="${headRadius}" fill="${fill}" stroke="${stroke}" stroke-width="2" />\n`;
+                svg += `<line x1="${centerX}" y1="${headY + headRadius}" x2="${centerX}" y2="${headY + headRadius + 20}" stroke="${stroke}" stroke-width="2" />\n`;
+                svg += `<line x1="${centerX - 15}" y1="${headY + headRadius + 5}" x2="${centerX + 15}" y2="${headY + headRadius + 5}" stroke="${stroke}" stroke-width="2" />\n`;
+                svg += `<line x1="${centerX - 10}" y1="${headY + headRadius + 35}" x2="${centerX}" y2="${headY + headRadius + 20}" stroke="${stroke}" stroke-width="2" />\n`;
+                svg += `<line x1="${centerX + 10}" y1="${headY + headRadius + 35}" x2="${centerX}" y2="${headY + headRadius + 20}" stroke="${stroke}" stroke-width="2" />\n`;
                 const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
                 svg += this.renderText(centerX, headY + headRadius + 50, text, 14);
             } else if (n.type === 'node') {
                 // 3D Cube for Node
                 const offset = 10;
-                const w = n.size.width - offset;
-                const h = n.size.height - offset;
-                const x = n.position.x;
-                const y = n.position.y + offset;
+                const bw = w - offset;
+                const bh = h - offset;
+                const bx = x;
+                const by = y + offset;
                 
-                svg += `<path d="M ${x} ${y} L ${x+w} ${y} L ${x+w} ${y+h} L ${x} ${y+h} Z" fill="#E2E2F0" stroke="#A80036" stroke-width="1.5" />\n`;
-                svg += `<path d="M ${x} ${y} L ${x+offset} ${y-offset} L ${x+w+offset} ${y-offset} L ${x+w} ${y} Z" fill="#F2F2FF" stroke="#A80036" stroke-width="1.5" />\n`;
-                svg += `<path d="M ${x+w} ${y} L ${x+w+offset} ${y-offset} L ${x+w+offset} ${y+h-offset} L ${x+w} ${y+h} Z" fill="#D2D2E0" stroke="#A80036" stroke-width="1.5" />\n`;
+                svg += `<path d="M ${bx} ${by} L ${bx+bw} ${by} L ${bx+bw} ${by+bh} L ${bx} ${by+bh} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<path d="M ${bx} ${by} L ${bx+offset} ${by-offset} L ${bx+bw+offset} ${by-offset} L ${bx+bw} ${by} Z" fill="#F2F2FF" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<path d="M ${bx+bw} ${by} L ${bx+bw+offset} ${by-offset} L ${bx+bw+offset} ${by+bh-offset} L ${bx+bw} ${by+bh} Z" fill="#D2D2E0" stroke="${stroke}" stroke-width="1.5" />\n`;
                 const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
-                svg += this.renderText(x + w/2, y + h/2 + 5, text, 14);
+                svg += this.renderText(bx + bw/2, by + bh/2 + 5, text, 14);
             } else if (n.type === 'cloud') {
-                const x = n.position.x;
-                const y = n.position.y;
-                const w = n.size.width;
-                const h = n.size.height;
-                const cx = x + w/2;
-                const cy = y + h/2;
                 const r = Math.min(w, h) / 3;
-                
-                svg += `<path d="M ${cx - r*1.5} ${cy} 
-                           A ${r} ${r} 0 0 1 ${cx - r*0.5} ${cy - r}
-                           A ${r} ${r} 0 0 1 ${cx + r*0.5} ${cy - r}
-                           A ${r} ${r} 0 0 1 ${cx + r*1.5} ${cy}
-                           A ${r} ${r} 0 0 1 ${cx + r*0.5} ${cy + r}
-                           A ${r} ${r} 0 0 1 ${cx - r*0.5} ${cy + r}
-                           A ${r} ${r} 0 0 1 ${cx - r*1.5} ${cy} Z" 
-                           fill="#E2E2F0" stroke="#A80036" stroke-width="1.5" />\n`;
+                svg += `<path d="M ${centerX - r*1.5} ${centerY} 
+                           A ${r} ${r} 0 0 1 ${centerX - r*0.5} ${centerY - r}
+                           A ${r} ${r} 0 0 1 ${centerX + r*0.5} ${centerY - r}
+                           A ${r} ${r} 0 0 1 ${centerX + r*1.5} ${centerY}
+                           A ${r} ${r} 0 0 1 ${centerX + r*0.5} ${centerY + r}
+                           A ${r} ${r} 0 0 1 ${centerX - r*0.5} ${centerY + r}
+                           A ${r} ${r} 0 0 1 ${centerX - r*1.5} ${centerY} Z" 
+                           fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
                 const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
-                svg += this.renderText(cx, cy + 5, text, 14);
+                svg += this.renderText(centerX, centerY + 5, text, 14);
+            } else if (n.type === 'database' || n.type === 'storage') {
+                const ry = 10;
+                svg += `<path d="M ${x} ${y+ry} L ${x} ${y+h-ry} A ${w/2} ${ry} 0 0 0 ${x+w} ${y+h-ry} L ${x+w} ${y+ry} A ${w/2} ${ry} 0 0 0 ${x} ${y+ry} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<ellipse cx="${centerX}" cy="${y+ry}" rx="${w/2}" ry="${ry}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(centerX, centerY + 5, text, 14);
+            } else if (n.type === 'component') {
+                svg += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                // Modern component icon in top right to match DeploymentRenderer
+                const iconW = 15;
+                const iconH = 12;
+                const ix = x + w - 22;
+                const iy = y + 5;
+                svg += `<rect x="${ix}" y="${iy}" width="${iconW}" height="${iconH}" fill="${fill}" stroke="${stroke}" stroke-width="1" />\n`;
+                svg += `<rect x="${ix-3}" y="${iy+2}" width="6" height="3" fill="${fill}" stroke="${stroke}" stroke-width="1" />\n`;
+                svg += `<rect x="${ix-3}" y="${iy+7}" width="6" height="3" fill="${fill}" stroke="${stroke}" stroke-width="1" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(centerX, centerY + 5, text, 14);
+            } else if (n.type === 'artifact') {
+                svg += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                const iconW = 15;
+                const iconH = 18;
+                const ix = x + w - iconW - 5;
+                const iy = y + 5;
+                svg += `<path d="M ${ix} ${iy} L ${ix+iconW-5} ${iy} L ${ix+iconW} ${iy+5} L ${ix+iconW} ${iy+iconH} L ${ix} ${iy+iconH} Z M ${ix+iconW-5} ${iy} L ${ix+iconW-5} ${iy+5} L ${ix+iconW} ${iy+5}" fill="none" stroke="${stroke}" stroke-width="1" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(centerX, centerY + 5, text, 14);
+            } else if (n.type === 'file') {
+                svg += `<path d="M ${x} ${y} L ${x+w-15} ${y} L ${x+w} ${y+15} L ${x+w} ${y+h} L ${x} ${y+h} Z M ${x+w-15} ${y} L ${x+w-15} ${y+15} L ${x+w} ${y+15}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(centerX, centerY + 5, text, 14);
+            } else if (n.type === 'folder' || n.type === 'package' || n.type === 'namespace') {
+                const tabW = w * 0.4;
+                const tabH = 15;
+                svg += `<path d="M ${x} ${y+tabH} L ${x} ${y} L ${x+tabW} ${y} L ${x+tabW+5} ${y+tabH} L ${x+w} ${y+tabH} L ${x+w} ${y+h} L ${x} ${y+h} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(centerX, centerY + tabH/2 + 5, text, 14);
+            } else if (n.type === 'frame') {
+                svg += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<path d="M ${x} ${y+20} L ${x+40} ${y+20} L ${x+50} ${y} L ${x} ${y} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(centerX, centerY + 5, text, 14);
+            } else if (n.type === 'collections') {
+                for (let i = 1; i >= 0; i--) {
+                    svg += `<rect x="${x + i*10}" y="${y - i*10}" width="${w-10}" height="${h-10}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                }
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(x + w/2 - 5, y + h/2, text, 14);
+            } else if (n.type === 'agent' || n.type === 'process' || n.type === 'action') {
+                svg += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(centerX, centerY + 5, text, 14);
+            } else if (n.type === 'usecase') {
+                svg += `<ellipse cx="${centerX}" cy="${centerY}" rx="${w/2}" ry="${h/2}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(centerX, centerY + 5, text, 14);
+            } else if (n.type === 'hexagon') {
+                const side = w / 4;
+                svg += `<path d="M ${x+side} ${y} L ${x+w-side} ${y} L ${x+w} ${centerY} L ${x+w-side} ${y+h} L ${x+side} ${y+h} L ${x} ${centerY} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(centerX, centerY + 5, text, 14);
+            } else if (n.type === 'queue') {
+                svg += `<path d="M ${x+10} ${y} L ${x+w} ${y} L ${x+w-10} ${y+h} L ${x} ${y+h} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(centerX, centerY + 5, text, 14);
+            } else if (n.type === 'stack') {
+                for (let i = 2; i >= 0; i--) {
+                    svg += `<rect x="${x + i*5}" y="${y - i*5}" width="${w-10}" height="${h-10}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                }
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(x + w/2 - 5, y + h/2, text, 14);
+            } else if (n.type === 'boundary') {
+                svg += `<circle cx="${x+15}" cy="${centerY}" r="15" fill="none" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<line x1="${x}" y1="${centerY-20}" x2="${x}" y2="${centerY+20}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<line x1="${x+30}" y1="${centerY}" x2="${x+w}" y2="${centerY}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(centerX, y + h + 15, text, 14);
+            } else if (n.type === 'control') {
+                svg += `<circle cx="${centerX}" cy="${centerY}" r="20" fill="none" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<path d="M ${centerX} ${centerY-20} L ${centerX+5} ${centerY-25} M ${centerX} ${centerY-20} L ${centerX-5} ${centerY-25}" fill="none" stroke="${stroke}" stroke-width="1.5" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(centerX, y + h + 15, text, 14);
+            } else if (n.type === 'entity') {
+                svg += `<circle cx="${centerX}" cy="${centerY-5}" r="20" fill="none" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<line x1="${centerX-25}" y1="${y+h-15}" x2="${centerX+25}" y2="${y+h-15}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
+                svg += this.renderText(centerX, y + h + 15, text, 14);
             } else {
                 const isClass = n.type === 'class' || n.type === 'interface' || n.type === 'enum' || n.type === 'struct';
-                const fill = isClass ? '#FEFECE' : '#E2E2F0';
-                svg += `<rect x="${n.position.x}" y="${n.position.y}" width="${n.size.width}" height="${n.size.height}" fill="${fill}" stroke="#A80036" stroke-width="1.5" rx="5" />\n`;
+                svg += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" rx="5" />\n`;
                 if (isClass) {
-                    svg += `<line x1="${n.position.x}" y1="${n.position.y + 30}" x2="${n.position.x + n.size.width}" y2="${n.position.y + 30}" stroke="#A80036" stroke-width="1" />\n`;
-                    let title = n.origName;
-                    if (n.type === 'interface') title = `<<interface>>\n${title}`;
-                    else if (n.stereotype) title = `${n.stereotype}\n${title}`;
-                    svg += this.renderText(n.position.x + n.size.width/2, n.position.y + 15, title, 12, "middle", "black");
+                    svg += `<line x1="${x}" y1="${y + 30}" x2="${x + w}" y2="${y + 30}" stroke="${stroke}" stroke-width="1" />\n`;
+                    let titleY = y + 15;
+                    if (n.type === 'interface') {
+                        svg += this.renderText(x + w/2, y + 12, "<<interface>>", 10, "middle", "black");
+                        titleY = y + 22;
+                    } else if (n.stereotype) {
+                        svg += this.renderText(x + w/2, y + 10, n.stereotype, 10, "middle", "black");
+                        titleY = y + 22;
+                    }
+                    svg += this.renderText(x + w/2, titleY, n.origName, 12, "middle", "black", false, false);
+                    
                     if (n.members) {
                         const fields = n.members.filter((m: any) => m.isField);
                         const methods = n.members.filter((m: any) => m.isMethod);
-                        let currentY = n.position.y + 45;
+                        let currentY = y + 45;
 
                         fields.forEach((m: any) => {
-                            let mText = `${m.visibility || ""} ${m.isStatic ? "{static} " : ""}${m.isAbstract ? "{abstract} " : ""}${m.name}${m.type ? " : " + m.type : ""}`;
-                            svg += this.renderText(n.position.x + 5, currentY, mText, 10, "start", "black");
+                            svg += this.getMemberSvg(x, currentY, m);
                             currentY += 18;
                         });
 
-                        if (fields.length > 0 && methods.length > 0) {
-                            svg += `<line x1="${n.position.x}" y1="${currentY - 5}" x2="${n.position.x + n.size.width}" y2="${currentY - 5}" stroke="#A80036" stroke-width="1" />\n`;
-                            currentY += 5;
-                        }
-
+                        const fieldsHeight = Math.max(18, fields.length * 18);
+                        const separatorY = y + 30 + fieldsHeight;
+                        svg += `<line x1="${x}" y1="${separatorY}" x2="${x + w}" y2="${separatorY}" stroke="${stroke}" stroke-width="1" />\n`;
+                        
+                        currentY = separatorY + 12;
                         methods.forEach((m: any) => {
-                            let mText = `${m.visibility || ""} ${m.isStatic ? "{static} " : ""}${m.isAbstract ? "{abstract} " : ""}${m.name}(${m.parameters?.join(", ") || ""})${m.type ? " : " + m.type : ""}`;
-                            svg += this.renderText(n.position.x + 5, currentY, mText, 10, "start", "black");
+                            svg += this.getMemberSvg(x, currentY, m);
                             currentY += 18;
                         });
                     }
                 } else {
                     const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
-                    svg += this.renderText(n.position.x + n.size.width/2, n.position.y + n.size.height/2 + 5, text, 14);
+                    svg += this.renderText(x + w/2, y + h/2 + 5, text, 14);
                 }
             }
         });
 
         // 5. Connections
         map.connections.forEach(c => {
-            const isSequence = map.diagramType === "sequence";
             const originNode = map.nodes[c.from];
             const targetNode = map.nodes[c.to];
             const fromExternal = c.from === "[" || c.from === "]";
@@ -415,15 +554,21 @@ export class LayoutPumlSvgRenderer {
 
                 // Cardinality
                 if (!isSequence) {
+                    const dx = tx - ox;
+                    const dy = ty - oy;
+                    let offsetX = 10;
+                    let offsetY = -10;
+                    if (Math.abs(dy) > Math.abs(dx)) { offsetX = 15; offsetY = -5; }
+
                     if (c.fromLabel) {
-                        const fx = ox + (tx - ox) * 0.2;
-                        const fy = oy + (ty - oy) * 0.2;
-                        svg += this.renderText(fx + 10, fy - 5, c.fromLabel, 10, "start");
+                        const fx = ox + dx * 0.1;
+                        const fy = oy + dy * 0.1;
+                        svg += this.renderText(fx + offsetX, fy + offsetY, c.fromLabel, 10, "start", "black", true); // Italic
                     }
                     if (c.toLabel) {
-                        const fx = ox + (tx - ox) * 0.8;
-                        const fy = oy + (ty - oy) * 0.8;
-                        svg += this.renderText(fx + 10, fy - 5, c.toLabel, 10, "start");
+                        const fx = ox + dx * 0.9;
+                        const fy = oy + dy * 0.9;
+                        svg += this.renderText(fx + offsetX, fy + offsetY, c.toLabel, 10, "start", "black", true); // Italic
                     }
                 }
             }
@@ -438,12 +583,36 @@ export class LayoutPumlSvgRenderer {
         // 7. Dividers
         map.dividers?.forEach(d => {
             const y = d.position.y + d.size.height / 2;
-            svg += `<line x1="${minX + 20}" y1="${y}" x2="${maxX - 20}" y2="${y}" stroke="#A80036" stroke-width="2" />\n`;
-            svg += `<line x1="${minX + 20}" y1="${y + 4}" x2="${maxX - 20}" y2="${y + 4}" stroke="#A80036" stroke-width="2" />\n`;
-            const textWidth = d.label.length * 10;
-            svg += `<rect x="${(minX + maxX)/2 - textWidth/2}" y="${d.position.y}" width="${textWidth}" height="${d.size.height}" fill="white" />\n`;
-            svg += this.renderText((minX + maxX)/2, y + 5, d.label, 14, "middle", "#A80036");
+            const isInitialization = d.label.toLowerCase().includes('initialization');
+            
+            if (isInitialization) {
+                const textWidth = d.label.length * 9;
+                const midX = (minX + maxX) / 2;
+                svg += `<rect x="${midX - textWidth/2 - 5}" y="${d.position.y}" width="${textWidth + 10}" height="${d.size.height}" fill="#EEEEEE" stroke="#A80036" stroke-width="1" />\n`;
+                svg += this.renderText(midX, y + 5, d.label, 14, "middle", "#A80036");
+                // Double lines on sides
+                svg += `<line x1="${minX + 20}" y1="${y - 2}" x2="${midX - textWidth/2 - 10}" y2="${y - 2}" stroke="#A80036" stroke-width="2" />\n`;
+                svg += `<line x1="${minX + 20}" y1="${y + 2}" x2="${midX - textWidth/2 - 10}" y2="${y + 2}" stroke="#A80036" stroke-width="2" />\n`;
+                svg += `<line x1="${midX + textWidth/2 + 10}" y1="${y - 2}" x2="${maxX - 20}" y2="${y - 2}" stroke="#A80036" stroke-width="2" />\n`;
+                svg += `<line x1="${midX + textWidth/2 + 10}" y1="${y + 2}" x2="${maxX - 20}" y2="${y + 2}" stroke="#A80036" stroke-width="2" />\n`;
+            } else {
+                svg += `<line x1="${minX + 20}" y1="${y}" x2="${maxX - 20}" y2="${y}" stroke="#A80036" stroke-width="2" />\n`;
+                svg += `<line x1="${minX + 20}" y1="${y + 4}" x2="${maxX - 20}" y2="${y + 4}" stroke="#A80036" stroke-width="2" />\n`;
+                const textWidth = d.label.length * 10;
+                svg += `<rect x="${(minX + maxX)/2 - textWidth/2}" y="${d.position.y}" width="${textWidth}" height="${d.size.height}" fill="white" />\n`;
+                svg += this.renderText((minX + maxX)/2, y + 5, d.label, 14, "middle", "#A80036");
+            }
         });
+
+        // 8. Delays (dots)
+        if ((map as any).delays) {
+            (map as any).delays.forEach((delay: any) => {
+                const midX = (minX + maxX) / 2;
+                for (let i = 0; i < 3; i++) {
+                    svg += `<circle cx="${midX}" cy="${delay.position.y + i * 10}" r="2" fill="#A80036" />\n`;
+                }
+            });
+        }
 
         svg += '</svg>';
         return svg;
