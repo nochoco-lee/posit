@@ -263,11 +263,18 @@ export class SequenceRenderer {
     }
 
     private drawDivider(div: LayoutDivider) {
-        const group = new Konva.Group({ x: 0, y: div.position.y });
-        const text = new Konva.Text({ text: div.label, fontSize: 14, fontStyle: 'bold', width: 800, align: 'center', fill: '#A80036' });
+        const group = new Konva.Group({ x: div.position.x, y: div.position.y });
+        const text = new Konva.Text({ text: div.label, fontSize: 14, fontStyle: 'bold', width: div.size.width, align: 'center', fill: '#A80036' });
         const lineY = text.height() / 2;
-        const lineLeft = new Konva.Line({ points: [50, lineY, 350, lineY], stroke: '#A80036', strokeWidth: 2 });
-        const lineRight = new Konva.Line({ points: [450, lineY, 750, lineY], stroke: '#A80036', strokeWidth: 2 });
+        
+        // Measure text to leave a gap
+        const textWidth = text.getTextWidth();
+        const midX = div.size.width / 2;
+        const gap = textWidth / 2 + 10;
+        
+        const lineLeft = new Konva.Line({ points: [0, lineY, midX - gap, lineY], stroke: '#A80036', strokeWidth: 2 });
+        const lineRight = new Konva.Line({ points: [midX + gap, lineY, div.size.width, lineY], stroke: '#A80036', strokeWidth: 2 });
+        
         group.add(lineLeft); group.add(lineRight); group.add(text); this.layer.add(group);
     }
 

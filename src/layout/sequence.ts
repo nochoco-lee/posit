@@ -128,11 +128,20 @@ export class SequenceLayoutManager {
     }
 
     private processDivider(div: IRDivider) {
+        const nodes = Object.values(this.map.nodes);
+        let width = 800;
+        let x = 50;
+        if (nodes.length > 0) {
+            const minX = Math.min(...nodes.map(n => n.position.x));
+            const maxX = Math.max(...nodes.map(n => n.position.x + n.size.width));
+            x = Math.max(0, minX - 50);
+            width = (maxX - x) + 50;
+        }
         const layoutDiv: LayoutDivider = {
             type: "divider",
             label: div.label,
-            position: { x: 50, y: this.currentSequenceY },
-            size: { width: 800, height: DEFAULTS.DIVIDER_HEIGHT }
+            position: { x, y: this.currentSequenceY },
+            size: { width, height: DEFAULTS.DIVIDER_HEIGHT }
         };
         this.map.dividers!.push(layoutDiv);
         this.currentSequenceY += DEFAULTS.DIVIDER_HEIGHT + 20;
