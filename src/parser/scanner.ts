@@ -2,66 +2,52 @@ export type DiagramType = 'sequence' | 'class' | 'deployment' | 'unknown';
 
 export class PlantUmlScanner {
     public scan(text: string): DiagramType {
-        const lowerText = text.toLowerCase();
+        const scores = { sequence: 0, class: 0, deployment: 0 };
+        const lines = text.split('\n');
         
-        // 1. Check for explicit type markers in @startuml
-        const startMatch = lowerText.match(/@startuml[ \t]+([a-z]+)/);
-        if (startMatch) {
-            const type = startMatch[1];
-            if (type === 'sequence') return 'sequence';
-            if (type === 'class') return 'class';
-            if (['deployment', 'component', 'usecase', 'object', 'state', 'salt'].includes(type)) return 'deployment';
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith("'") || trimmed.startsWith("@")) continue;
+            
+            // 1. Strong Connection Patterns (+300)
+            // Sequence: A -> B : label
+            if (/\w+\s*[-=.]+>\s*\w+\s*:[^:]/.test(trimmed)) scores.sequence += 300;
+            if (/->>|<<-|->x|x<-|->\?|\?<-|\[->|<-]|->\+|-->-|->\*|!->|--\+\+|--\*/.test(trimmed)) scores.sequence += 300;
+            if (/\b(?:autoactivate|autonumber|return)\b/i.test(trimmed)) scores.sequence += 300;
+
+            // Class: A <|-- B or A *-- B
+            if (/<\||\|>|\*--|--\*|o--|--o|\+--|--\+|#--|--#|--\+/.test(trimmed)) scores.class += 300;
+            if (/\b(?:class|interface|enum|struct|annotation|abstract|dataclass|protocol|exception)\s+[\w"()]+\s*\{/i.test(trimmed)) scores.class += 300;
+            if (/-+(?:up|down|left|right|hidden|horizontal|vertical|[lrud])-*>/i.test(trimmed)) scores.class += 300;
+
+            // Deployment: [comp] -> [other]
+            if (/\[.+\]\s*[-=.~]+\s*\[.+\]/.test(trimmed)) scores.deployment += 300;
+            if (/\[.+\]\s*[-=.~]+>\s*\[.+\]/.test(trimmed)) scores.deployment += 300;
+            if (/\b(?:node|artifact|cloud|component|storage|rectangle|card|file|hexagon|person|process|agent|usecase|action|frame|rect|folder|together)\s+[\w"()]+\s*\{/i.test(trimmed)) scores.deployment += 300;
+            if (/\b(?:node|artifact|cloud|component|storage|rectangle|card|file|hexagon|person|process|agent|usecase|action|frame|rect|folder|together)\s+[\w"()]+\s+as\b/i.test(trimmed)) scores.deployment += 300;
+
+            // 2. Medium Keywords (+100)
+            if (/\b(?:participant|actor|boundary|control|entity|database|collections|queue)\b/i.test(trimmed)) scores.sequence += 100;
+            if (/\b(?:class|interface|enum|struct|annotation|abstract|metaclass|protocol|record|stereotype)\b/i.test(trimmed)) scores.class += 100;
+            if (/\b(?:artifact|cloud|component|storage|rectangle|node|stack)\b/i.test(trimmed)) scores.deployment += 100;
+
+            // 3. Weak Indicators (+20)
+            if (/\w+\s*[-=.]+>\s*\w+/.test(trimmed)) {
+                // If we see a basic arrow, it's likely sequence if we haven't seen class/deployment indicators yet
+                if (scores.class === 0 && scores.deployment === 0) scores.sequence += 50;
+                else scores.sequence += 20;
+            }
         }
 
-        // 2. Scoring logic based on keywords and syntax patterns
-        let scores = {
-            sequence: 0,
-            class: 0,
-            deployment: 0
-        };
-
-        if (/\b(?:participant|actor|boundary|control|entity|database|collections|queue|autonumber|newpage|box|activate|deactivate|destroy|return|partition|mainframe|hnote|rnote|note|ref)\b/i.test(text)) scores.sequence += 100;
-        if (/\+\+|--(?:\s|:|$)/.test(text)) scores.sequence += 60; // Activation shorthand
-        if (/\b(?:alt|opt|loop|par|break|critical|group)\b/i.test(text)) scores.sequence += 60;
-        if (/->>|<<-|->x|x<-|->\?|\?<-|\[->|<-]|->\+|-->-|->\*|!->/.test(text)) scores.sequence += 80;
-        if (/(?<!-)>(?!-)|(?<!-)<(?!-)/.test(text)) scores.sequence += 30; // Single arrows like -> or <-
-
-        // Class indicators
-        if (/\b(?:class|interface|enum|struct|annotation|abstract|extends|implements|stereotype|metaclass|protocol|record|exception|dataclass)\b/i.test(text)) scores.class += 100;
-        if (/<\||\|>|\*--|--\*|o--|--o|\+--|--\+|#--|--#/.test(text)) scores.class += 80;
-        if (/[{}]/.test(text) && /\b(?:class|interface|enum)\b/i.test(text)) scores.class += 60;
-        if (/\(\)|<>\b/i.test(text)) scores.class += 40; // circle or diamond short forms
-
-        // Deployment indicators
-        if (/\b(?:artifact|cloud|component|node|storage|rectangle|card|file|hexagon|person|process|agent|usecase|action|frame|rect|package|namespace|folder|together)\b/i.test(text)) scores.deployment += 80;
-        if (/\b(?:database|collections|queue|stack)\b/i.test(text)) scores.deployment += 50;
-        if (/\blabel\b/i.test(text)) scores.deployment += 20; // Reduced weight
-        if (/-up-|-down-|-left-|-right-/.test(text)) scores.deployment += 40;
-        if (/\[/.test(text) && /]/.test(text)) {
-            // Check if brackets are for components [A] or colored arrows -[#red]>
-            if (!/-\[/.test(text)) scores.deployment += 25; // Reduced weight
-            else scores.deployment += 10; // Weak indicator if it's only colored arrows
+        const max = Math.max(scores.sequence, scores.class, scores.deployment);
+        if (max === 0) {
+            if (text.includes('@startuml')) return 'sequence'; // Fallback
+            return 'unknown';
         }
-
-        // Skinparam keywords
-        if (/skinparam\s+(?:component|node|database|class|interface|actor|usecase|package|folder|frame|rectangle|cloud|artifact|storage|card|file|hexagon|person|process|agent|label|action)\b/i.test(text)) {
-             if (/class|interface/i.test(text)) scores.class += 30;
-             else scores.deployment += 30;
-        }
-
-        // Final decision
-        if (scores.sequence > scores.class && scores.sequence > scores.deployment) return 'sequence';
-        if (scores.class > scores.sequence && scores.class > scores.deployment) return 'class';
-        if (scores.deployment > scores.sequence && scores.deployment > scores.class) return 'deployment';
         
-        // If tied or all zero, look for any hint
-        if (scores.sequence > 0) return 'sequence';
-        if (scores.class > 0) return 'class';
-        if (scores.deployment > 0) return 'deployment';
-
-        // If @startuml is present but nothing else, assume sequence to allow parser to handle errors
-        if (lowerText.includes('@startuml')) return 'sequence';
-
-        return 'unknown';
+        // Tie-breaking: Sequence > Class > Deployment
+        if (scores.sequence >= max) return 'sequence';
+        if (scores.class >= max) return 'class';
+        return 'deployment';
     }
 }

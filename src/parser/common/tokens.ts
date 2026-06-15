@@ -68,6 +68,8 @@ export const LAngle = createToken({ name: "LAngle", pattern: /</ });
 export const RAngle = createToken({ name: "RAngle", pattern: />/ });
 export const Plus = createToken({ name: "Plus", pattern: /\+/ });
 export const Minus = createToken({ name: "Minus", pattern: /-/ });
+export const Tilde = createToken({ name: "Tilde", pattern: /~/ });
+export const Hash = createToken({ name: "Hash", pattern: /#/ });
 
 export const commonTokens = [
     WhiteSpace,
@@ -107,5 +109,7 @@ export const commonTokens = [
     LAngle,
     RAngle,
     Plus,
-    Minus
+    Minus,
+    Tilde,
+    Hash
 ];

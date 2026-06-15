@@ -11,7 +11,7 @@ export function parseMermaid(text: string): IRDiagram {
         throw new Error(`Lexing errors:\n${lexingResult.errors.map(e => e.message).join("\n")}`);
     }
 
-    // console.log("Lexing tokens:", lexingResult.tokens.map(t => ({ type: t.tokenType.name, image: t.image })));
+    console.log("Lexing tokens:", lexingResult.tokens.map(t => ({ type: t.tokenType.name, image: t.image })));
 
 
     // 2. Parsing

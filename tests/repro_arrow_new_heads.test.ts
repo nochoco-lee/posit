@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SequenceLexer } from "../src/parser/lexer";
+import { SequenceLexer } from "../src/parser/sequence/lexer";
 
 describe("Arrow token new heads", () => {
     const lex = (input: string) => {

@@ -1,5 +1,5 @@
 import { it } from "vitest";
-import { SequenceLexer } from "../src/parser/lexer";
+import { SequenceLexer } from "../src/parser/sequence/lexer";
 
 it("should tokenize ?->>", () => {
     const input = `@startuml

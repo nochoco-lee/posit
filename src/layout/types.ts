@@ -20,6 +20,8 @@ export interface LayoutNode {
     lifelineX?: number; 
     lifelineY?: number;
     color?: string;
+    isCreate?: boolean;
+    isDestroy?: boolean;
 }
 
 export interface LayoutConnection {

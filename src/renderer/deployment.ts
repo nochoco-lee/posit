@@ -14,7 +14,7 @@ export class DeploymentRenderer {
         this.layer = layer;
     }
 
-    public setOnNodeMove(callback: (id: string, newX: number, newY: number) => void) {
+    public setOnDragEnd(callback: (id: string, newX: number, newY: number) => void) {
         this.onNodeMove = callback;
     }
 

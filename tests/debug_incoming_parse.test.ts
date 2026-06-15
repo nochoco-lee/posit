@@ -1,6 +1,6 @@
 import { it, expect } from "vitest";
-import { SequenceLexer } from "../src/parser/lexer";
-import { parser } from "../src/parser/parser";
+import { SequenceLexer } from "../src/parser/sequence/lexer";
+import { parser } from "../src/parser/sequence/parser";
 
 it("should parse ?-> Alice", () => {
     const input = `@startuml

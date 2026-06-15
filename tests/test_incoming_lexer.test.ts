@@ -1,5 +1,5 @@
 import { describe, it } from "vitest";
-import { SequenceLexer } from "../src/parser/lexer";
+import { SequenceLexer } from "../src/parser/sequence/lexer";
 
 describe("Incoming Lexer Test", () => {
     it("should tokenize ?-> Alice", () => {

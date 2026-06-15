@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
-import { SequenceLexer } from "../src/parser/lexer";
+import { ClassLexer as SequenceLexer } from "../src/parser/class/lexer";
 
 describe("Diagram 20 Reproduction", () => {
     it("should parse diagram 20", () => {

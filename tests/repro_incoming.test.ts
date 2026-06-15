@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
-import { SequenceLexer } from "../src/parser/lexer";
+import { SequenceLexer } from "../src/parser/sequence/lexer";
 
 describe("repro_incoming", () => {
     it("should parse ?-> Alice", () => {

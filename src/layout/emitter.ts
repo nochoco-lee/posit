@@ -1,5 +1,6 @@
 import { IRDiagram, IREdge, IRNode, IRStatement, IRGroup, IRContainer, IRDivider, IRNote } from "../ir/types";
 import { LayoutMap } from "./types";
+import { formatPosComment } from "../ir/constants";
 
 export class Emitter {
     /**
@@ -42,9 +43,8 @@ export class Emitter {
                 if (patch) patches.push(patch);
             } else if (ir.diagramType === 'sequence') {
                 const insertionPoint = this.findInsertionPoint(originalText, syntax);
-                const declaration = syntax === 'mermaid' 
-                    ? `    participant ${id} %% @pos(${layoutNode.position.x}, ${layoutNode.position.y})\n`
-                    : `participant ${id} /' @pos(${layoutNode.position.x}, ${layoutNode.position.y}) '/\n`;
+                const prefix = syntax === 'mermaid' ? '    ' : '';
+                const declaration = `${prefix}participant ${id}${formatPosComment(layoutNode.position.x, layoutNode.position.y, syntax)}\n`;
                 
                 patches.push({
                     start: insertionPoint,
@@ -137,9 +137,7 @@ export class Emitter {
         const offset = statement.offset;
         if (!offset || offset.start === undefined || offset.end === undefined || isNaN(offset.start) || isNaN(offset.end)) return null;
 
-        const replacementStr = syntax === 'mermaid' 
-            ? ` %% @pos(${position.x}, ${position.y})`
-            : ` /' @pos(${position.x}, ${position.y}) '/`;
+        const replacementStr = formatPosComment(position.x, position.y, syntax);
 
         const posRegex = syntax === 'mermaid' 
             ? /%%\s*@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/g

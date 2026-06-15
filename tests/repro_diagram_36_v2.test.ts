@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
-import { SequenceLexer } from "../src/parser/lexer";
+import { SequenceLexer } from "../src/parser/sequence/lexer";
 
 describe("Diagram 36 Reproduction", () => {
     it("should parse diagram 36 or fail informatively", () => {

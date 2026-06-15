@@ -28,7 +28,7 @@ export class SequenceRenderer {
         this.layer = layer;
     }
 
-    public setOnNodeMove(callback: (id: string, newX: number, newY: number) => void) {
+    public setOnDragEnd(callback: (id: string, newX: number, newY: number) => void) {
         this.onNodeMove = callback;
     }
 
@@ -490,7 +490,7 @@ export class SequenceRenderer {
                     for (let i = 0; i < children.length; i++) {
                         const child = children[i];
                         if (child instanceof Konva.Text && child.align() === 'center') child.width(rect.width());
-                        else if (child instanceof Konva.Line && child !== rect) { const points = child.points(); points[2] = rect.width(); child.points(points); }
+                        else if (child instanceof Konva.Line) { const points = child.points(); points[2] = rect.width(); child.points(points); }
                     }
                 }
             }
@@ -585,18 +585,6 @@ export class SequenceRenderer {
             });
         }
         this.groupVisuals.push({ group, rect, dividers: [], labels: [], def: groupDef }); this.layer.add(group);
-    }
-
-    private drawNote(noteDef: LayoutNote) {
-        const group = new Konva.Group({ x: noteDef.position.x, y: noteDef.position.y, draggable: true, id: `note-${noteDef.text.substring(0, 10)}` });
-        group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
-        group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });
-        group.on('dragend', (e: any) => { if (this.onNodeMove) this.onNodeMove(group.id(), Math.round(e.target.x()), Math.round(e.target.y())); });
-        const rect = new Konva.Rect({ width: noteDef.size.width, height: noteDef.size.height, fill: '#FBFB77', stroke: '#A80036', strokeWidth: 1 });
-        const text = new Konva.Text({ text: noteDef.text, width: noteDef.size.width, padding: 5, fontSize: 12, align: 'center' });
-        group.add(rect); group.add(text);
-        this.layer.add(group);
-        this.noteVisuals.push({ group, rect, text, def: noteDef });
     }
 
     private updateAllActivations() { if (!this.map) return; Object.keys(this.activationRects).forEach(nodeId => { this.updateActivationsForNode(nodeId); }); }

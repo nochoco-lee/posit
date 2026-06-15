@@ -1,6 +1,8 @@
-import { CstParser } from "chevrotain";
+import { CstParser, EOF } from "chevrotain";
 import {
     allMeTokens,
+    Keyword,
+    Symbol,
     SequenceDiagramHdr,
     ClassDiagramHdr,
     FlowchartHdr,
@@ -25,6 +27,7 @@ import {
     Box,
     Create,
     Destroy,
+    Break,
     Class,
     Interface,
     Identifier,
@@ -60,19 +63,27 @@ import {
     Star,
     Slash,
     Backslash,
-    Word,
     Quote,
     LAngle,
     RAngle,
+    Equal,
     Subgraph,
     Click,
     Link,
+    Links,
     Direction
 } from "./lexer";
 
 class MermaidParser extends CstParser {
     constructor() {
-        super(allMeTokens);
+        super(allMeTokens, {
+            errorMessageProvider: {
+                buildMismatchTokenMessage: (options: any) => `Expecting token of type --> ${options.expected.name} <-- but found --> '${options.actual.image}' <--`,
+                buildNoViableAltMessage: (options: any) => `Expecting one of the possible Token sequences, but found: '${options.actual[0].image}'`,
+                buildEarlyExitMessage: (options: any) => `Expecting at least one iteration which starts with one of these tokens: [${options.expectedIterationPaths.map((p: any) => p[0].name).join(", ")}], but found: '${options.actual[0].image}'`,
+                buildNotAllInputParsedMessage: (options: any) => `Redundant input, expecting EOF but found: ${options.firstRedundant.image}`
+            }
+        });
         this.performSelfAnalysis();
     }
 
@@ -139,28 +150,22 @@ class MermaidParser extends CstParser {
     private isConnection(): boolean {
         let la = 1;
         let t = this.LA(la);
-        while (t.tokenType === LParen || t.tokenType === RParen) { la++; t = this.LA(la); }
-        if (t.tokenType !== Identifier && t.tokenType !== StringLiteral && t.tokenType !== BacktickIdentifier && t.tokenType !== Word) return false;
-        la++;
-        t = this.LA(la);
-        while (t.tokenType === LParen || t.tokenType === RParen) { la++; t = this.LA(la); }
-        if (t.tokenType === Plus || t.tokenType === Minus) {
-            la++;
-            t = this.LA(la);
-        }
+        while (t.tokenType === Quote || t.tokenType === StringLiteral) { la++; t = this.LA(la); }
+        if (t.tokenType !== Identifier && t.tokenType !== Keyword) return false;
+        la++; t = this.LA(la);
+        while (t.tokenType === Symbol || t.tokenType === Star || t.tokenType === Hash || t.tokenType === LAngle || t.tokenType === VerticalBar || t.tokenType === LParen || t.tokenType === RParen) { la++; t = this.LA(la); }
         return t.tokenType === Arrow;
     }
 
     private isMemberDecl(): boolean {
         const t1 = this.LA(1).tokenType;
         const t2 = this.LA(2).tokenType;
-        const isName = t1 === Identifier || t1 === StringLiteral || t1 === BacktickIdentifier || t1 === Word;
-        return isName && t2 === Colon;
+        return (t1 === Identifier || t1 === Keyword) && t2 === Colon;
     }
 
     private isFlowchartNode(): boolean {
         const t1 = this.LA(1).tokenType;
-        return (t1 === Identifier || t1 === Word || t1 === StringLiteral || t1 === BacktickIdentifier);
+        return (t1 === Identifier || t1 === StringLiteral || t1 === Keyword) && t1 !== End;
     }
 
     public ignoredStatement = this.RULE("ignoredStatement", () => {
@@ -176,7 +181,8 @@ class MermaidParser extends CstParser {
             { ALT: () => this.CONSUME(Ampersand) },
             { ALT: () => this.CONSUME(And) },
             { ALT: () => this.CONSUME(Click) },
-            { ALT: () => this.CONSUME(Link) }
+            { ALT: () => this.CONSUME(Link) },
+            { ALT: () => this.CONSUME(Links) }
         ]);
         this.MANY(() => this.SUBRULE(this.anyToken));
     });
@@ -184,42 +190,22 @@ class MermaidParser extends CstParser {
     public anyToken = this.RULE("anyToken", () => {
         this.OR([
             { ALT: () => this.CONSUME(Identifier) },
+            { ALT: () => this.CONSUME(Keyword) },
+            { ALT: () => this.CONSUME(Symbol) },
             { ALT: () => this.CONSUME(StringLiteral) },
             { ALT: () => this.CONSUME(BacktickIdentifier) },
-            { ALT: () => this.CONSUME(Word) },
-            { ALT: () => this.CONSUME(LParen) },
-            { ALT: () => this.CONSUME(RParen) },
-            { ALT: () => this.CONSUME(LBrace) },
-            { ALT: () => this.CONSUME(LBracket) },
-            { ALT: () => this.CONSUME(RBracket) },
-            { ALT: () => this.CONSUME(LShape) },
-            { ALT: () => this.CONSUME(RShape) },
-            { ALT: () => this.CONSUME(VerticalBar) },
-            { ALT: () => this.CONSUME(Colon) },
-            { ALT: () => this.CONSUME(Comma) },
-            { ALT: () => this.CONSUME(Plus) },
-            { ALT: () => this.CONSUME(Minus) },
-            { ALT: () => this.CONSUME(Hash) },
-            { ALT: () => this.CONSUME(Tilde) },
-            { ALT: () => this.CONSUME(Arrow) },
-            { ALT: () => this.CONSUME(Quote) },
-            { ALT: () => this.CONSUME(As) },
-            { ALT: () => this.CONSUME(LAngle) },
-            { ALT: () => this.CONSUME(RAngle) },
-            { ALT: () => this.CONSUME(Star) },
-            { ALT: () => this.CONSUME(Slash) },
-            { ALT: () => this.CONSUME(Backslash) }
+            { ALT: () => this.CONSUME(Arrow) }
         ]);
     });
 
     public genericName = this.RULE("genericName", () => {
-        this.OR([
-            { ALT: () => this.CONSUME(Identifier) },
-            { ALT: () => this.CONSUME(StringLiteral) },
-            { ALT: () => this.CONSUME(BacktickIdentifier) },
-            { ALT: () => this.CONSUME(Word) },
-            { ALT: () => { this.CONSUME(LParen); this.CONSUME(RParen); } }
-        ]);
+        this.AT_LEAST_ONE({
+            GATE: () => {
+                const t = this.LA(1).tokenType;
+                return t !== Newline && t !== Colon && t !== VerticalBar && t !== Arrow && t !== EOF;
+            },
+            DEF: () => this.SUBRULE(this.anyToken)
+        });
     });
 
     public participantDeclaration = this.RULE("participantDeclaration", () => {
@@ -234,16 +220,12 @@ class MermaidParser extends CstParser {
                 this.SUBRULE1(this.genericName, { LABEL: "name" });
             }}
         ]);
-        this.OPTION1(() => {
-            this.CONSUME(LParen);
-            this.SUBRULE(this.payload, { LABEL: "label" });
-            this.CONSUME(RParen);
-        });
         this.OPTION2(() => this.SUBRULE(this.metadata));
         this.OPTION3(() => {
             this.CONSUME(As);
             this.SUBRULE1(this.payload, { LABEL: "alias" });
         });
+        this.OPTION4(() => this.CONSUME(PosComment, { LABEL: "layout" }));
     });
 
     public metadata = this.RULE("metadata", () => {
@@ -268,7 +250,7 @@ class MermaidParser extends CstParser {
         this.MANY({
             GATE: () => {
                 const t = this.LA(1).tokenType;
-                return t !== RBrace && t !== Newline && t !== VerticalBar && t !== RParen && t !== RShape;
+                return t !== RBrace && t !== Newline && t !== VerticalBar && t !== RParen && t !== RShape && t !== EOF;
             },
             DEF: () => this.SUBRULE(this.anyToken)
         });
@@ -280,10 +262,16 @@ class MermaidParser extends CstParser {
             { ALT: () => this.CONSUME(RightOf) },
             { ALT: () => this.CONSUME(LeftOf) },
             { ALT: () => this.CONSUME(Over) },
-            { ALT: () => {
-                this.OPTION(() => this.CONSUME(Identifier, { LABEL: "forKeyword" }));
-                this.SUBRULE(this.genericName, { LABEL: "target" });
-            }}
+            { 
+                GATE: () => {
+                    const t = this.LA(1).tokenType;
+                    return t !== RightOf && t !== LeftOf && t !== Over;
+                },
+                ALT: () => {
+                    this.OPTION(() => this.CONSUME(Identifier, { LABEL: "forKeyword" }));
+                    this.SUBRULE(this.genericName, { LABEL: "target" });
+                }
+            }
         ]);
         this.MANY(() => {
             this.CONSUME(Comma);
@@ -309,7 +297,8 @@ class MermaidParser extends CstParser {
             { ALT: () => this.CONSUME(Par) },
             { ALT: () => this.CONSUME(Critical) },
             { ALT: () => this.CONSUME(Rect) },
-            { ALT: () => this.CONSUME(Box) }
+            { ALT: () => this.CONSUME(Box) },
+            { ALT: () => this.CONSUME(Break) }
         ]);
         this.OPTION(() => this.SUBRULE(this.payload, { LABEL: "label" }));
         this.MANY1(() => this.SUBRULE(this.sequenceStatement));
@@ -342,12 +331,12 @@ class MermaidParser extends CstParser {
                 }}
             ]);
         });
+        this.OPTION1(() => this.CONSUME(PosComment, { LABEL: "layout" }));
     });
 
     private isClassMember(): boolean {
         const t1 = this.LA(1).tokenType;
-        return t1 === Plus || t1 === Minus || t1 === Hash || t1 === Tilde ||
-               t1 === Identifier || t1 === Word;
+        return t1 === Plus || t1 === Minus || t1 === Hash || t1 === Tilde || t1 === Identifier || t1 === Keyword;
     }
 
     public classMemberLine = this.RULE("classMemberLine", () => {
@@ -375,22 +364,25 @@ class MermaidParser extends CstParser {
     public connectionDeclaration = this.RULE("connectionDeclaration", () => {
         this.SUBRULE(this.genericName, { LABEL: "from" });
         this.MANY(() => {
-            this.OPTION(() => this.OR([ { ALT: () => this.CONSUME(Plus) }, { ALT: () => this.CONSUME(Minus) } ]));
+            this.OPTION(() => this.OR([ { ALT: () => this.CONSUME(Plus) }, { ALT: () => this.CONSUME(Minus) }, { ALT: () => this.CONSUME(Star) }, { ALT: () => this.CONSUME(Hash) }, { ALT: () => this.CONSUME(LAngle) }, { ALT: () => this.CONSUME1(VerticalBar) } ]));
+            this.OPTION1(() => this.CONSUME(StringLiteral, { LABEL: "multiplicity1" }));
             this.CONSUME(Arrow, { LABEL: "arrow" });
-            this.OPTION1(() => {
+            this.OPTION2(() => this.CONSUME1(StringLiteral, { LABEL: "multiplicity2" }));
+            this.MANY1(() => {
                 this.OR1([
-                    { ALT: () => { this.CONSUME(VerticalBar); this.SUBRULE(this.payload, { LABEL: "edgeLabel" }); this.CONSUME1(VerticalBar); } },
+                    { ALT: () => { this.CONSUME2(VerticalBar); this.SUBRULE(this.payload, { LABEL: "edgeLabel" }); this.CONSUME3(VerticalBar); } },
                     { ALT: () => this.OR2([{ ALT: () => this.CONSUME1(Plus) }, { ALT: () => this.CONSUME1(Minus) }]) }
                 ]);
             });
             this.SUBRULE1(this.genericName, { LABEL: "to" });
         });
-        this.OPTION2(() => {
+        this.OPTION3(() => {
             this.OR3([
                 { ALT: () => { this.CONSUME(Colon); this.SUBRULE1(this.payload, { LABEL: "payload" }); } },
-                { ALT: () => { this.CONSUME2(VerticalBar); this.SUBRULE2(this.payload, { LABEL: "edgeLabel2" }); this.CONSUME3(VerticalBar); } }
+                { ALT: () => { this.CONSUME4(VerticalBar); this.SUBRULE2(this.payload, { LABEL: "edgeLabel2" }); this.CONSUME5(VerticalBar); } }
             ]);
         });
+        this.OPTION4(() => this.CONSUME(PosComment, { LABEL: "layout" }));
     });
 
     public flowchartNodeDeclaration = this.RULE("flowchartNodeDeclaration", () => {
@@ -406,6 +398,7 @@ class MermaidParser extends CstParser {
                 } }
             ]);
         });
+        this.OPTION2(() => this.CONSUME(PosComment, { LABEL: "layout" }));
     });
 
     public subgraphDeclaration = this.RULE("subgraphDeclaration", () => {

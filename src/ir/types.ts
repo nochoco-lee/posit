@@ -14,6 +14,7 @@ export interface IRNode extends IRStatement {
     type: 'node';
     name: string;      // The unique identifier (e.g. EU or UserService)
     origName?: string; // The display label (e.g. "External User")
+    label?: string;    // Display label
     shape: string;     // Generic shape term: "class", "interface", "participant", "actor", "database"
     stereotype?: string; // <<stereotype>>
     isCreation?: boolean;
@@ -58,6 +59,7 @@ export interface IREdge extends IRStatement {
 
 export interface IRGroup extends IRStatement {
     type: 'group';
+    name?: string;
     keyword: string;   // 'alt', 'opt', 'loop', 'par'
     label?: string;
     color?: string;
@@ -142,6 +144,10 @@ export interface IRContainer extends IRStatement {
     name?: string;
     stereotype?: string;
     color?: string;
+    layout?: {
+        x: number;
+        y: number;
+    };
     statements: IRStatement[];
 }
 
@@ -150,4 +156,8 @@ export interface IRDiagram {
     syntax: 'plantuml' | 'mermaid';
     diagramType: 'sequence' | 'class' | 'deployment' | 'unknown';
     statements: IRStatement[];
+}
+
+export interface IRMetadata {
+    [key: string]: any;
 }

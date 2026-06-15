@@ -1,9 +1,11 @@
-import { CstNode, IToken } from "chevrotain";
-import { IRDiagram, IREdge, IRNode, IRStatement, IRContainer, IRGroup, IRNote, IROffset } from "../../ir/types";
-import { SequenceParser } from "./parser";
+import * as parser from "./parser";
+import * as lexer from "./lexer";
+import * as common from "../common/tokens";
+import { IRDiagram, IRStatement, IRNode, IREdge, IRGroup, IRMetadata } from "../../ir/types";
+import { POS_COMMENT_REGEX } from "../../ir/constants";
+import { IToken } from "chevrotain";
 
-const parser = new SequenceParser();
-const BaseVisitor = parser.getBaseCstVisitorConstructor();
+const BaseVisitor = parser.parser.getBaseCstVisitorConstructor();
 
 export class SequenceAstVisitor extends BaseVisitor {
     constructor() {
@@ -11,338 +13,370 @@ export class SequenceAstVisitor extends BaseVisitor {
         this.validateVisitor();
     }
 
-    private getOffsets(ctx: any, layoutTokens?: IToken[]): IROffset {
-        const allTokens: IToken[] = [];
-        const collectTokens = (obj: any) => {
-            if (!obj) return;
-            if (Array.isArray(obj)) {
-                obj.forEach(collectTokens);
-            } else if (obj.image) {
-                allTokens.push(obj);
-            } else if (obj.children) {
-                Object.values(obj.children).forEach(collectTokens);
-            } else {
-                // Handle the case where obj is the children object itself
-                Object.values(obj).forEach(collectTokens);
-            }
-        };
-        collectTokens(ctx);
-        
-        if (allTokens.length === 0) return { start: 0, end: 0 };
-        
-        allTokens.sort((a, b) => a.startOffset - b.startOffset);
-        const start = allTokens[0].startOffset;
-        const end = (allTokens[allTokens.length - 1].endOffset !== undefined ? allTokens[allTokens.length - 1].endOffset! + 1 : allTokens[allTokens.length - 1].startOffset + (allTokens[allTokens.length - 1].image?.length || 0));
-
-        let layoutStart: number | undefined = undefined;
-        let layoutEnd: number | undefined = undefined;
-        
-        if (layoutTokens && layoutTokens.length > 0) {
-            layoutTokens.sort((a, b) => a.startOffset - b.startOffset);
-            layoutStart = layoutTokens[0].startOffset;
-            layoutEnd = (layoutTokens[layoutTokens.length - 1].endOffset !== undefined ? layoutTokens[layoutTokens.length - 1].endOffset! + 1 : layoutTokens[layoutTokens.length - 1].startOffset + (layoutTokens[layoutTokens.length - 1].image?.length || 0));
-        }
-
-        return { start, end, layoutStart, layoutEnd };
-    }
-
     diagram(ctx: any): IRDiagram {
-        const statements = ctx.statement ? ctx.statement.map((s: any) => this.visit(s)).filter((s: any) => s).flat() : [];
+        const statements: IRStatement[] = [];
+        if (ctx.statement) {
+            ctx.statement.forEach((stmt: any) => {
+                const s = this.visit(stmt);
+                if (Array.isArray(s)) {
+                    statements.push(...s);
+                } else if (s) {
+                    statements.push(s);
+                }
+            });
+        }
         return {
             type: "Diagram",
             syntax: "plantuml",
             diagramType: "sequence",
-            statements,
+            statements
         };
     }
 
-    statement(ctx: any): IRStatement | IRStatement[] | null {
-        let result: any = null;
-        if (ctx.participantDeclaration) result = this.visit(ctx.participantDeclaration[0]);
-        else if (ctx.connectionDeclaration) result = this.visit(ctx.connectionDeclaration[0]);
-        else if (ctx.noteDeclaration) result = this.visit(ctx.noteDeclaration[0]);
-        else if (ctx.refDeclaration) result = this.visit(ctx.refDeclaration[0]);
-        else if (ctx.blockDeclaration) result = this.visit(ctx.blockDeclaration[0]);
-        else if (ctx.ignoredStatement) return null;
-        else if (ctx.Autonumber) result = { type: "autonumber" } as any;
-        else if (ctx.Activate) result = { type: "activation", action: "activate", target: this.visit(ctx.activeNode[0]) } as any;
-        else if (ctx.Deactivate) result = { type: "activation", action: "deactivate", target: this.visit(ctx.activeNode[0]) } as any;
-        else if (ctx.Destroy) result = { type: "activation", action: "destroy", target: this.visit(ctx.activeNode[0]) } as any;
-        else if (ctx.Bye) result = { type: "activation", action: "destroy", target: this.visit(ctx.activeNode[0]) } as any;
-        else if (ctx.Return) result = { type: "return", label: ctx.label ? this.visit(ctx.label[0]) : "" } as any;
-        else if (ctx.Delay) result = { type: "delay", text: ctx.Delay[0].image.replace(/\.\.\./g, "").trim() } as any;
-        else if (ctx.Divider) result = { type: "divider", label: ctx.Divider[0].image.replace(/==+/g, "").trim() } as any;
-
-        if (result && !Array.isArray(result) && !result.offset) {
-            result.offset = this.getOffsets(ctx);
-        }
-        return result;
-    }
-
-    refDeclaration(ctx: any): IRNote {
-        const placementToken = Object.keys(ctx).find(k => ["Over", "Across"].includes(k));
-        const placement = placementToken ? placementToken.toLowerCase() : "over";
+    statement(ctx: any): any {
+        if (ctx.participantDeclaration) return this.visit(ctx.participantDeclaration[0]);
+        if (ctx.connectionDeclaration) return this.visit(ctx.connectionDeclaration[0]);
+        if (ctx.noteDeclaration) return this.visit(ctx.noteDeclaration[0]);
+        if (ctx.refDeclaration) return this.visit(ctx.refDeclaration[0]);
+        if (ctx.blockDeclaration) return this.visit(ctx.blockDeclaration[0]);
+        if (ctx.ignoredStatement) return null;
         
-        let text = "";
-        if (ctx.payload) {
-            text = this.visit(ctx.payload[0]);
-        } else {
-            const anyTokens = ctx.anyToken || [];
-            const newlines = ctx.Newline || [];
-            const allTokens = [...anyTokens, ...newlines].sort((a, b) => {
-                const aPos = (a.startOffset !== undefined) ? a.startOffset : (a.location?.startOffset || 0);
-                const bPos = (b.startOffset !== undefined) ? b.startOffset : (b.location?.startOffset || 0);
-                return aPos - bPos;
+        // Handle standalone commands
+        if (ctx.Activate) return { type: "activation", action: "activate", target: this.visit(ctx.activeNode[0]) };
+        if (ctx.Deactivate) return { type: "activation", action: "deactivate", target: this.visit(ctx.activeNode[0]) };
+        if (ctx.Destroy) return { type: "activation", action: "destroy", target: this.visit(ctx.activeNode[0]) };
+        if (ctx.Bye) return { type: "activation", action: "destroy", target: this.visit(ctx.activeNode[0]) };
+        if (ctx.Return) {
+            const label = ctx.returnPayload ? this.visit(ctx.returnPayload[0]) : undefined;
+            return { type: "return", label };
+        }
+        if (ctx.Delay) {
+            let text = "";
+            const children = Object.values(ctx).flat().filter((c: any) => c !== undefined) as any[];
+            children.sort((a, b) => {
+                const startA = a.startOffset !== undefined ? a.startOffset : (a.location ? a.location.startOffset : 0);
+                const startB = b.startOffset !== undefined ? b.startOffset : (b.location ? b.location.startOffset : 0);
+                return startA - startB;
             });
-            
-            allTokens.forEach(t => {
-                if (t.image === "\n" || t.image === "\r\n") text += "\n";
-                else text += this.visit(t) + " ";
+            children.forEach((child, idx) => {
+                const image = child.image || this.visit(child);
+                text += image;
+                if (idx < children.length - 1) text += " ";
             });
+            text = text.replace(/\.\.\./g, "").trim();
+            return { type: "delay", text };
+        }
+        if (ctx.Divider) {
+            let label = "";
+            const children = Object.values(ctx).flat().filter((c: any) => c !== undefined) as any[];
+            children.sort((a, b) => {
+                const startA = a.startOffset !== undefined ? a.startOffset : (a.location ? a.location.startOffset : 0);
+                const startB = b.startOffset !== undefined ? b.startOffset : (b.location ? b.location.startOffset : 0);
+                return startA - startB;
+            });
+            children.forEach((child, idx) => {
+                const image = child.image || this.visit(child);
+                label += image;
+                if (idx < children.length - 1) label += " ";
+            });
+            label = label.replace(/==+/g, "").trim();
+            return { type: "divider", label };
         }
 
-        const targets = [];
-        if (ctx.target) targets.push(this.visit(ctx.target[0]));
-        if (ctx.targets) {
-            ctx.targets.forEach((t: any) => targets.push(this.visit(t)));
-        }
-
-        return {
-            type: "note",
-            placement: placement as any,
-            target: targets[0],
-            targets: targets.length > 0 ? targets : undefined,
-            text: text.trim(),
-            shape: "ref",
-            offset: this.getOffsets(ctx)
-        };
+        return null;
     }
 
     name(ctx: any): string {
-        let result = this.visit(ctx.part[0]);
-        if (ctx.sep) {
-            for (let i = 0; i < ctx.sep.length; i++) {
-                result += ctx.sep[i].image + this.visit(ctx.part[i + 1]);
-            }
-        }
-        return result;
+        return ctx.part.map((p: any) => this.visit(p)).join(".");
     }
 
     namePart(ctx: any): string {
-        if (ctx.nodeIdentifier) return this.visit(ctx.nodeIdentifier[0]);
-        if (ctx.StringLiteral) {
-            let s = ctx.StringLiteral[0].image;
-            return s.slice(1, -1).replace(/\\n/g, '\n').replace(/\\"/g, '"');
+        const children = Object.values(ctx).flat();
+        if (children.length > 0) {
+            const child = children[0];
+            if ((child as any).image !== undefined) {
+                // It's a token
+                let image = (child as any).image;
+                if ((child as any).tokenType === common.StringLiteral) {
+                    return image.slice(1, -1).replace(/\\n/g, '\n').replace(/\\"/g, '"');
+                }
+                return image;
+            } else {
+                // It's a CST node
+                return this.visit(child);
+            }
         }
         return "";
+    }
+
+    multilineLabel(ctx: any): string {
+        if (ctx.StringLiteral) {
+            return ctx.StringLiteral[0].image.replace(/^"|"$/g, "");
+        }
+        return this.visit(ctx.nodeIdentifier[0]);
     }
 
     nodeIdentifier(ctx: any): string {
-        const values = Object.values(ctx);
-        if (values.length > 0) {
-            const tokens = values[0] as IToken[];
-            return tokens[0].image;
-        }
+        const firstChild = Object.values(ctx)[0] as any[];
+        if (firstChild && firstChild[0]) return firstChild[0].image;
         return "";
     }
 
-    label(ctx: any): string {
-        if (!ctx.anyToken) return "";
-        let result = "";
-        ctx.anyToken.forEach((t: any) => {
-            result += this.visit(t) + " ";
-        });
-        
-        let final = result.trim()
-            .replace(/ \./g, '.')
-            .replace(/ ,/g, ',')
-            .replace(/ :/g, ':')
-            .replace(/ !/g, '!')
-            .replace(/\\ n/g, '\n')
-            .replace(/\\n/g, '\n')
-            .replace(/ \n/g, '\n')
-            .replace(/\n /g, '\n');
-            
-        if (final.includes("multiline\ntext")) {
-             final = final.replace("multiline\ntext", "multiline \ntext");
-        }
-        
-        return final;
-    }
-
-    participantLabel(ctx: any): string {
-        return this.label(ctx);
-    }
-
-    payload(ctx: any): string {
-        return this.label(ctx);
-    }
-
     participantDeclaration(ctx: any): IRNode {
-        const shapeToken = Object.keys(ctx).find(k => !["name", "alias", "color", "order", "layout", "multilineLabel"].includes(k));
-        const shape = shapeToken ? shapeToken.toLowerCase() : "participant";
         const name = this.visit(ctx.name[0]);
-        let alias = ctx.alias ? this.visit(ctx.alias[0]) : name;
-        let multilineLabel = ctx.multilineLabel ? this.visit(ctx.multilineLabel[0]) : undefined;
-        
-        let layout: any = undefined;
-        if (ctx.layout) {
-            const firstComment = ctx.layout[0].image;
-            const match = firstComment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
-            if (match) layout = { x: parseInt(match[1]), y: parseInt(match[2]) };
+        const alias = ctx.alias ? this.visit(ctx.alias[0]) : name;
+        let label = alias;
+        if (ctx.multilineLabel) {
+             label = this.visit(ctx.multilineLabel[0]);
         }
 
-        return {
+        let shape = "participant";
+        if (ctx.Actor) shape = "actor";
+        else if (ctx.Boundary) shape = "boundary";
+        else if (ctx.Control) shape = "control";
+        else if (ctx.Entity) shape = "entity";
+        else if (ctx.Database) shape = "database";
+        else if (ctx.Collections) shape = "collections";
+        else if (ctx.Queue) shape = "queue";
+
+        const node: IRNode = {
             type: "node",
-            shape,
             name: alias,
-            origName: multilineLabel || name,
-            layout,
-            offset: this.getOffsets(ctx, ctx.layout)
+            origName: name,
+            label,
+            shape,
+            layout: undefined
         };
+
+        if (ctx.layout) {
+            const comment = ctx.layout[0].image;
+            const match = comment.match(POS_COMMENT_REGEX);
+            if (match) {
+                node.layout = { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+            }
+        }
+        return node;
     }
 
     connectionDeclaration(ctx: any): IREdge {
-        let arrow = ctx.arrow[0].image;
-        let from = this.visit(ctx.from[0]);
-        let to = this.visit(ctx.to[0]);
+        let arrowToken = ctx.arrow[0];
+        let arrow = arrowToken.image;
 
-        if (ctx.alias) {
-            to = this.visit(ctx.alias[0]);
+        const prefixTokens: any[] = [];
+        if (ctx.prefixPlus) prefixTokens.push(...ctx.prefixPlus);
+        if (ctx.prefixMinus) prefixTokens.push(...ctx.prefixMinus);
+        prefixTokens.sort((a, b) => a.startOffset - b.startOffset);
+        const prefix = prefixTokens.map(t => t.image).join("");
+
+        const suffixTokens: any[] = [];
+        if (ctx.suffixPlus) suffixTokens.push(...ctx.suffixPlus);
+        if (ctx.suffixMinus) suffixTokens.push(...ctx.suffixMinus);
+        suffixTokens.sort((a, b) => a.startOffset - b.startOffset);
+        const suffix = suffixTokens.map(t => t.image).join("");
+
+        arrow = prefix + arrow + suffix;
+
+        let from = ctx.from ? this.visit(ctx.from[0]) : "[";
+        let to = ctx.to ? this.visit(ctx.to[0]) : "]";
+        let label = "";
+        
+        if (ctx.payload) {
+            label = this.visit(ctx.payload[0]);
         }
 
-        if (arrow.startsWith('<') && !arrow.endsWith('>')) {
+        // Normalize direction
+        const isBackward = arrow.includes("<") && !arrow.includes(">");
+        if (isBackward) {
             const temp = from;
             from = to;
             to = temp;
-            
-            // Reverse the arrow
-            arrow = arrow.split('').reverse().map(c => {
-                if (c === '<') return '>';
-                if (c === '>') return '<';
-                if (c === '(') return ')';
-                if (c === ')') return '(';
-                if (c === '[') return ']';
-                if (c === ']') return '[';
-                if (c === '{') return '}';
-                if (c === '}') return '{';
-                return c;
-            }).join('');
+            arrow = arrow.replace(/</g, "") + ">";
         }
 
-        let isCreation = arrow.includes('++') || arrow.includes('->*');
-        let isDeletion = arrow.includes('--') || arrow.includes('!!');
-
-        if (ctx.Plus || ctx.Minus || ctx.Plus1 || ctx.Minus1 || ctx.Plus2 || ctx.Minus2) {
-            if (ctx.Plus || ctx.Plus1 || ctx.Plus2) isCreation = true;
-            if (ctx.Minus || ctx.Minus1 || ctx.Minus2) isDeletion = true;
-        }
-
-        let layout: any = undefined;
-        if (ctx.layout) {
-            const firstComment = ctx.layout[0].image;
-            const match = firstComment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
-            if (match) layout = { x: parseInt(match[1]), y: parseInt(match[2]) };
-        }
-
-        return {
+        const edge: IREdge = {
             type: "edge",
             from,
-            to,
             fromLabel: "",
+            to,
             toLabel: "",
-            arrow,
-            label: ctx.payload ? this.visit(ctx.payload[0]) : undefined,
-            isCreation,
-            isDeletion,
-            layout,
-            offset: this.getOffsets(ctx, ctx.layout)
+            arrow: arrow,
+            label,
+            isCreation: false,
+            isDeletion: false,
+            layout: undefined
         };
+
+        if (ctx.layout) {
+             const comment = ctx.layout[0].image;
+             const match = comment.match(POS_COMMENT_REGEX);
+             if (match) {
+                 edge.layout = { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+             }
+        }
+
+        return edge;
     }
 
-    noteDeclaration(ctx: any): IRNote {
-        const placementToken = Object.keys(ctx).find(k => ["Left", "Right", "Over", "Across"].includes(k));
-        const placement = placementToken ? placementToken.toLowerCase() : "over";
-        
+    noteDeclaration(ctx: any): any {
         let text = "";
         if (ctx.payload) {
             text = this.visit(ctx.payload[0]);
         } else {
-            const anyTokens = ctx.anyToken || [];
-            const newlines = ctx.Newline || [];
-            const allTokens = [...anyTokens, ...newlines].sort((a, b) => {
-                const aPos = (a.startOffset !== undefined) ? a.startOffset : (a.location?.startOffset || 0);
-                const bPos = (b.startOffset !== undefined) ? b.startOffset : (b.location?.startOffset || 0);
-                return aPos - bPos;
+            // Handle multiline note
+            const children = Object.values(ctx).flat().filter((c: any) => {
+                if (!c) return false;
+                // Exclude keywords and structural tokens
+                return (
+                    c.name === "anyToken" ||
+                    c.tokenType === common.Newline ||
+                    (c.tokenType === undefined && c.name === undefined && c.image !== undefined) // It's a token
+                ) && 
+                c.tokenType !== lexer.Note && 
+                c.tokenType !== lexer.Hnote && 
+                c.tokenType !== lexer.Rnote &&
+                c.tokenType !== lexer.Left &&
+                c.tokenType !== lexer.Right &&
+                c.tokenType !== lexer.Over &&
+                c.tokenType !== lexer.Across &&
+                c.tokenType !== lexer.Of &&
+                c.tokenType !== lexer.On &&
+                c.tokenType !== lexer.EndNote &&
+                c.tokenType !== lexer.EndHnote &&
+                c.tokenType !== lexer.EndRnote &&
+                c.tokenType !== lexer.End &&
+                c.tokenType !== common.Color;
+            }) as any[];
+
+            children.sort((a, b) => {
+                const startA = a.startOffset !== undefined ? a.startOffset : (a.location ? a.location.startOffset : 0);
+                const startB = b.startOffset !== undefined ? b.startOffset : (b.location ? b.location.startOffset : 0);
+                return startA - startB;
             });
-            
-            allTokens.forEach(t => {
-                if (t.image === "\n" || t.image === "\r\n") text += "\n";
-                else text += this.visit(t) + " ";
+
+            // The multiline content starts after the first Newline.
+            let started = false;
+            children.forEach((child, index) => {
+                if (!started) {
+                    if (child.tokenType === common.Newline) started = true;
+                    return;
+                }
+                const image = child.image || (child.name === "anyToken" ? this.visit(child) : "CST");
+                text += image;
+                if (index < children.length - 1) {
+                    const nextChild = children[index + 1];
+                    const nextImage = nextChild.image || (nextChild.name ? this.visit(nextChild) : "");
+                    if (image !== "\n" && nextImage !== "\n" && nextImage !== "" && !image.endsWith(" ") && !".:!,?;".includes(nextImage[0])) {
+                        text += " ";
+                    }
+                }
             });
         }
+        text = text.trim();
 
-        const targets = [];
+        let placement = "right";
+        if (ctx.Left) placement = "left";
+        if (ctx.Right) placement = "right";
+        if (ctx.Over) placement = "over";
+        if (ctx.Across) placement = "across";
+
+        const targets: string[] = [];
         if (ctx.target) targets.push(this.visit(ctx.target[0]));
-        if (ctx.targets) {
-            ctx.targets.forEach((t: any) => targets.push(this.visit(t)));
-        }
-
-        let color = ctx.Color ? ctx.Color[0].image : undefined;
-        let shape = "note";
-        if (ctx.Hnote) shape = "hnote";
-        if (ctx.Rnote) shape = "rnote";
+        if (ctx.targets) ctx.targets.forEach((t: any) => targets.push(this.visit(t)));
 
         return {
-            type: "note",
-            placement: placement as any,
-            target: targets[0],
-            targets: targets.length > 0 ? targets : undefined,
-            text: text.trim(),
-            color,
-            shape,
-            offset: this.getOffsets(ctx)
+            type: "node",
+            name: "note_" + Math.random().toString(36).substr(2, 9),
+            text,
+            label: text,
+            shape: "note",
+            placement,
+            targets
         };
     }
 
-    elseBlock(ctx: any): any {
-        return {
-            label: ctx.label ? this.visit(ctx.label[0]) : "",
-            statements: ctx.statement ? ctx.statement.map((s: any) => this.visit(s)).filter(Boolean).flat() : []
-        };
+    returnPayload(ctx: any): string {
+        return this.payload(ctx);
+    }
+
+    payload(ctx: any): string {
+        if (!ctx.anyToken && !ctx.Newline) return "";
+        let result = "";
+        const children = Object.values(ctx).flat().filter((c: any) => c !== undefined && c !== null && c.tokenType !== common.Colon) as any[];
+        
+        // Sort children by their startOffset to preserve order including newlines
+        children.sort((a, b) => {
+            const startA = a.startOffset !== undefined ? a.startOffset : (a.location ? a.location.startOffset : 0);
+            const startB = b.startOffset !== undefined ? b.startOffset : (b.location ? b.location.startOffset : 0);
+            return startA - startB;
+        });
+        
+        children.forEach((child, index) => {
+            const image = child.image || (child.name === "anyToken" ? this.visit(child) : "CST");
+            result += image;
+            // Add space only if needed (not before newline, not after newline, not before punctuation)
+            if (index < children.length - 1) {
+                const nextChild = children[index + 1];
+                const nextImage = nextChild.image || (nextChild.name ? this.visit(nextChild) : "");
+                if (image !== "\n" && nextImage !== "\n" && nextImage !== "" && !image.endsWith(" ") && !".:!,?;".includes(nextImage[0])) {
+                    result += " ";
+                }
+            }
+        });
+
+        return result.replace(/\\ n/g, "\n").replace(/\\n/g, "\n").trim();
+    }
+
+    refDeclaration(ctx: any): IRStatement[] {
+        return [];
     }
 
     blockDeclaration(ctx: any): IRGroup {
-        const keywordToken = Object.keys(ctx).find(k => ["Alt", "Opt", "Loop", "Par", "Group", "Partition", "Box"].includes(k));
-        const keyword = keywordToken ? keywordToken.toLowerCase() : "group";
+        const statements: IRStatement[] = [];
+        if (ctx.statement) {
+            ctx.statement.forEach((s: any) => {
+                const visited = this.visit(s);
+                if (visited) statements.push(visited);
+            });
+        }
         
-        const sections = [
-            { 
-                label: ctx.label ? this.visit(ctx.label[0]) : "",
-                statements: ctx.statement ? ctx.statement.map((s: any) => this.visit(s)).filter(Boolean).flat() : [] 
-            }
-        ];
+        let keyword = "group";
+        if (ctx.Alt) keyword = "alt";
+        if (ctx.Opt) keyword = "opt";
+        if (ctx.Loop) keyword = "loop";
+        if (ctx.Par) keyword = "par";
+        if (ctx.Group) keyword = "group";
+
+        const label = ctx.label ? this.visit(ctx.label[0]) : "";
+        const sections: any[] = [];
+        sections.push({ label, statements: [...statements] });
+        
         if (ctx.elseBlock) {
             ctx.elseBlock.forEach((eb: any) => {
-                const section = this.visit(eb);
-                sections.push(section);
+                sections.push(this.visit(eb));
             });
         }
 
         return {
             type: "group",
-            keyword: keyword as any,
-            label: sections[0].label,
-            sections,
-            position: { x: 0, y: 0 },
-            size: { width: 0, height: 0 },
-            dividerYs: [],
-            offset: this.getOffsets(ctx)
+            name: "block",
+            keyword,
+            label,
+            sections
         };
     }
 
-    ignoredStatement(ctx: any): null {
-        return null;
+    elseBlock(ctx: any): any {
+        const statements: IRStatement[] = [];
+        if (ctx.statement) {
+            ctx.statement.forEach((s: any) => {
+                const visited = this.visit(s);
+                if (visited) statements.push(visited);
+            });
+        }
+        return {
+            label: ctx.label ? this.visit(ctx.label[0]) : "",
+            statements
+        };
     }
 
     anyToken(ctx: any): string {
@@ -356,6 +390,39 @@ export class SequenceAstVisitor extends BaseVisitor {
             return image;
         }
         return "";
+    }
+
+    label(ctx: any): string {
+        if (!ctx.anyToken) return "";
+        return ctx.anyToken.map((t: any) => this.visit(t)).join(" ");
+    }
+
+    participantLabel(ctx: any): string {
+        if (!ctx.anyToken) return "";
+        let result = "";
+        const children = Object.values(ctx).flat().filter(c => c !== undefined) as any[];
+        children.sort((a, b) => {
+            const startA = a.startOffset !== undefined ? a.startOffset : (a.location ? a.location.startOffset : 0);
+            const startB = b.startOffset !== undefined ? b.startOffset : (b.location ? b.location.startOffset : 0);
+            return startA - startB;
+        });
+
+        children.forEach((child, index) => {
+            const image = child.image || (child.name === "anyToken" ? this.visit(child) : "CST");
+            result += image;
+            if (index < children.length - 1) {
+                const nextChild = children[index + 1];
+                const nextImage = nextChild.image || (nextChild.name ? this.visit(nextChild) : "");
+                if (image !== "\n" && nextImage !== "\n" && nextImage !== "" && !image.endsWith(" ") && !".:!,?;".includes(nextImage[0])) {
+                    result += " ";
+                }
+            }
+        });
+        return result.replace(/\\ n/g, "\n").replace(/\\n/g, "\n").trim();
+    }
+
+    ignoredStatement(ctx: any): any {
+        return null;
     }
 }
 

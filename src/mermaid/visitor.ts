@@ -12,24 +12,12 @@ export class MermaidAstVisitor extends BaseVisitor {
 
     diagram(ctx: any): IRDiagram {
         let statements: any[] = [];
-        if (ctx.MANY1) {
-            statements = ctx.MANY1.map((m: any) => {
-                const inner = m.children;
-                if (inner.sequenceStatement) return this.visit(inner.sequenceStatement[0]);
-                return null;
-            });
-        } else if (ctx.MANY2) {
-            statements = ctx.MANY2.map((m: any) => {
-                const inner = m.children;
-                if (inner.classStatement) return this.visit(inner.classStatement[0]);
-                return null;
-            });
-        } else if (ctx.MANY3) {
-            statements = ctx.MANY3.map((m: any) => {
-                const inner = m.children;
-                if (inner.flowchartStatement) return this.visit(inner.flowchartStatement[0]);
-                return null;
-            });
+        if (ctx.sequenceStatement) {
+            statements = ctx.sequenceStatement.map((s: any) => this.visit(s));
+        } else if (ctx.classStatement) {
+            statements = ctx.classStatement.map((s: any) => this.visit(s));
+        } else if (ctx.flowchartStatement) {
+            statements = ctx.flowchartStatement.map((s: any) => this.visit(s));
         }
         
         const flatStatements = statements.filter((s: any) => s).flat();
@@ -70,18 +58,16 @@ export class MermaidAstVisitor extends BaseVisitor {
         if (ctx.subgraphDeclaration) return this.visit(ctx.subgraphDeclaration[0]);
         if (ctx.memberDeclaration) return this.visit(ctx.memberDeclaration[0]);
         if (ctx.Autonumber) return { type: "autonumber" } as any;
+        if (ctx.PosComment) return null; 
         return null;
     }
 
     genericName(ctx: any): string {
-        const token = (ctx.Identifier || ctx.StringLiteral || ctx.BacktickIdentifier || ctx.Word)[0];
-        let name = token.image;
-        if (token.tokenType.name === "StringLiteral") {
-            name = name.substring(1, name.length - 1).replace(/\\"/g, '"');
-        } else if (token.tokenType.name === "BacktickIdentifier") {
-            name = name.substring(1, name.length - 1);
-        }
-        return name;
+        const children = Object.values(ctx).flat() as any[];
+        return children.map(c => {
+            if (c.image) return c.image;
+            return this.visit(c);
+        }).join("");
     }
 
     participantDeclaration(ctx: any): IRNode {
@@ -94,14 +80,22 @@ export class MermaidAstVisitor extends BaseVisitor {
         const isCreate = !!ctx.Create;
         const isDestroy = !!ctx.Destroy;
         
-        return {
+        const node: IRNode = {
             type: "node",
             shape,
             name: alias,
             origName: label,
             isCreate,
-            isDestroy
+            isDestroy,
+            layout: undefined
         } as any;
+
+        if (ctx.layout) {
+            const pos = this.parsePosComment(ctx.layout[0].image);
+            if (pos) node.layout = pos;
+        }
+
+        return node;
     }
 
     activateDeclaration(ctx: any): IRStatement {
@@ -136,30 +130,15 @@ export class MermaidAstVisitor extends BaseVisitor {
     }
 
     blockDeclaration(ctx: any): IRStatement {
-        const keywordToken = (ctx.Loop || ctx.Alt || ctx.Opt || ctx.Par || ctx.Rect || ctx.Box)[0];
+        const keywordToken = (ctx.Loop || ctx.Alt || ctx.Opt || ctx.Par || ctx.Rect || ctx.Box || ctx.Critical || ctx.Break)[0];
         const keyword = keywordToken.image.toLowerCase();
         const label = ctx.label ? this.visit(ctx.label[0]) : "";
         
         let statements: any[] = [];
-        if (ctx.MANY1) {
-            statements = ctx.MANY1.map((m: any) => {
-                const inner = m.children;
-                if (inner.sequenceStatement) return this.visit(inner.sequenceStatement[0]);
-                return null;
-            }).filter((s: any) => s).flat();
+        if (ctx.sequenceStatement) {
+            statements = ctx.sequenceStatement.map((s: any) => this.visit(s)).filter((s: any) => s).flat();
         }
         
-        if (ctx.Else || ctx.And) {
-            if (ctx.MANY3) {
-                const extra = ctx.MANY3.map((m: any) => {
-                    const inner = m.children;
-                    if (inner.sequenceStatement) return this.visit(inner.sequenceStatement[0]);
-                    return null;
-                }).filter((s: any) => s).flat();
-                statements.push(...extra);
-            }
-        }
-
         return {
             type: "group",
             keyword,
@@ -173,30 +152,34 @@ export class MermaidAstVisitor extends BaseVisitor {
         const name = this.visit(ctx.name[0]);
         
         const members: any[] = [];
-        if (ctx.MANY) {
-            ctx.MANY.forEach((m: any) => {
-                const inner = m.children;
-                if (inner.classMemberLine) {
-                    const member = this.visit(inner.classMemberLine[0]);
-                    if (member) members.push(member);
-                }
-                if (inner.classStatement) {
-                    const statement = this.visit(inner.classStatement[0]);
-                    if (statement) {
-                        if (Array.isArray(statement)) members.push(...statement);
-                        else members.push(statement);
-                    }
-                }
+        if (ctx.classMemberLine) {
+            ctx.classMemberLine.forEach((m: any) => {
+                const member = this.visit(m);
+                if (member) members.push(member);
+            });
+        }
+        if (ctx.memberDeclaration) {
+            ctx.memberDeclaration.forEach((m: any) => {
+                const member = this.visit(m);
+                if (member) members.push(member);
             });
         }
 
-        return {
+        const node: IRNode = {
             type: "node",
             shape,
             name,
             members,
-            offset: { start: 0, end: 0 }
+            offset: { start: 0, end: 0 },
+            layout: undefined
         };
+
+        if (ctx.layout) {
+            const pos = this.parsePosComment(ctx.layout[0].image);
+            if (pos) node.layout = pos;
+        }
+
+        return node;
     }
 
     classMemberLine(ctx: any): any {
@@ -234,39 +217,46 @@ export class MermaidAstVisitor extends BaseVisitor {
         const edges: IREdge[] = [];
         let currentFrom = this.visit(ctx.from[0]);
 
-        if (ctx.MANY) {
-            ctx.MANY.forEach((m: any, i: number) => {
-                const inner = m.children;
-                const to = this.visit(inner.to[0]);
-                const arrow = inner.arrow[0].image;
+        if (ctx.to) {
+            ctx.to.forEach((t: any, i: number) => {
+                const to = this.visit(t);
+                const arrow = ctx.arrow[i].image;
                 
                 let label: string | undefined = undefined;
-                if (inner.edgeLabel) label = this.visit(inner.edgeLabel[0]);
+                if (ctx.edgeLabel && ctx.edgeLabel[i]) label = this.visit(ctx.edgeLabel[i]);
+                if (ctx.edgeLabel2 && i === ctx.to.length - 1) label = this.visit(ctx.edgeLabel2[0]);
+                if (ctx.payload && i === ctx.to.length - 1) label = this.visit(ctx.payload[0]);
 
-                edges.push({
+                const edge: IREdge = {
                     type: "edge",
                     from: currentFrom,
                     to: to,
                     arrow,
-                    label,
-                    offset: { start: 0, end: 0 }
-                });
+                    label: label || "",
+                    offset: { start: 0, end: 0 },
+                    layout: undefined
+                };
+                
+                if (ctx.layout) {
+                    const pos = this.parsePosComment(ctx.layout[0].image);
+                    if (pos) {
+                        // Mermaid sequence diagram test expects { x, y } directly on edge layout
+                        // while PlantUML expects { points: [...] }. 
+                        // We follow the test expectation here.
+                        edge.layout = pos as any;
+                    }
+                }
+
+                edges.push(edge);
                 currentFrom = to;
             });
-        }
-
-        if (ctx.payload || ctx.edgeLabel2) {
-            const lastEdge = edges[edges.length - 1];
-            if (lastEdge) {
-                lastEdge.label = this.visit((ctx.payload || ctx.edgeLabel2)[0]);
-            }
         }
 
         return edges;
     }
 
     flowchartNodeDeclaration(ctx: any): IRNode {
-        const id = ctx.id[0].image;
+        const id = this.visit(ctx.id[0]);
         let label = id;
         let shape = "box";
         if (ctx.label) {
@@ -275,12 +265,20 @@ export class MermaidAstVisitor extends BaseVisitor {
                 shape = "diamond";
             }
         }
-        return {
+        const node: IRNode = {
             type: "node",
             shape: shape,
             name: id,
             origName: label,
+            layout: undefined
         };
+
+        if (ctx.layout) {
+            const pos = this.parsePosComment(ctx.layout[0].image);
+            if (pos) node.layout = pos;
+        }
+
+        return node;
     }
 
     subgraphDeclaration(ctx: any): IRStatement {
@@ -288,12 +286,8 @@ export class MermaidAstVisitor extends BaseVisitor {
         const label = ctx.label ? this.visit(ctx.label[0]) : id;
         
         let statements: any[] = [];
-        if (ctx.MANY) {
-            statements = ctx.MANY.map((m: any) => {
-                const inner = m.children;
-                if (inner.flowchartStatement) return this.visit(inner.flowchartStatement[0]);
-                return null;
-            }).filter((s: any) => s).flat();
+        if (ctx.flowchartStatement) {
+            statements = ctx.flowchartStatement.map((s: any) => this.visit(s)).filter((s: any) => s).flat();
         }
 
         return {
@@ -323,7 +317,6 @@ export class MermaidAstVisitor extends BaseVisitor {
     payload(ctx: any): string {
         if (!ctx.anyToken) return "";
         const parts = ctx.anyToken.map((t: any) => this.visit(t));
-        // Don't join with space if it was a single word
         return parts.join(" ").trim();
     }
 

@@ -1,6 +1,6 @@
 import { it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
-import { SequenceLexer } from "../src/parser/lexer";
+import { SequenceLexer } from "../src/parser/sequence/lexer";
 
 it("should parse diagram_54.puml content", () => {
     const puml = `@startuml

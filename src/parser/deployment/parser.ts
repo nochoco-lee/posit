@@ -13,7 +13,8 @@ export class DeploymentParser extends CstParser {
     constructor() {
         super(lexer.allDeploymentTokens, { 
             skipValidations: false,
-            errorMessageProvider: fastErrorProvider
+            errorMessageProvider: fastErrorProvider,
+            nodeLocationTracking: "full"
         });
         this.performSelfAnalysis();
     }
@@ -113,7 +114,10 @@ export class DeploymentParser extends CstParser {
             { ALT: () => this.CONSUME(common.StringLiteral) },
             { ALT: () => {
                 this.CONSUME(common.LBracket);
-                this.MANY(() => { this.SUBRULE(this.anyToken); });
+                this.MANY({
+                    GATE: () => this.LA(1).tokenType !== common.RBracket,
+                    DEF: () => this.SUBRULE(this.anyToken)
+                });
                 this.CONSUME(common.RBracket);
             }},
             { ALT: () => {

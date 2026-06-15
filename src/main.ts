@@ -104,8 +104,35 @@ svgButton.addEventListener('click', () => {
     URL.revokeObjectURL(url);
 });
 
+/**
+ * Orchestrates the two-way sync: Layout -> Source Code.
+ * This is an expensive operation as it involves re-patching the source and re-parsing.
+ */
+function syncLayoutToSource() {
+    if (!currentAst || !currentLayoutMap) return;
+    if (currentLanguage === Language.Mermaid) {
+        console.warn("Two-way sync is not yet supported for Mermaid diagrams.");
+        return;
+    }
+
+    try {
+        const emitter = new Emitter();
+        // Use currentText which corresponds exactly to the offsets in currentAst
+        const updatedSource = emitter.emitPlantUml(currentText, currentAst, currentLayoutMap);
+        
+        // Update the actual text area payload
+        editor.value = updatedSource;
+        currentText = updatedSource;
+        currentAst = parsePlantUml(currentText);
+        showError(null);
+    } catch (e: any) {
+        console.error("Emitter Error on Sync:", e.message);
+        showError("Emitter Error: " + e.message);
+    }
+}
+
 // For Phase 4 (Two-Way sync)
-renderer.onMove((id, newX, newY) => {
+renderer.onDragEnd((id, newX, newY) => {
     // 1. We must have valid cached models to perform an update
     if (!currentAst || !currentLayoutMap) return;
 
@@ -149,7 +176,7 @@ renderer.onMove((id, newX, newY) => {
             }
 
             const conn = currentLayoutMap.connections[connIndex];
-            conn.position = { x: newX, y: clampedY };
+            conn.position = { x: 0, y: clampedY }; // Standardized coordinate for connection drag
             conn.calculatedY = clampedY;
 
             // Cascade updates DOWNWARDS to maintain SEQUENCE_MIN_Y_GAP for subsequent messages
@@ -173,26 +200,6 @@ renderer.onMove((id, newX, newY) => {
     // Update visuals without a full redraw to avoid reset of dragging state
     renderer.syncPositions(currentLayoutMap);
 
-    // 3. Initiate the Emitter Two-Way Sync
-    if (currentLanguage === Language.Mermaid) {
-        console.warn("Two-way sync is not yet supported for Mermaid diagrams.");
-        return;
-    }
-
-    try {
-        const emitter = new Emitter();
-        // Use currentText which corresponds exactly to the offsets in currentAst
-        const updatedSource = emitter.emitPlantUml(currentText, currentAst, currentLayoutMap);
-        
-        // 4. Update the actual text area payload
-        editor.value = updatedSource;
-        currentText = updatedSource;
-        currentAst = parsePlantUml(currentText);
-        showError(null);
-
-        // Note: we don't call refreshDiagram() here otherwise it resets Konva dragging bounds and causes lag
-    } catch (e: any) {
-        console.error("Emitter Error on Move:", e.message);
-        showError("Emitter Error: " + e.message);
-    }
+    // 3. Initiate the Emitter Two-Way Sync (on Drag End)
+    syncLayoutToSource();
 });

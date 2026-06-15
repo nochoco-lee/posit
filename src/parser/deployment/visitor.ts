@@ -1,5 +1,6 @@
 import { CstNode, IToken } from "chevrotain";
 import { IRDiagram, IREdge, IRNode, IRStatement, IRContainer, IRGroup, IRNote, IROffset } from "../../ir/types";
+import { POS_COMMENT_REGEX } from "../../ir/constants";
 import { DeploymentParser } from "./parser";
 
 const parser = new DeploymentParser();
@@ -76,8 +77,14 @@ export class DeploymentAstVisitor extends BaseVisitor {
     namePart(ctx: any): string {
         if (ctx.nodeIdentifier) return this.visit(ctx.nodeIdentifier[0]);
         if (ctx.StringLiteral) return ctx.StringLiteral[0].image.slice(1, -1);
-        if (ctx.LBracket) return this.visit(ctx.namePart[0]);
-        if (ctx.LParen) return this.visit(ctx.namePart[0]);
+        if (ctx.LBracket) {
+            if (!ctx.anyToken) return "";
+            return ctx.anyToken.map((t: any) => this.visit(t)).join(" ");
+        }
+        if (ctx.LParen) {
+            if (!ctx.anyToken) return "";
+            return ctx.anyToken.map((t: any) => this.visit(t)).join(" ");
+        }
         return "";
     }
 
@@ -117,8 +124,8 @@ export class DeploymentAstVisitor extends BaseVisitor {
         let layout: any = undefined;
         if (ctx.layout) {
             const firstComment = ctx.layout[0].image;
-            const match = firstComment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
-            if (match) layout = { x: parseInt(match[1]), y: parseInt(match[2]) };
+            const match = firstComment.match(POS_COMMENT_REGEX);
+            if (match) layout = { x: parseFloat(match[1]), y: parseFloat(match[2]) };
         }
 
         if (ctx.LBrace) {
@@ -151,8 +158,8 @@ export class DeploymentAstVisitor extends BaseVisitor {
         let layout: any = undefined;
         if (ctx.layout) {
             const firstComment = ctx.layout[0].image;
-            const match = firstComment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
-            if (match) layout = { x: parseInt(match[1]), y: parseInt(match[2]) };
+            const match = firstComment.match(POS_COMMENT_REGEX);
+            if (match) layout = { x: parseFloat(match[1]), y: parseFloat(match[2]) };
         }
 
         return {

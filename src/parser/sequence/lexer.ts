@@ -1,83 +1,92 @@
-import { Lexer, createToken } from "chevrotain";
+import { createToken, Lexer } from "chevrotain";
 import * as common from "../common/tokens";
 
-export const Participant = createToken({ name: "Participant", pattern: /participant\b/i, categories: [common.IdentifierLike] });
-export const Actor = createToken({ name: "Actor", pattern: /actor\b/i, categories: [common.IdentifierLike] });
-export const Order = createToken({ name: "Order", pattern: /order\b/i, categories: [common.IdentifierLike] });
-export const Boundary = createToken({ name: "Boundary", pattern: /boundary\b/i, categories: [common.IdentifierLike] });
-export const Control = createToken({ name: "Control", pattern: /control\b/i, categories: [common.IdentifierLike] });
-export const Entity = createToken({ name: "Entity", pattern: /entity\b/i, categories: [common.IdentifierLike] });
-export const Database = createToken({ name: "Database", pattern: /database\b/i, categories: [common.IdentifierLike] });
-export const Collections = createToken({ name: "Collections", pattern: /collections\b/i, categories: [common.IdentifierLike] });
-export const Queue = createToken({ name: "Queue", pattern: /queue\b/i, categories: [common.IdentifierLike] });
-export const Alt = createToken({ name: "Alt", pattern: /alt\b/i, categories: [common.IdentifierLike] });
-export const Else = createToken({ name: "Else", pattern: /else\b/i, categories: [common.IdentifierLike] });
-export const Opt = createToken({ name: "Opt", pattern: /opt\b/i, categories: [common.IdentifierLike] });
-export const Loop = createToken({ name: "Loop", pattern: /loop\b/i, categories: [common.IdentifierLike] });
-export const Par = createToken({ name: "Par", pattern: /par\b/i, categories: [common.IdentifierLike] });
-export const Group = createToken({ name: "Group", pattern: /group\b/i, categories: [common.IdentifierLike] });
-export const Partition = createToken({ name: "Partition", pattern: /partition\b/i, categories: [common.IdentifierLike] });
-export const Box = createToken({ name: "Box", pattern: /box\b/i, categories: [common.IdentifierLike] });
-export const End = createToken({ name: "End", pattern: /end\b/i, categories: [common.IdentifierLike] });
-export const Note = createToken({ name: "Note", pattern: /note\b/i, categories: [common.IdentifierLike] });
-export const Hnote = createToken({ name: "Hnote", pattern: /hnote\b/i, categories: [common.IdentifierLike] });
-export const Rnote = createToken({ name: "Rnote", pattern: /rnote\b/i, categories: [common.IdentifierLike] });
-export const Ref = createToken({ name: "Ref", pattern: /ref\b/i, categories: [common.IdentifierLike] });
-export const Autonumber = createToken({ name: "Autonumber", pattern: /autonumber\b/i, categories: [common.IdentifierLike] });
-export const Newpage = createToken({ name: "Newpage", pattern: /newpage\b/i, categories: [common.IdentifierLike] });
-export const Activate = createToken({ name: "Activate", pattern: /activate\b/i, categories: [common.IdentifierLike] });
-export const Deactivate = createToken({ name: "Deactivate", pattern: /deactivate\b/i, categories: [common.IdentifierLike] });
-export const Destroy = createToken({ name: "Destroy", pattern: /destroy\b/i, categories: [common.IdentifierLike] });
-export const Autoactivate = createToken({ name: "Autoactivate", pattern: /autoactivate\b/i, categories: [common.IdentifierLike] });
-export const Return = createToken({ name: "Return", pattern: /return\b/i, categories: [common.IdentifierLike] });
-export const Create = createToken({ name: "Create", pattern: /create\b/i, categories: [common.IdentifierLike] });
-export const Bye = createToken({ name: "Bye", pattern: /bye\b/i, categories: [common.IdentifierLike] });
-export const Mainframe = createToken({ name: "Mainframe", pattern: /mainframe\b/i, categories: [common.IdentifierLike] });
-export const As = createToken({ name: "As", pattern: /as\b/i, categories: [common.IdentifierLike] });
-export const Left = createToken({ name: "Left", pattern: /left\b/i, categories: [common.IdentifierLike] });
-export const Right = createToken({ name: "Right", pattern: /right\b/i, categories: [common.IdentifierLike] });
-export const Top = createToken({ name: "Top", pattern: /top\b/i, categories: [common.IdentifierLike] });
-export const Bottom = createToken({ name: "Bottom", pattern: /bottom\b/i, categories: [common.IdentifierLike] });
-export const Over = createToken({ name: "Over", pattern: /over\b/i, categories: [common.IdentifierLike] });
-export const Of = createToken({ name: "Of", pattern: /of\b/i, categories: [common.IdentifierLike] });
-export const On = createToken({ name: "On", pattern: /on\b/i, categories: [common.IdentifierLike] });
-export const Across = createToken({ name: "Across", pattern: /across\b/i, categories: [common.IdentifierLike] });
-export const Off = createToken({ name: "Off", pattern: /off\b/i, categories: [common.IdentifierLike] });
-export const Stop = createToken({ name: "Stop", pattern: /stop\b/i, categories: [common.IdentifierLike] });
-export const Resume = createToken({ name: "Resume", pattern: /resume\b/i, categories: [common.IdentifierLike] });
-export const Inc = createToken({ name: "Inc", pattern: /inc\b/i, categories: [common.IdentifierLike] });
-export const Ignore = createToken({ name: "Ignore", pattern: /ignore\b/i, categories: [common.IdentifierLike] });
+export const Participant = createToken({ name: "Participant", pattern: /participant/i });
+export const Actor = createToken({ name: "Actor", pattern: /actor/i });
+export const Boundary = createToken({ name: "Boundary", pattern: /boundary/i });
+export const Control = createToken({ name: "Control", pattern: /control/i });
+export const Entity = createToken({ name: "Entity", pattern: /entity/i });
+export const Database = createToken({ name: "Database", pattern: /database/i });
+export const Collections = createToken({ name: "Collections", pattern: /collections/i });
+export const Queue = createToken({ name: "Queue", pattern: /queue/i });
 
+export const Alt = createToken({ name: "Alt", pattern: /alt\b/i });
+export const Else = createToken({ name: "Else", pattern: /else\b/i });
+export const Opt = createToken({ name: "Opt", pattern: /opt\b/i });
+export const Loop = createToken({ name: "Loop", pattern: /loop\b/i });
+export const Par = createToken({ name: "Par", pattern: /par\b/i });
+export const Group = createToken({ name: "Group", pattern: /group\b/i });
+export const End = createToken({ name: "End", pattern: /end\b/i });
+export const Partition = createToken({ name: "Partition", pattern: /partition\b/i });
+export const Box = createToken({ name: "Box", pattern: /box\b/i });
+
+export const Note = createToken({ name: "Note", pattern: /note/i });
+export const Hnote = createToken({ name: "Hnote", pattern: /hnote/i });
+export const Rnote = createToken({ name: "Rnote", pattern: /rnote/i });
+export const EndNote = createToken({ name: "EndNote", pattern: /end\s*note/i });
+export const EndHnote = createToken({ name: "EndHnote", pattern: /end\s*hnote/i });
+export const EndRnote = createToken({ name: "EndRnote", pattern: /end\s*rnote/i });
+
+export const Ref = createToken({ name: "Ref", pattern: /ref/i });
+export const EndRef = createToken({ name: "EndRef", pattern: /end\s*ref/i });
+
+export const Autonumber = createToken({ name: "Autonumber", pattern: /autonumber/i });
+export const Newpage = createToken({ name: "Newpage", pattern: /newpage/i });
+export const Activate = createToken({ name: "Activate", pattern: /activate/i });
+export const Deactivate = createToken({ name: "Deactivate", pattern: /deactivate/i });
+export const Destroy = createToken({ name: "Destroy", pattern: /destroy/i });
+export const Autoactivate = createToken({ name: "Autoactivate", pattern: /autoactivate/i });
+export const Return = createToken({ name: "Return", pattern: /return/i });
+export const Create = createToken({ name: "Create", pattern: /create/i });
+export const Bye = createToken({ name: "Bye", pattern: /bye/i });
+export const Mainframe = createToken({ name: "Mainframe", pattern: /mainframe/i });
+export const Order = createToken({ name: "Order", pattern: /order/i });
+
+export const As = createToken({ name: "As", pattern: /as\b/i });
+export const Left = createToken({ name: "Left", pattern: /left\b/i });
+export const Right = createToken({ name: "Right", pattern: /right\b/i });
+export const Top = createToken({ name: "Top", pattern: /top\b/i });
+export const Bottom = createToken({ name: "Bottom", pattern: /bottom\b/i });
+export const Over = createToken({ name: "Over", pattern: /over\b/i });
+export const Off = createToken({ name: "Off", pattern: /off\b/i });
+export const Of = createToken({ name: "Of", pattern: /of\b/i });
+export const On = createToken({ name: "On", pattern: /on\b/i });
+export const Across = createToken({ name: "Across", pattern: /across\b/i });
+export const Stop = createToken({ name: "Stop", pattern: /stop\b/i });
+export const Resume = createToken({ name: "Resume", pattern: /resume/i });
+export const Inc = createToken({ name: "Inc", pattern: /inc\b/i });
+export const Ignore = createToken({ name: "Ignore", pattern: /ignore\b/i });
+
+export const Delay = createToken({ name: "Delay", pattern: /\.\.\./ });
+export const Divider = createToken({ name: "Divider", pattern: /==+/ });
+
+// Use a string pattern to avoid literal regex escaping pitfalls.
+// Require at least one stick char AND (head OR multiple sticks).
+const headChars = "?#*x<>\\[\\]\\\\/|o()";
+const head = `[${headChars}]`;
+const arrowBody = `[-=.]+(?:\\[#[^\\]\\s]+\\])?[-=.]*`;
 export const Arrow = createToken({
     name: "Arrow",
-    pattern: /(?:\([^)\r\n]+\))?(?:(?:<<|\/\/|\\\\|[<x\/\\o*^+#}0@!~#\[\]])+[-=.~]{1,4}(?:\[[^\]\r\n]+\])?[-=.~]{0,4}(?:\|>|>>|\\\\|\/\/|[>x\/\\o*?^+#{0@!~#|~=.\-\[\]])*(?:\+|-)*|[-=.~]{1,4}(?:\[[^\]\r\n]+\])?[-=.~]{0,4}(?:\|>|>>|\\\\|\/\/|[>x\/\\o*?^+#{0@!~#|~=.\-\[\]])+(?:\+|-)*|[-=.~]{1,4}(?:(?:up|down|left|right|hidden|horizontal|vertical|[lrud]|le|ri|do)(?![a-zA-Z_$])[-=.~]{0,4})+(?:\|>|>>|\\\\|\/\/|[>x\/\\o*?^+#{0@!~#|~=.\-\[\]])*(?:\+|-)*|[-=.~]{2,4}(?:\[[^\]\r\n]+\])?[-=.~]{0,4}(?:\+|-)*|=>|<->|<-|->|[0()]+[-=.~]{1,4}[0()\-.~]*|[-=.~]{1,4}(?!\([1-9])[0()\-.~]*[-=.~]+[0()\-.~]*)(?:\([^)\r\n]+\))?/
+    pattern: new RegExp(`(${head}*${arrowBody}>${head}*|${head}*${arrowBody}${head}+|${head}+${arrowBody}${head}*|[-=.]{2,}(?:\\[#[^\\]\\s]+\\])?[-=.]*${head}*)`),
 });
-
-export const Divider = createToken({ name: "Divider", pattern: /==+[ \t]*[^ \n\r\t:=]+[ \t]*==+/ });
-export const Delay = createToken({ name: "Delay", pattern: /\.\.\.[^.\n]*\.\.\.|\.\.\./ });
 
 export const allSequenceTokens = [
     common.WhiteSpace,
     common.Newline,
-    common.IdentifierLike,
     common.StartUml,
     common.EndUml,
     common.PosComment,
     common.MultiLineComment,
     common.LineComment,
+    
     Delay,
     Divider,
-    Arrow,
-    common.Color,
-    Participant,
-    Actor,
-    Order,
-    Boundary,
-    Control,
-    Entity,
-    Database,
-    Collections,
-    Queue,
+    Arrow, // High priority
+    EndNote,
+    EndHnote,
+    EndRnote,
+    EndRef,
+    End,
     Alt,
     Else,
     Opt,
@@ -86,20 +95,20 @@ export const allSequenceTokens = [
     Group,
     Partition,
     Box,
-    End,
+    Participant,
+    Actor,
+    Boundary,
+    Control,
+    Entity,
+    Database,
+    Collections,
+    Queue,
     Note,
     Hnote,
     Rnote,
     Ref,
     Autonumber,
     Newpage,
-    common.Skinparam,
-    common.Header,
-    common.Footer,
-    common.Title,
-    common.Hide,
-    common.Show,
-    common.Page,
     Activate,
     Deactivate,
     Destroy,
@@ -108,36 +117,54 @@ export const allSequenceTokens = [
     Create,
     Bye,
     Mainframe,
+    Order,
     As,
     Left,
     Right,
     Top,
     Bottom,
     Over,
+    Off, 
     Of,
     On,
     Across,
-    Off,
     Stop,
     Resume,
     Inc,
     Ignore,
-    common.Colon,
-    common.Comma,
-    common.LBrace,
-    common.RBrace,
+
     common.LParen,
     common.RParen,
+    common.LBrace,
+    common.RBrace,
     common.LBracket,
     common.RBracket,
+    common.Colon,
+    common.Comma,
     common.Dot,
+    common.Star,
+    common.VerticalBar,
+    common.LAngle,
+    common.RAngle,
+    common.Plus,
+    common.Minus,
     common.Slash,
     common.Backslash,
     common.Exclamation,
     common.QuestionMark,
-    common.Star,
-    common.VerticalBar,
+    common.Tilde,
+    common.Color,
+    common.Hash,
+    common.Skinparam,
+    common.Hide,
+    common.Show,
+    common.Page,
+    common.Header,
+    common.Footer,
+    common.Title,
+
     common.StringLiteral,
+    common.IdentifierLike,
     common.Identifier,
     common.NumberToken
 ];

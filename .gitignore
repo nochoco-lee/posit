@@ -12,3 +12,6 @@ gallery_*.html
 puml_temp/
 plantuml.jar
 debug_color.ts
+enhancement_plan.md
+performance_analysis.md
+test_scripts/plantuml.zip

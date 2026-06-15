@@ -1,5 +1,6 @@
 import { CstNode, IToken } from "chevrotain";
 import { IRDiagram, IREdge, IRNode, IRStatement, IRContainer, IRGroup, IRNote, IROffset } from "../../ir/types";
+import { POS_COMMENT_REGEX } from "../../ir/constants";
 import { ClassParser } from "./parser";
 
 const parser = new ClassParser();
@@ -60,11 +61,70 @@ export class ClassAstVisitor extends BaseVisitor {
         if (ctx.ignoredStatement) return null;
         if (ctx.classDeclaration) return this.visit(ctx.classDeclaration[0]);
         if (ctx.connectionDeclaration) return this.visit(ctx.connectionDeclaration[0]);
+        if (ctx.noteDeclaration) return this.visit(ctx.noteDeclaration[0]);
+        if (ctx.containerDeclaration) return this.visit(ctx.containerDeclaration[0]);
         return null;
     }
 
+    containerDeclaration(ctx: any): IRContainer {
+        const keywordToken = ctx.keyword ? ctx.keyword[0].image : "package";
+        let name = ctx.name ? this.visit(ctx.name[0]) : undefined;
+        if (name && name.startsWith('"') && name.endsWith('"')) {
+            name = name.slice(1, -1);
+        }
+
+        let layout: any = undefined;
+        if (ctx.layout) {
+            const firstComment = ctx.layout[0].image;
+            const match = firstComment.match(POS_COMMENT_REGEX);
+            if (match) layout = { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+        }
+
+        const statements = ctx.statement ? ctx.statement.map((s: any) => this.visit(s)).filter(Boolean).flat() : [];
+
+        return {
+            type: "container",
+            keyword: keywordToken.toLowerCase(),
+            name,
+            statements,
+            layout,
+            offset: this.getOffsets(ctx, ctx.layout)
+        };
+    }
+
+    noteDeclaration(ctx: any): IRNote {
+        let text = "";
+        const allChildren: any[] = [];
+        if (ctx.anyToken) allChildren.push(...ctx.anyToken.map((t: any) => ({ node: t, offset: t.location?.startOffset ?? t.startOffset ?? 0 })));
+        
+        if (allChildren.length > 0) {
+            allChildren.sort((a, b) => a.offset - b.offset);
+            text = allChildren.map(c => this.visit(c.node)).join(" ").trim();
+        }
+
+        const placement = ctx.placement ? ctx.placement[0].image.toLowerCase() : "top";
+        const targets = ctx.target ? [this.visit(ctx.target[0])] : [];
+
+        let layout: any = undefined;
+        if (ctx.layout) {
+            const firstComment = ctx.layout[0].image;
+            const match = firstComment.match(POS_COMMENT_REGEX);
+            if (match) layout = { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+        }
+
+        return {
+            type: "note",
+            placement,
+            targets,
+            text,
+            layout,
+            offset: this.getOffsets(ctx, ctx.layout)
+        };
+    }
+
     name(ctx: any): string {
-        let result = this.visit(ctx.part[0]);
+        let prefix = ctx.leadingDot ? "." : "";
+        let result = prefix + this.visit(ctx.part[0]);
         if (ctx.sep) {
             for (let i = 0; i < ctx.sep.length; i++) {
                 result += ctx.sep[i].image + this.visit(ctx.part[i + 1]);
@@ -90,12 +150,21 @@ export class ClassAstVisitor extends BaseVisitor {
 
     classDeclaration(ctx: any): IRNode | IRStatement[] {
         const name = this.visit(ctx.name[0]);
-        const shapeToken = Object.keys(ctx).find(k => !["name", "LBrace", "RBrace", "classMember", "Newline", "parents", "color", "layout"].includes(k));
-        const shape = shapeToken ? shapeToken.toLowerCase() : "class";
+        let shape = "class";
+        if (ctx.LParen && ctx.RParen) {
+            shape = "circle";
+        } else if (ctx.LAngle && ctx.RAngle) {
+            shape = "diamond";
+        } else {
+            const shapeToken = Object.keys(ctx).find(k => !["name", "LBrace", "RBrace", "classMember", "Newline", "parents", "color", "layout", "LParen", "RParen", "LAngle", "RAngle", "memberDeclaration", "Stereotype", "RecordKeyword"].includes(k));
+            shape = shapeToken ? shapeToken.toLowerCase() : "class";
+        }
+        
+        const stereotype = ctx.Stereotype ? ctx.Stereotype[0].image : undefined;
         
         const members: any[] = [];
-        if (ctx.classMember) {
-            ctx.classMember.forEach((m: any) => {
+        if (ctx.memberDeclaration) {
+            ctx.memberDeclaration.forEach((m: any) => {
                 members.push(this.visit(m));
             });
         }
@@ -108,8 +177,8 @@ export class ClassAstVisitor extends BaseVisitor {
         let layout: any = undefined;
         if (ctx.layout) {
             const firstComment = ctx.layout[0].image;
-            const match = firstComment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
-            if (match) layout = { x: parseInt(match[1]), y: parseInt(match[2]) };
+            const match = firstComment.match(POS_COMMENT_REGEX);
+            if (match) layout = { x: parseFloat(match[1]), y: parseFloat(match[2]) };
         }
 
         const node: IRNode = {
@@ -117,6 +186,7 @@ export class ClassAstVisitor extends BaseVisitor {
             shape,
             name,
             origName: name,
+            stereotype,
             members,
             color,
             layout,
@@ -149,24 +219,22 @@ export class ClassAstVisitor extends BaseVisitor {
         return "";
     }
 
-    classMember(ctx: any): any {
-        const visibility = ctx.Visibility ? ctx.Visibility[0].image : undefined;
-        const isStatic = !!ctx.StaticModifier;
-        const isAbstract = !!ctx.AbstractModifier;
-        const text = this.visit(ctx.tokens[0]);
+    memberDeclaration(ctx: any): any {
+        const visibility = ctx.Plus || ctx.Minus || ctx.Hash || ctx.Tilde ? (ctx.Plus || ctx.Minus || ctx.Hash || ctx.Tilde)[0].image : undefined;
+        const isStatic = !!ctx.Static;
+        const text = ctx.anyToken ? ctx.anyToken.map((t: any) => this.visit(t)).join(" ").trim() : "";
         
         const isMethod = text.includes("(");
         return {
             text,
             visibility,
             isStatic,
-            isAbstract,
             isMethod,
             isField: !isMethod
         };
     }
 
-    memberLabel(ctx: any): string {
+    label(ctx: any): string {
         let result = "";
         if (ctx.anyToken) {
             ctx.anyToken.forEach((t: any) => {
@@ -202,8 +270,8 @@ export class ClassAstVisitor extends BaseVisitor {
         let layout: any = undefined;
         if (ctx.layout) {
             const firstComment = ctx.layout[0].image;
-            const match = firstComment.match(/@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
-            if (match) layout = { x: parseInt(match[1]), y: parseInt(match[2]) };
+            const match = firstComment.match(POS_COMMENT_REGEX);
+            if (match) layout = { x: parseFloat(match[1]), y: parseFloat(match[2]) };
         }
 
         return {

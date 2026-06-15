@@ -13,7 +13,8 @@ export class ClassParser extends CstParser {
     constructor() {
         super(lexer.allClassTokens, { 
             skipValidations: false,
-            errorMessageProvider: fastErrorProvider
+            errorMessageProvider: fastErrorProvider,
+            nodeLocationTracking: "full"
         });
         this.performSelfAnalysis();
     }
@@ -24,42 +25,54 @@ export class ClassParser extends CstParser {
             { ALT: () => this.CONSUME(common.NumberToken) },
             { ALT: () => this.CONSUME(common.StringLiteral) },
             { ALT: () => this.CONSUME(common.Color) },
-            { ALT: () => this.CONSUME(lexer.Arrow) },
-            { ALT: () => this.CONSUME(common.Comma) },
             { ALT: () => this.CONSUME(common.LParen) },
             { ALT: () => this.CONSUME(common.RParen) },
-            { ALT: () => this.CONSUME(common.LBrace) },
-            { ALT: () => this.CONSUME(common.RBrace) },
+            { ALT: () => this.CONSUME(lexer.LBrace) },
+            { ALT: () => this.CONSUME(lexer.RBrace) },
             { ALT: () => this.CONSUME(common.LBracket) },
             { ALT: () => this.CONSUME(common.RBracket) },
             { ALT: () => this.CONSUME(common.Colon) },
+            { ALT: () => this.CONSUME(common.Comma) },
+            { ALT: () => this.CONSUME(common.Dot) },
             { ALT: () => this.CONSUME(common.Star) },
             { ALT: () => this.CONSUME(common.VerticalBar) },
-            { ALT: () => this.CONSUME(common.Dot) },
+            { ALT: () => this.CONSUME(common.LAngle) },
+            { ALT: () => this.CONSUME(common.RAngle) },
+            { ALT: () => this.CONSUME(common.Plus) },
+            { ALT: () => this.CONSUME(common.Minus) },
             { ALT: () => this.CONSUME(common.Slash) },
             { ALT: () => this.CONSUME(common.Backslash) },
             { ALT: () => this.CONSUME(common.Exclamation) },
             { ALT: () => this.CONSUME(common.QuestionMark) },
-            { ALT: () => this.CONSUME(common.LAngle) },
-            { ALT: () => this.CONSUME(common.RAngle) },
-            { ALT: () => this.CONSUME(lexer.Visibility) },
             { ALT: () => this.CONSUME(common.Skinparam) },
+            { ALT: () => this.CONSUME(common.Hide) },
+            { ALT: () => this.CONSUME(common.Show) },
+            { ALT: () => this.CONSUME(common.Page) },
+            { ALT: () => this.CONSUME(common.Header) },
+            { ALT: () => this.CONSUME(common.Footer) },
+            { ALT: () => this.CONSUME(common.Title) },
             { ALT: () => this.CONSUME(lexer.Class) },
             { ALT: () => this.CONSUME(lexer.Interface) },
             { ALT: () => this.CONSUME(lexer.Enum) },
-            { ALT: () => this.CONSUME(lexer.Struct) },
             { ALT: () => this.CONSUME(lexer.Annotation) },
             { ALT: () => this.CONSUME(lexer.Abstract) },
+            { ALT: () => this.CONSUME(lexer.Static) },
             { ALT: () => this.CONSUME(lexer.Entity) },
+            { ALT: () => this.CONSUME(lexer.Struct) },
+            { ALT: () => this.CONSUME(lexer.Protocol) },
+            { ALT: () => this.CONSUME(lexer.RecordKeyword) },
+            { ALT: () => this.CONSUME(lexer.Metaclass) },
+            { ALT: () => this.CONSUME(lexer.StereotypeKeyword) },
+            { ALT: () => this.CONSUME(lexer.Dataclass) },
+            { ALT: () => this.CONSUME(lexer.Exception) },
             { ALT: () => this.CONSUME(lexer.Circle) },
             { ALT: () => this.CONSUME(lexer.Diamond) },
-            { ALT: () => this.CONSUME(lexer.Exception) },
-            { ALT: () => this.CONSUME(lexer.Metaclass) },
-            { ALT: () => this.CONSUME(lexer.Protocol) },
-            { ALT: () => this.CONSUME(lexer.Record) },
-            { ALT: () => this.CONSUME(lexer.Stereotype) },
             { ALT: () => this.CONSUME(lexer.Extends) },
-            { ALT: () => this.CONSUME(lexer.Implements) }
+            { ALT: () => this.CONSUME(lexer.Implements) },
+            { ALT: () => this.CONSUME(lexer.Arrow) },
+            { ALT: () => this.CONSUME(lexer.Stereotype) },
+            { ALT: () => this.CONSUME(common.Tilde) },
+            { ALT: () => this.CONSUME(common.Hash) }
         ]);
     });
 
@@ -70,176 +83,330 @@ export class ClassParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Class) },
             { ALT: () => this.CONSUME(lexer.Interface) },
             { ALT: () => this.CONSUME(lexer.Enum) },
-            { ALT: () => this.CONSUME(lexer.Struct) },
             { ALT: () => this.CONSUME(lexer.Annotation) },
             { ALT: () => this.CONSUME(lexer.Abstract) },
             { ALT: () => this.CONSUME(lexer.Entity) },
-            { ALT: () => this.CONSUME(lexer.Circle) },
-            { ALT: () => this.CONSUME(lexer.Diamond) },
-            { ALT: () => this.CONSUME(lexer.Exception) },
-            { ALT: () => this.CONSUME(lexer.Metaclass) },
+            { ALT: () => this.CONSUME(lexer.Struct) },
             { ALT: () => this.CONSUME(lexer.Protocol) },
-            { ALT: () => this.CONSUME(lexer.Record) },
-            { ALT: () => this.CONSUME(lexer.Stereotype) }
+            { ALT: () => this.CONSUME(lexer.RecordKeyword) },
+            { ALT: () => this.CONSUME(lexer.Metaclass) },
+            { ALT: () => this.CONSUME(lexer.StereotypeKeyword) },
+            { ALT: () => this.CONSUME(lexer.Dataclass) },
+            { ALT: () => this.CONSUME(lexer.Exception) },
+            { ALT: () => this.CONSUME(lexer.Circle) },
+            { ALT: () => this.CONSUME(lexer.Diamond) }
         ]);
     });
-
     public namePart = this.RULE("namePart", () => { this.OR([{ ALT: () => this.SUBRULE(this.nodeIdentifier) }, { ALT: () => this.CONSUME(common.StringLiteral) }]); });
 
     public name = this.RULE("name", () => {
+        this.OPTION(() => {
+            this.CONSUME(common.Dot, { LABEL: "leadingDot" });
+        });
         this.SUBRULE(this.namePart, { LABEL: "part" });
         this.MANY(() => {
-            this.CONSUME(common.Dot, { LABEL: "sep" });
+            this.CONSUME1(common.Dot, { LABEL: "sep" });
             this.SUBRULE1(this.namePart, { LABEL: "part" });
         });
     });
 
-    public memberLabel = this.RULE("memberLabel", () => { this.AT_LEAST_ONE({ GATE: () => { const next = this.LA(1).tokenType; return next !== common.Newline && next !== common.RBrace && next !== common.EndUml; }, DEF: () => this.SUBRULE(this.anyToken) }); });
-    public classMember = this.RULE("classMember", () => { this.MANY(() => { this.OR([ { ALT: () => this.CONSUME(lexer.Visibility) }, { ALT: () => this.CONSUME(lexer.StaticModifier) }, { ALT: () => this.CONSUME(lexer.AbstractModifier) }, { ALT: () => this.CONSUME(lexer.FieldMarker) }, { ALT: () => this.CONSUME(lexer.MethodMarker) } ]); }); this.SUBRULE(this.memberLabel, { LABEL: "tokens" }); });
+    public label = this.RULE("label", () => {
+        this.MANY({
+            GATE: () => {
+                const next = this.LA(1).tokenType;
+                return next !== common.Newline && next !== common.Colon && next !== common.EndUml && next !== EOF;
+            },
+            DEF: () => this.SUBRULE(this.anyToken)
+        });
+    });
 
     public classDeclaration = this.RULE("classDeclaration", () => {
         this.OR([
-            {
-                GATE: () => {
-                    const t1 = this.LA(1).tokenType;
-                    const isClassKeyword = t1 === lexer.Visibility || t1 === lexer.Class || t1 === lexer.Interface || t1 === lexer.Enum || t1 === lexer.Struct || t1 === lexer.Annotation || t1 === lexer.Abstract || 
-                                          t1 === lexer.Entity || t1 === lexer.Circle || t1 === lexer.Diamond || t1 === lexer.Exception || t1 === lexer.Metaclass || t1 === lexer.Protocol || t1 === lexer.Record || t1 === lexer.Stereotype;
-                    if (!isClassKeyword) return false;
-                    let i = 2;
-                    while (true) { const tok = this.LA(i).tokenType; if (tok === lexer.Arrow) return false; if (tok === common.Newline || tok === common.EndUml || tok === EOF) break; i++; }
-                    return true;
-                },
-                ALT: () => {
-                    this.OPTION(() => this.CONSUME(lexer.Visibility));
-                    this.OR1([ 
-                        { ALT: () => this.CONSUME(lexer.Class) }, 
-                        { ALT: () => this.CONSUME(lexer.Interface) }, 
-                        { ALT: () => this.CONSUME(lexer.Enum) }, 
-                        { ALT: () => this.CONSUME(lexer.Struct) }, 
-                        { ALT: () => this.CONSUME(lexer.Annotation) }, 
+            { ALT: () => {
+                this.CONSUME(lexer.Abstract);
+                this.OPTION(() => {
+                    this.OR1([
+                        { ALT: () => this.CONSUME(lexer.Class) },
+                        { ALT: () => this.CONSUME(lexer.Interface) },
+                        { ALT: () => this.CONSUME(lexer.Enum) },
+                        { ALT: () => this.CONSUME(lexer.Annotation) },
                         { ALT: () => this.CONSUME(lexer.Entity) },
-                        { ALT: () => this.CONSUME(lexer.Circle) },
-                        { ALT: () => this.CONSUME(lexer.Diamond) },
-                        { ALT: () => this.CONSUME(lexer.Exception) },
-                        { ALT: () => this.CONSUME(lexer.Metaclass) },
+                        { ALT: () => this.CONSUME(lexer.Struct) },
                         { ALT: () => this.CONSUME(lexer.Protocol) },
-                        { ALT: () => this.CONSUME(lexer.Record) },
-                        { ALT: () => this.CONSUME(lexer.Stereotype) },
-                        { ALT: () => { this.CONSUME(lexer.Abstract); this.OPTION1(() => this.CONSUME1(lexer.Class)); } } 
+                        { ALT: () => this.CONSUME(lexer.RecordKeyword) },
+                        { ALT: () => this.CONSUME(lexer.Metaclass) },
+                        { ALT: () => this.CONSUME(lexer.StereotypeKeyword) },
+                        { ALT: () => this.CONSUME(lexer.Dataclass) },
+                        { ALT: () => this.CONSUME(lexer.Exception) },
+                        { ALT: () => this.CONSUME(lexer.Circle) },
+                        { ALT: () => this.CONSUME(lexer.Diamond) }
                     ]);
-                    this.SUBRULE(this.name, { LABEL: "name" });
-                    this.MANY(() => {
-                        this.OR2([
-                            { GATE: () => this.LA(1).tokenType === lexer.Extends || this.LA(1).tokenType === lexer.Implements, ALT: () => { this.OR3([ { ALT: () => this.CONSUME(lexer.Extends) }, { ALT: () => this.CONSUME(lexer.Implements) } ]); this.SUBRULE1(this.name, { LABEL: "parents" }); } },
-                            { ALT: () => this.SUBRULE(this.colorValue, { LABEL: "color" }) }
-                        ]);
-                    });
-                    this.OPTION2(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
-                    this.OR4([ { ALT: () => { this.CONSUME(common.LBrace); this.MANY2({ GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== EOF, DEF: () => { this.OR5([ { ALT: () => this.CONSUME1(common.Newline) }, { ALT: () => this.SUBRULE(this.classMember) } ]); } }); this.CONSUME(common.RBrace); } }, { ALT: () => this.CONSUME2(common.Newline) } ]);
-                }
-            },
-            {
-                GATE: () => {
-                    const t1 = this.LA(1).tokenType;
-                    const t2 = this.LA(2).tokenType;
-                    if (t1 === common.LParen && t2 === common.RParen) return true;
-                    if (t1 === common.LAngle && t2 === common.RAngle) return true;
-                    let i = 1; while (true) { const tok = this.LA(i).tokenType; if (tok === common.Identifier || tok === common.Dot || tok === common.StringLiteral || tok === common.NumberToken) i++; else break; }
-                    return this.LA(i).tokenType === common.LBrace;
-                },
-                ALT: () => {
-                    this.OR6([
-                         { ALT: () => { this.CONSUME(common.LParen); this.CONSUME(common.RParen); } },
-                         { ALT: () => { this.CONSUME(common.LAngle); this.CONSUME(common.RAngle); } },
-                         { ALT: () => this.SUBRULE3(this.name, { LABEL: "name" }) }
-                    ]);
-                    this.OPTION5(() => this.SUBRULE4(this.name, { LABEL: "name" }));
-                    this.OPTION3(() => this.CONSUME1(common.PosComment, { LABEL: "layout" }));
-                    this.OPTION6(() => {
-                        this.CONSUME1(common.LBrace);
-                        this.MANY4({ GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== EOF, DEF: () => { this.OR7([ { ALT: () => this.CONSUME3(common.Newline) }, { ALT: () => this.SUBRULE1(this.classMember) } ]); } });
-                        this.CONSUME1(common.RBrace);
-                    });
-                }
-            }
+                });
+            }},
+            { ALT: () => this.CONSUME1(lexer.Class) },
+            { ALT: () => this.CONSUME1(lexer.Interface) },
+            { ALT: () => this.CONSUME1(lexer.Enum) },
+            { ALT: () => this.CONSUME1(lexer.Annotation) },
+            { ALT: () => this.CONSUME1(lexer.Entity) },
+            { ALT: () => this.CONSUME1(lexer.Struct) },
+            { ALT: () => this.CONSUME1(lexer.Protocol) },
+            { ALT: () => this.CONSUME1(lexer.RecordKeyword) },
+            { ALT: () => this.CONSUME1(lexer.Metaclass) },
+            { ALT: () => this.CONSUME1(lexer.StereotypeKeyword) },
+            { ALT: () => this.CONSUME1(lexer.Dataclass) },
+            { ALT: () => this.CONSUME1(lexer.Exception) },
+            { ALT: () => this.CONSUME1(lexer.Circle) },
+            { ALT: () => this.CONSUME1(lexer.Diamond) },
+            { ALT: () => { this.CONSUME(common.LParen); this.CONSUME(common.RParen); } },
+            { ALT: () => { this.CONSUME(common.LAngle); this.CONSUME(common.RAngle); } }
         ]);
+        this.SUBRULE(this.name, { LABEL: "name" });
+        this.OPTION4(() => this.CONSUME(lexer.Stereotype));
+        this.OPTION1(() => {
+            this.OR3([
+                { ALT: () => this.CONSUME(lexer.Extends) },
+                { ALT: () => this.CONSUME(lexer.Implements) }
+            ]);
+            this.SUBRULE1(this.name, { LABEL: "parent" });
+        });
+        this.OPTION2(() => {
+            this.CONSUME(lexer.LBrace);
+            this.MANY(() => {
+                this.OR2([
+                    { ALT: () => this.CONSUME(common.Newline) },
+                    { ALT: () => this.SUBRULE(this.memberDeclaration) }
+                ]);
+            });
+            this.CONSUME(lexer.RBrace);
+        });
+        this.OPTION3(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
     });
 
-    public colorValue = this.RULE("colorValue", () => { this.OR([ { ALT: () => this.CONSUME(common.Color) }, { ALT: () => { this.CONSUME(lexer.Visibility); this.CONSUME(common.Identifier); } }]); });
+    public memberDeclaration = this.RULE("memberDeclaration", () => {
+        this.OPTION(() => {
+            this.OR([
+                { ALT: () => this.CONSUME(common.Plus) },
+                { ALT: () => this.CONSUME(common.Minus) },
+                { ALT: () => this.CONSUME(common.Hash) },
+                { ALT: () => this.CONSUME(common.Tilde) }
+            ]);
+        });
+        this.OPTION1(() => this.CONSUME(lexer.Static));
+        this.MANY1({
+            GATE: () => this.LA(1).tokenType !== lexer.RBrace && this.LA(1).tokenType !== common.Newline && this.LA(1).tokenType !== common.EndUml,
+            DEF: () => this.SUBRULE(this.anyToken)
+        });
+    });
 
     public connectionDeclaration = this.RULE("connectionDeclaration", () => {
+        this.SUBRULE(this.name, { LABEL: "from" });
+        this.OPTION(() => {
+            this.CONSUME(common.StringLiteral, { LABEL: "fromMultiplicity" });
+        });
         this.OR([
+            { ALT: () => this.CONSUME(lexer.Arrow, { LABEL: "arrow" }) },
+            { ALT: () => this.CONSUME(common.Minus, { LABEL: "arrow" }) }
+        ]);
+        this.OPTION1(() => {
+            this.CONSUME1(common.StringLiteral, { LABEL: "toMultiplicity" });
+        });
+        this.SUBRULE1(this.name, { LABEL: "to" });
+        this.OPTION4(() => this.CONSUME(lexer.Stereotype));
+        this.OPTION2(() => {
+            this.CONSUME(common.Colon);
+            this.SUBRULE(this.label, { LABEL: "payload" });
+        });
+        this.OPTION3(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
+    });
+
+    public noteDeclaration = this.RULE("noteDeclaration", () => {
+        this.CONSUME(lexer.Note);
+        this.OPTION(() => {
+            this.OR([
+                { ALT: () => this.CONSUME(lexer.Left, { LABEL: "placement" }) },
+                { ALT: () => this.CONSUME(lexer.Right, { LABEL: "placement" }) },
+                { ALT: () => this.CONSUME(lexer.Top, { LABEL: "placement" }) },
+                { ALT: () => this.CONSUME(lexer.Bottom, { LABEL: "placement" }) }
+            ]);
+        });
+        this.OPTION1(() => {
+            this.CONSUME(lexer.Of);
+            this.SUBRULE(this.name, { LABEL: "target" });
+        });
+        this.OR1([
             { ALT: () => {
-                this.SUBRULE1(this.name, { LABEL: "from" });
-                this.OPTION(() => this.CONSUME(common.StringLiteral, { LABEL: "fromLabel" }));
-                this.CONSUME(lexer.Arrow, { LABEL: "arrow" });
-                this.OPTION1(() => this.CONSUME1(common.StringLiteral, { LABEL: "toLabel" }));
-                this.SUBRULE2(this.name, { LABEL: "to" });
+                this.CONSUME(common.Colon);
+                this.MANY({
+                    GATE: () => {
+                        const next = this.LA(1).tokenType;
+                        return next !== common.Newline && next !== common.EndUml && next !== EOF;
+                    },
+                    DEF: () => this.SUBRULE(this.anyToken)
+                });
             }},
             { ALT: () => {
-                this.CONSUME(common.LParen);
-                this.SUBRULE3(this.name, { LABEL: "from" });
-                this.CONSUME(common.Comma);
-                this.SUBRULE4(this.name, { LABEL: "to" });
-                this.CONSUME(common.RParen);
-                this.CONSUME1(lexer.Arrow, { LABEL: "arrow" });
-                this.SUBRULE5(this.name, { LABEL: "assoc" });
+                this.CONSUME(common.Newline);
+                this.MANY1({
+                    GATE: () => {
+                        const t1 = this.LA(1).tokenType;
+                        if (t1 === lexer.End) {
+                            const t2 = this.LA(2).tokenType;
+                            if (t2 === lexer.Note) return false;
+                        }
+                        if (t1 === common.EndUml || t1 === EOF) return false;
+                        return true;
+                    },
+                    DEF: () => this.OR2([
+                        { ALT: () => this.SUBRULE1(this.anyToken) },
+                        { ALT: () => this.CONSUME1(common.Newline) }
+                    ])
+                });
+                this.CONSUME(lexer.End);
+                this.CONSUME1(lexer.Note);
             }}
         ]);
-        this.OPTION2(() => { this.CONSUME(common.Colon); this.SUBRULE(this.memberLabel, { LABEL: "payload" }); });
-        this.OPTION3(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
+        this.OPTION2(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
+    });
+
+    public containerDeclaration = this.RULE("containerDeclaration", () => {
+        this.OR([
+            { ALT: () => this.CONSUME(lexer.Package, { LABEL: "keyword" }) },
+            { ALT: () => this.CONSUME(lexer.Namespace, { LABEL: "keyword" }) },
+            { ALT: () => this.CONSUME(lexer.Together, { LABEL: "keyword" }) }
+        ]);
+        this.OPTION(() => {
+            this.SUBRULE(this.name, { LABEL: "name" });
+        });
+        this.OPTION2(() => {
+            this.CONSUME(common.Color);
+        });
+        this.OPTION1(() => {
+            this.CONSUME(common.PosComment, { LABEL: "layout" });
+        });
+        this.CONSUME(lexer.LBrace);
+        this.MANY(() => {
+            this.OR1([
+                { ALT: () => this.CONSUME(common.Newline) },
+                { ALT: () => this.SUBRULE(this.statement) }
+            ]);
+        });
+        this.CONSUME(lexer.RBrace);
     });
 
     public ignoredStatement = this.RULE("ignoredStatement", () => {
         this.OR([
+            { ALT: () => this.CONSUME(common.Exclamation) },
             { ALT: () => this.CONSUME(common.Skinparam) },
             { ALT: () => this.CONSUME(common.Hide) },
             { ALT: () => this.CONSUME(common.Show) },
             { ALT: () => this.CONSUME(common.Page) },
             { ALT: () => this.CONSUME(common.Header) },
             { ALT: () => this.CONSUME(common.Footer) },
-            { ALT: () => this.CONSUME(common.Title) },
-            { ALT: () => this.CONSUME(common.Identifier) } // Catch-all for other commands like allowmixing
+            { ALT: () => this.CONSUME(common.Title) }
         ]);
         this.MANY({
-             GATE: () => this.LA(1).tokenType !== common.Newline && this.LA(1).tokenType !== common.LBrace && this.LA(1).tokenType !== common.EndUml,
+             GATE: () => this.LA(1).tokenType !== common.Newline && this.LA(1).tokenType !== lexer.LBrace && this.LA(1).tokenType !== common.EndUml,
              DEF: () => this.SUBRULE(this.anyToken)
         });
         this.OPTION(() => {
-            this.CONSUME(common.LBrace);
+            this.CONSUME(lexer.LBrace);
             this.MANY1({
-                GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== common.EndUml && this.LA(1).tokenType !== EOF,
+                GATE: () => this.LA(1).tokenType !== lexer.RBrace && this.LA(1).tokenType !== common.EndUml && this.LA(1).tokenType !== EOF,
                 DEF: () => this.OR1([
                     { ALT: () => this.CONSUME(common.Newline) },
                     { ALT: () => this.SUBRULE1(this.anyToken) }
                 ])
             });
-            this.CONSUME(common.RBrace);
+            this.CONSUME(lexer.RBrace);
         });
     });
 
     public statement = this.RULE("statement", () => {
         this.OR([
             { GATE: this.isIgnored, ALT: () => this.SUBRULE(this.ignoredStatement) },
+            { GATE: this.isConnection, ALT: () => this.SUBRULE(this.connectionDeclaration) },
+            { GATE: this.isContainer, ALT: () => this.SUBRULE(this.containerDeclaration) },
             { ALT: () => this.SUBRULE(this.classDeclaration) },
-            { GATE: this.isConnection, ALT: () => this.SUBRULE(this.connectionDeclaration) }
+            { ALT: () => this.SUBRULE(this.noteDeclaration) }
         ]);
     });
 
+    private isContainer(): boolean {
+        const tok = this.LA(1).tokenType;
+        return tok === lexer.Package || tok === lexer.Namespace || tok === lexer.Together;
+    }
+
     private isIgnored(): boolean {
         const tok = this.LA(1).tokenType;
-        return tok === common.Skinparam || tok === common.Hide || tok === common.Show || tok === common.Page || tok === common.Header || tok === common.Footer || tok === common.Title || tok === common.Identifier;
+        return tok === common.Exclamation || tok === common.Skinparam || tok === common.Hide || tok === common.Show || tok === common.Page || tok === common.Header || tok === common.Footer || tok === common.Title;
     }
 
     private isConnection(): boolean {
-        let i = 1;
-        while(true) {
-            const tok = this.LA(i).tokenType;
-            if (tok === lexer.Arrow) return true;
-            if (tok === common.Newline || tok === common.EndUml || tok === EOF) return false;
-            i++;
-            if (i > 10) return false;
+        let la = 1;
+        let t = this.LA(la);
+        
+        // Skip over multiplicities if any
+        while (t.tokenType === common.StringLiteral) { la++; t = this.LA(la); }
+        
+        // Skip optional leading dot
+        if (t.tokenType === common.Dot) { la++; t = this.LA(la); }
+        
+        // Must start with a valid name part
+        if (t.tokenType !== common.Identifier && 
+            t.tokenType !== lexer.Class && 
+            t.tokenType !== lexer.Interface &&
+            t.tokenType !== lexer.Enum &&
+            t.tokenType !== lexer.Annotation &&
+            t.tokenType !== lexer.Abstract &&
+            t.tokenType !== lexer.Entity &&
+            t.tokenType !== lexer.Struct &&
+            t.tokenType !== lexer.Protocol &&
+            t.tokenType !== lexer.RecordKeyword &&
+            t.tokenType !== lexer.Metaclass &&
+            t.tokenType !== lexer.StereotypeKeyword &&
+            t.tokenType !== lexer.Dataclass &&
+            t.tokenType !== lexer.Exception &&
+            t.tokenType !== lexer.Circle &&
+            t.tokenType !== lexer.Diamond &&
+            t.tokenType !== common.LParen &&
+            t.tokenType !== common.LAngle &&
+            t.tokenType !== common.NumberToken) return false;
+        
+        // Skip over the name (Part.Part.Part)
+        while (true) {
+            la++; t = this.LA(la);
+            if (t.tokenType === common.Dot) {
+                la++; t = this.LA(la);
+                if (t.tokenType !== common.Identifier && 
+                    t.tokenType !== lexer.Class && 
+                    t.tokenType !== lexer.Interface &&
+                    t.tokenType !== lexer.Enum &&
+                    t.tokenType !== lexer.Annotation &&
+                    t.tokenType !== lexer.Abstract &&
+                    t.tokenType !== lexer.Entity &&
+                    t.tokenType !== lexer.Struct &&
+                    t.tokenType !== lexer.Protocol &&
+                    t.tokenType !== lexer.RecordKeyword &&
+                    t.tokenType !== lexer.Metaclass &&
+                    t.tokenType !== lexer.StereotypeKeyword &&
+                    t.tokenType !== lexer.Dataclass &&
+                    t.tokenType !== lexer.Exception &&
+                    t.tokenType !== lexer.Circle &&
+                    t.tokenType !== lexer.Diamond &&
+                    t.tokenType !== common.LParen &&
+                    t.tokenType !== common.LAngle &&
+                    t.tokenType !== common.NumberToken &&
+                    t.tokenType !== common.StringLiteral) break;
+            } else {
+                break;
+            }
         }
+        
+        // Skip over toMultiplicity if any
+        while (t.tokenType === common.StringLiteral) { la++; t = this.LA(la); }
+        
+        // Now check if there is an arrow or something that makes it a connection
+        return t.tokenType === lexer.Arrow || t.tokenType === common.Minus || (t.tokenType === common.Dot && this.LA(la + 1).tokenType === common.Dot);
     }
 
     public diagram = this.RULE("diagram", () => {

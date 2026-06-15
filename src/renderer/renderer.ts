@@ -28,11 +28,11 @@ export class LayoutPumlRenderer {
         this.deploymentRenderer = new DeploymentRenderer(this.stage, this.layer);
     }
 
-    public onMove(callback: (id: string, newX: number, newY: number) => void) {
+    public onDragEnd(callback: (id: string, newX: number, newY: number) => void) {
         this.onNodeMoveCallback = callback;
-        this.sequenceRenderer.setOnNodeMove(callback);
-        this.classRenderer.setOnNodeMove(callback);
-        this.deploymentRenderer.setOnNodeMove(callback);
+        this.sequenceRenderer.setOnDragEnd(callback);
+        this.classRenderer.setOnDragEnd(callback);
+        this.deploymentRenderer.setOnDragEnd(callback);
     }
 
     public render(map: LayoutMap) {

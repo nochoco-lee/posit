@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SequenceLexer } from "../src/parser/lexer";
+import { ClassLexer as SequenceLexer } from "../src/parser/class/lexer";
 
 describe("Generic Tokenization", () => {
     it("should tokenize List~T~", () => {

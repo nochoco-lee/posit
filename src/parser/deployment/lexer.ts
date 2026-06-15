@@ -34,7 +34,7 @@ export const Stereotype = createToken({ name: "Stereotype", pattern: /<<[^>]+>>/
 
 export const Arrow = createToken({
     name: "Arrow",
-    pattern: /[-=.~]{1,4}(?:up|down|left|right|hidden|horizontal|vertical|[lrud])?[-=.~]{0,4}(?:\|>|>>|[>x\/\\o*?^+#{0@!~#|~=.\-\[\]])*/
+    pattern: /[-=.~]{1,4}(?:up|down|left|right|hidden|horizontal|vertical|[lrud])?[-=.~]{0,4}(?:\|>|>>|[>x\/\\o*?^+#])+/
 });
 
 export const allDeploymentTokens = [
@@ -46,11 +46,11 @@ export const allDeploymentTokens = [
     common.PosComment,
     common.MultiLineComment,
     common.LineComment,
+    Arrow,
     common.Plus,
     common.Minus,
     As,
     Stereotype,
-    Arrow,
     common.Color,
     Artifact,
     Cloud,
@@ -103,6 +103,8 @@ export const allDeploymentTokens = [
     common.QuestionMark,
     common.LAngle,
     common.RAngle,
+    common.Hash,
+    common.Tilde,
     common.StringLiteral,
     common.Identifier,
     common.NumberToken

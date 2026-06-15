@@ -1,5 +1,5 @@
 import { DEFAULTS, LayoutConnection, LayoutMap, LayoutNode, LayoutNote, LayoutGroup, LayoutActivation, LayoutDivider, Position } from "./types";
-import { IRDiagram, IRNode, IREdge, IRStatement, IRNote, IRGroup, IRActivation, IRReturn, IRAutoactivate, IRAutonumber, IRDivider, IRRef, IRDelay } from "../ir/types";
+import { IRDiagram, IRNode, IREdge, IRStatement, IRNote, IRGroup, IRActivation, IRReturn, IRAutoactivate, IRAutonumber, IRDivider, IRRef, IRDelay, IRContainer } from "../ir/types";
 import { measureText, wrapText } from "../utils/text";
 
 export class SequenceLayoutManager {

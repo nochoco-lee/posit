@@ -1,4 +1,4 @@
-import { IRDiagram, IRNode, IREdge, IRContainer, IRStatement } from "../ir/types";
+import { IRDiagram, IRNode, IREdge, IRContainer, IRStatement, IRGroup } from "../ir/types";
 import { LayoutMap, LayoutNode, LayoutConnection, LayoutGroup, LayoutNote, DEFAULTS } from "./types";
 
 export class DeploymentLayoutManager {

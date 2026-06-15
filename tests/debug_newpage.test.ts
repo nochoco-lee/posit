@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SequenceLexer } from "../src/parser/lexer";
+import { SequenceLexer } from "../src/parser/sequence/lexer";
 
 describe("Newpage Tokenization", () => {
     it("should tokenize newpage with title", () => {
