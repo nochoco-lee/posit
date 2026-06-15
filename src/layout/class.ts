@@ -16,27 +16,77 @@ export class ClassLayoutManager {
     }
 
     public process(ir: IRDiagram): LayoutMap {
-        // Pass 1: Setup all explicit nodes
-        this.processStatementsPass1(ir.statements);
+        // Pass 1: Setup all explicit nodes and groups/containers
+        this.processStatementsPass1(ir.statements, DEFAULTS.CLASS_START_X);
 
         // Pass 1.5: Setup implicit nodes from connections
         this.processStatementsPass1_5(ir.statements);
 
-        // Pass 2: Setup connections, notes, groups
+        // Pass 2: Setup connections, notes
         this.processStatementsPass2(ir.statements);
 
         return this.map;
     }
 
-    private processStatementsPass1(statements: IRStatement[]) {
+    private processStatementsPass1(statements: IRStatement[], x: number) {
         statements.forEach((statement: any) => {
             if (!statement) return;
             if (statement.type === "node") {
-                this.processNode(statement as IRNode);
+                this.processNode(statement as IRNode, x);
             } else if (statement.type === "container") {
-                this.processStatementsPass1((statement as IRContainer).statements);
+                this.processContainerPass1(statement as IRContainer, x);
+            } else if (statement.type === "group") {
+                this.processGroupPass1(statement as IRGroup, x);
             }
         });
+    }
+
+    private processContainerPass1(container: IRContainer, x: number) {
+        const startY = this.currentClassY;
+        const layoutGroup: LayoutGroup = {
+            type: "group",
+            id: container.name || `group-${Math.random()}`,
+            keyword: container.keyword,
+            label: container.name || "",
+            sections: [{ statements: container.statements }],
+            position: { x, y: startY },
+            size: { width: 450, height: 0 },
+            dividerYs: []
+        };
+        const groupIndex = this.map.groups.length;
+        this.map.groups.push(layoutGroup);
+
+        this.currentClassY += 40; // Header padding
+        this.processStatementsPass1(container.statements, x + 20);
+        
+        const endY = this.currentClassY;
+        this.map.groups[groupIndex].size.height = Math.max(100, endY - startY);
+        this.currentClassY += 20;
+    }
+
+    private processGroupPass1(group: IRGroup, x: number) {
+        const startY = this.currentClassY;
+        const layoutGroup: LayoutGroup = {
+            type: "group",
+            id: group.label || `group-${Math.random()}`,
+            keyword: group.keyword,
+            label: group.label || "",
+            sections: group.sections,
+            position: { x, y: startY },
+            size: { width: 450, height: 0 },
+            dividerYs: []
+        };
+        const groupIndex = this.map.groups.length;
+        this.map.groups.push(layoutGroup);
+
+        this.currentClassY += 40;
+        group.sections.forEach(section => {
+            this.processStatementsPass1(section.statements, x + 20);
+        });
+
+        const endY = this.currentClassY;
+        this.map.groups[groupIndex].size.height = Math.max(100, endY - startY);
+        this.currentClassY += 20;
     }
 
     private processStatementsPass1_5(statements: IRStatement[]) {
@@ -45,10 +95,10 @@ export class ClassLayoutManager {
             if (statement.type === "edge") {
                 const edge = statement as IREdge;
                 if (!this.map.nodes[edge.from]) {
-                    this.processNode({ type: 'node', name: edge.from, shape: 'class' } as IRNode);
+                    this.processNode({ type: 'node', name: edge.from, shape: 'class' } as IRNode, DEFAULTS.CLASS_START_X);
                 }
                 if (!this.map.nodes[edge.to]) {
-                    this.processNode({ type: 'node', name: edge.to, shape: 'class' } as IRNode);
+                    this.processNode({ type: 'node', name: edge.to, shape: 'class' } as IRNode, DEFAULTS.CLASS_START_X);
                 }
             } else if (statement.type === "container") {
                 this.processStatementsPass1_5((statement as IRContainer).statements);
@@ -63,33 +113,15 @@ export class ClassLayoutManager {
                 this.processConnection(statement as IREdge);
             } else if (statement.type === "note") {
                 this.processNote(statement as IRNote);
-            } else if (statement.type === "group") {
-                this.processGroup(statement as IRGroup);
             } else if (statement.type === "container") {
-                this.processContainer(statement as IRContainer);
+                this.processStatementsPass2((statement as IRContainer).statements);
+            } else if (statement.type === "group") {
+                (statement as IRGroup).sections.forEach(sec => this.processStatementsPass2(sec.statements));
             }
         });
     }
 
-    private processContainer(container: IRContainer) {
-        const layoutGroup: LayoutGroup = {
-            type: "group",
-            id: container.name || `group-${Math.random()}`,
-            keyword: container.keyword,
-            label: container.name || "",
-            sections: [{ statements: container.statements }],
-            position: { x: 50, y: this.currentClassY },
-            size: { width: 450, height: 150 },
-            dividerYs: []
-        };
-
-        this.map.groups.push(layoutGroup);
-        this.currentClassY += 20;
-        this.processStatementsPass2(container.statements);
-        this.currentClassY += 170;
-    }
-
-    private processNode(node: IRNode) {
+    private processNode(node: IRNode, x: number) {
         const id = node.name;
         if (this.map.nodes[id]) {
             // Update existing node (explicit or implicit)
@@ -124,7 +156,7 @@ export class ClassLayoutManager {
         if (node.layout) {
             position = { x: node.layout.x, y: node.layout.y };
         } else {
-            position = { x: DEFAULTS.CLASS_START_X, y: this.currentClassY };
+            position = { x, y: this.currentClassY };
             this.currentClassY += (size.height + 50); 
         }
 
