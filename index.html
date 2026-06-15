@@ -73,15 +73,14 @@
   <body>
     <div id="app">
       <div id="editor-panel">
-        <div class="header">Source (PlantUML)</div>
+        <div class="header">
+          Source (PlantUML)
+          <a href="gallery.html" style="float: right; color: #aaa; text-decoration: none; font-size: 10px;">Gallery</a>
+        </div>
         <textarea id="editor" spellcheck="false">
 @startuml
-participant WebClient /' @pos(100, 150) '/
-participant APIGateway /' @pos(400, 150) '/
-class AuthService /' @pos(400, 300) '/
-
-WebClient -> APIGateway : authenticate()
-APIGateway *-- AuthService : validates
+Alice -> Bob: Hello
+Bob -> Alice: Hi!
 @enduml
         </textarea>
         <div id="error-panel"></div>

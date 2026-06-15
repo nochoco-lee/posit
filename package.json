@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "test": "vitest --run --pool=forks",
-    "build": "tsc",
+    "build": "vite build",
     "plantuml-sequence": "vitest --run --pool=forks -c vitest.coverage.config.ts test_scripts/syntax-coverage.test.ts",
     "plantuml-class": "vitest --run --pool=forks -c vitest.class.coverage.config.ts test_scripts/class-syntax-coverage.test.ts",
     "plantuml-deployment": "vitest --run --pool=forks -c vitest.deployment.coverage.config.ts test_scripts/deployment-syntax-coverage.test.ts"
