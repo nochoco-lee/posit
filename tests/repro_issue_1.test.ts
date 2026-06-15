@@ -13,6 +13,6 @@ Alice <-- Bob: Another authentication Response
         // Visitor swaps them, so 'from' should be Bob
         expect(edge.from).toBe("Bob");
         expect(edge.to).toBe("Alice");
-        expect(edge.arrow).toBe("<--");
+        expect(edge.arrow).toBe("-->");
     });
 });

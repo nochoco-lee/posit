@@ -336,6 +336,18 @@ export class SequenceAstVisitor extends BaseVisitor {
         if (isLeftArrow) {
             [from, to] = [to, from];
             [fromLabel, toLabel] = [toLabel, fromLabel];
+            // Reverse the arrow string to maintain correct head placement
+            arrow = arrow.split('').reverse().map(c => {
+                if (c === '<') return '>';
+                if (c === '>') return '<';
+                if (c === '/') return '\\';
+                if (c === '\\') return '/';
+                if (c === '[') return ']';
+                if (c === ']') return '[';
+                if (c === '(') return ')';
+                if (c === ')') return '(';
+                return c;
+            }).join('');
         }
         let label: string | undefined = undefined;
         let payloadEndOffset: number | undefined = undefined;

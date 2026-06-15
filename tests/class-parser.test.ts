@@ -37,7 +37,7 @@ User *-- Order
             type: "edge",
             from: "OrderHandler",
             to: "User",
-            arrow: "<|--",
+            arrow: "--|>",
             label: "implements",
             layout: { x: 150, y: 250 }
         });
