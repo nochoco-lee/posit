@@ -54,6 +54,14 @@ export class SequenceLayoutManager {
                         declaredNodes.add(node.name);
                         orderedParticipants.push(node.name);
                         this.processNode(node);
+                    } else if (node.layout) {
+                        // Update position if this statement has a @pos tag
+                        const existing = this.map.nodes[node.name];
+                        if (existing) {
+                            existing.position = { x: node.layout.x, y: node.layout.y };
+                            existing.lifelineX = existing.position.x + existing.size.width / 2;
+                            existing.lifelineY = existing.position.y + existing.size.height;
+                        }
                     }
                 } else if (s.type === "group") {
                     const group = s as IRGroup;

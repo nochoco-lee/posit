@@ -241,6 +241,9 @@ export class ClassLayoutManager {
                 existing.members = [...(existing.members || []), ...node.members];
             }
             if (node.shape && node.shape !== 'class') existing.type = node.shape;
+            if (node.layout) {
+                existing.position = { x: node.layout.x, y: node.layout.y };
+            }
             
             // Re-calculate height based on all members
             const allMembers = existing.members || [];

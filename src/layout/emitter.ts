@@ -32,18 +32,25 @@ export class Emitter {
 
         for (const [id, layoutNode] of Object.entries(layoutMap.nodes)) {
             // Find corresponding participant/class declaration (now recursive)
-            const nodeStatement = allStatements.find((s: IRStatement) => 
+            const matches = allStatements.filter((s: IRStatement) => 
                 s && s.type === "node" && (s as IRNode).name === id
             );
-            if (nodeStatement && nodeStatement.offset) {
-                const patch = this.createPatchContext(nodeStatement, layoutNode.position, syntax);
+            
+            const withPos = matches.filter(s => s.offset?.layoutStart !== undefined);
+            if (withPos.length > 0) {
+                for (const s of withPos) {
+                    const patch = this.createPatchContext(s, layoutNode.position, syntax);
+                    if (patch) patches.push(patch);
+                }
+            } else if (matches.length > 0) {
+                const patch = this.createPatchContext(matches[0], layoutNode.position, syntax);
                 if (patch) patches.push(patch);
             }
         }
 
         for (const conn of layoutMap.connections) {
             // Find corresponding connection (now recursive)
-            const connStatement = allStatements.find((s: IRStatement) => {
+            const matches = allStatements.filter((s: IRStatement) => {
                 if (!s || s.type !== "edge") return false;
                 const edge = s as IREdge;
                 if (edge.from !== conn.from || edge.to !== conn.to) return false;
@@ -54,21 +61,27 @@ export class Emitter {
                 return normIrLabel === normLayoutLabel;
             });
             
-            if (connStatement && connStatement.offset && conn.position) {
-                const patch = this.createPatchContext(connStatement, conn.position, syntax);
+            const withPos = matches.filter(s => s.offset?.layoutStart !== undefined);
+            if (withPos.length > 0) {
+                for (const s of withPos) {
+                    const patch = this.createPatchContext(s, conn.position!, syntax);
+                    if (patch) patches.push(patch);
+                }
+            } else if (matches.length > 0 && conn.position) {
+                const patch = this.createPatchContext(matches[0], conn.position, syntax);
                 if (patch) patches.push(patch);
             }
         }
 
         for (const group of layoutMap.groups) {
-             const irGroup = allStatements.find((s: IRStatement) => {
+             const matches = allStatements.filter((s: IRStatement) => {
                 if (s.type === 'group') {
                     const g = s as IRGroup;
-                    return g.label === group.label && g.keyword === group.keyword;
+                    return (g.label || '') === group.label && g.keyword === group.keyword;
                 }
                 if (s.type === 'container') {
                     const c = s as IRContainer;
-                    return c.name === group.label && c.keyword === group.keyword;
+                    return (c.name || '') === group.label && c.keyword === group.keyword;
                 }
                 if (s.type === 'ref') {
                     const r = s as any;
@@ -81,8 +94,14 @@ export class Emitter {
                 return false;
              });
 
-            if (irGroup && irGroup.offset && group.position) {
-                const patch = this.createPatchContext(irGroup, group.position, syntax);
+            const withPos = matches.filter(s => s.offset?.layoutStart !== undefined);
+            if (withPos.length > 0) {
+                for (const s of withPos) {
+                    const patch = this.createPatchContext(s, group.position, syntax);
+                    if (patch) patches.push(patch);
+                }
+            } else if (matches.length > 0) {
+                const patch = this.createPatchContext(matches[0], group.position, syntax);
                 if (patch) patches.push(patch);
             }
         }

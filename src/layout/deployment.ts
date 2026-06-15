@@ -61,6 +61,10 @@ export class DeploymentLayoutManager {
                 const node = s as IRNode;
                 const id = node.name;
                 const size = this.getNodeSize(node.shape);
+                let position = { x, y };
+                if (node.layout) {
+                    position = { x: node.layout.x, y: node.layout.y };
+                }
 
                 map.nodes[id] = {
                     id,
@@ -68,13 +72,15 @@ export class DeploymentLayoutManager {
                     origName: node.origName || node.name,
                     stereotype: node.stereotype,
                     color: node.color,
-                    position: { x, y },
+                    position,
                     size
                 };
 
-                maxWidth = Math.max(maxWidth, size.width);
-                y += size.height + this.padding;
-                totalHeight += size.height + this.padding;
+                if (!node.layout) {
+                    maxWidth = Math.max(maxWidth, size.width);
+                    y += size.height + this.padding;
+                    totalHeight += size.height + this.padding;
+                }
 
             } else if (s.type === 'edge') {
                 const edge = s as IREdge;
@@ -83,7 +89,7 @@ export class DeploymentLayoutManager {
                     to: edge.to,
                     type: edge.arrow,
                     label: edge.label,
-                    position: null
+                    position: edge.layout ? { x: edge.layout.x, y: edge.layout.y } : null
                 });
             } else if (s.type === 'container') {
                 const container = s as IRContainer;
@@ -100,6 +106,11 @@ export class DeploymentLayoutManager {
                 const groupWidth = Math.max(this.minNodeWidth + 20, contentSize.width + 2 * this.padding);
                 const groupHeight = Math.max(this.minNodeHeight + 20, contentSize.height + 2 * this.padding + 20);
 
+                let position = { x, y: groupY };
+                if (container.layout) {
+                    position = { x: container.layout.x, y: container.layout.y };
+                }
+
                 const group: LayoutGroup = {
                     type: 'group',
                     id: container.name || `group-${Math.random()}`,
@@ -107,16 +118,18 @@ export class DeploymentLayoutManager {
                     label: container.name || '',
                     stereotype: container.stereotype,
                     color: container.color,
-                    position: { x, y: groupY },
+                    position,
                     size: { width: groupWidth, height: groupHeight },
                     sections: [{ statements: container.statements }],
                     dividerYs: []
                 };
                 map.groups.push(group);
 
-                maxWidth = Math.max(maxWidth, groupWidth);
-                y += groupHeight + this.padding;
-                totalHeight += groupHeight + this.padding;
+                if (!container.layout) {
+                    maxWidth = Math.max(maxWidth, groupWidth);
+                    y += groupHeight + this.padding;
+                    totalHeight += groupHeight + this.padding;
+                }
             }
         }
 
