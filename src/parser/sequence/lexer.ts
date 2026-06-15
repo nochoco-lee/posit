@@ -16,9 +16,12 @@ export const Opt = createToken({ name: "Opt", pattern: /opt\b/i, categories: [co
 export const Loop = createToken({ name: "Loop", pattern: /loop\b/i, categories: [common.IdentifierLike] });
 export const Par = createToken({ name: "Par", pattern: /par\b/i, categories: [common.IdentifierLike] });
 export const Group = createToken({ name: "Group", pattern: /group\b/i, categories: [common.IdentifierLike] });
+export const Partition = createToken({ name: "Partition", pattern: /partition\b/i, categories: [common.IdentifierLike] });
 export const Box = createToken({ name: "Box", pattern: /box\b/i, categories: [common.IdentifierLike] });
 export const End = createToken({ name: "End", pattern: /end\b/i, categories: [common.IdentifierLike] });
 export const Note = createToken({ name: "Note", pattern: /note\b/i, categories: [common.IdentifierLike] });
+export const Hnote = createToken({ name: "Hnote", pattern: /hnote\b/i, categories: [common.IdentifierLike] });
+export const Rnote = createToken({ name: "Rnote", pattern: /rnote\b/i, categories: [common.IdentifierLike] });
 export const Ref = createToken({ name: "Ref", pattern: /ref\b/i, categories: [common.IdentifierLike] });
 export const Autonumber = createToken({ name: "Autonumber", pattern: /autonumber\b/i, categories: [common.IdentifierLike] });
 export const Newpage = createToken({ name: "Newpage", pattern: /newpage\b/i, categories: [common.IdentifierLike] });
@@ -28,6 +31,8 @@ export const Destroy = createToken({ name: "Destroy", pattern: /destroy\b/i, cat
 export const Autoactivate = createToken({ name: "Autoactivate", pattern: /autoactivate\b/i, categories: [common.IdentifierLike] });
 export const Return = createToken({ name: "Return", pattern: /return\b/i, categories: [common.IdentifierLike] });
 export const Create = createToken({ name: "Create", pattern: /create\b/i, categories: [common.IdentifierLike] });
+export const Bye = createToken({ name: "Bye", pattern: /bye\b/i, categories: [common.IdentifierLike] });
+export const Mainframe = createToken({ name: "Mainframe", pattern: /mainframe\b/i, categories: [common.IdentifierLike] });
 export const As = createToken({ name: "As", pattern: /as\b/i, categories: [common.IdentifierLike] });
 export const Left = createToken({ name: "Left", pattern: /left\b/i, categories: [common.IdentifierLike] });
 export const Right = createToken({ name: "Right", pattern: /right\b/i, categories: [common.IdentifierLike] });
@@ -38,6 +43,10 @@ export const Of = createToken({ name: "Of", pattern: /of\b/i, categories: [commo
 export const On = createToken({ name: "On", pattern: /on\b/i, categories: [common.IdentifierLike] });
 export const Across = createToken({ name: "Across", pattern: /across\b/i, categories: [common.IdentifierLike] });
 export const Off = createToken({ name: "Off", pattern: /off\b/i, categories: [common.IdentifierLike] });
+export const Stop = createToken({ name: "Stop", pattern: /stop\b/i, categories: [common.IdentifierLike] });
+export const Resume = createToken({ name: "Resume", pattern: /resume\b/i, categories: [common.IdentifierLike] });
+export const Inc = createToken({ name: "Inc", pattern: /inc\b/i, categories: [common.IdentifierLike] });
+export const Ignore = createToken({ name: "Ignore", pattern: /ignore\b/i, categories: [common.IdentifierLike] });
 
 export const Arrow = createToken({
     name: "Arrow",
@@ -75,9 +84,12 @@ export const allSequenceTokens = [
     Loop,
     Par,
     Group,
+    Partition,
     Box,
     End,
     Note,
+    Hnote,
+    Rnote,
     Ref,
     Autonumber,
     Newpage,
@@ -94,6 +106,8 @@ export const allSequenceTokens = [
     Autoactivate,
     Return,
     Create,
+    Bye,
+    Mainframe,
     As,
     Left,
     Right,
@@ -104,6 +118,10 @@ export const allSequenceTokens = [
     On,
     Across,
     Off,
+    Stop,
+    Resume,
+    Inc,
+    Ignore,
     common.Colon,
     common.Comma,
     common.LBrace,

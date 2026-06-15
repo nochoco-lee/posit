@@ -61,12 +61,14 @@ export class SequenceAstVisitor extends BaseVisitor {
         if (ctx.participantDeclaration) result = this.visit(ctx.participantDeclaration[0]);
         else if (ctx.connectionDeclaration) result = this.visit(ctx.connectionDeclaration[0]);
         else if (ctx.noteDeclaration) result = this.visit(ctx.noteDeclaration[0]);
+        else if (ctx.refDeclaration) result = this.visit(ctx.refDeclaration[0]);
         else if (ctx.blockDeclaration) result = this.visit(ctx.blockDeclaration[0]);
         else if (ctx.ignoredStatement) return null;
         else if (ctx.Autonumber) result = { type: "autonumber" } as any;
         else if (ctx.Activate) result = { type: "activation", action: "activate", target: this.visit(ctx.activeNode[0]) } as any;
         else if (ctx.Deactivate) result = { type: "activation", action: "deactivate", target: this.visit(ctx.activeNode[0]) } as any;
         else if (ctx.Destroy) result = { type: "activation", action: "destroy", target: this.visit(ctx.activeNode[0]) } as any;
+        else if (ctx.Bye) result = { type: "activation", action: "destroy", target: this.visit(ctx.activeNode[0]) } as any;
         else if (ctx.Return) result = { type: "return", label: ctx.label ? this.visit(ctx.label[0]) : "" } as any;
         else if (ctx.Delay) result = { type: "delay", text: ctx.Delay[0].image.replace(/\.\.\./g, "").trim() } as any;
         else if (ctx.Divider) result = { type: "divider", label: ctx.Divider[0].image.replace(/==+/g, "").trim() } as any;
@@ -75,6 +77,45 @@ export class SequenceAstVisitor extends BaseVisitor {
             result.offset = this.getOffsets(ctx);
         }
         return result;
+    }
+
+    refDeclaration(ctx: any): IRNote {
+        const placementToken = Object.keys(ctx).find(k => ["Over", "Across"].includes(k));
+        const placement = placementToken ? placementToken.toLowerCase() : "over";
+        
+        let text = "";
+        if (ctx.payload) {
+            text = this.visit(ctx.payload[0]);
+        } else {
+            const anyTokens = ctx.anyToken || [];
+            const newlines = ctx.Newline || [];
+            const allTokens = [...anyTokens, ...newlines].sort((a, b) => {
+                const aPos = (a.startOffset !== undefined) ? a.startOffset : (a.location?.startOffset || 0);
+                const bPos = (b.startOffset !== undefined) ? b.startOffset : (b.location?.startOffset || 0);
+                return aPos - bPos;
+            });
+            
+            allTokens.forEach(t => {
+                if (t.image === "\n" || t.image === "\r\n") text += "\n";
+                else text += this.visit(t) + " ";
+            });
+        }
+
+        const targets = [];
+        if (ctx.target) targets.push(this.visit(ctx.target[0]));
+        if (ctx.targets) {
+            ctx.targets.forEach((t: any) => targets.push(this.visit(t)));
+        }
+
+        return {
+            type: "note",
+            placement: placement as any,
+            target: targets[0],
+            targets: targets.length > 0 ? targets : undefined,
+            text: text.trim(),
+            shape: "ref",
+            offset: this.getOffsets(ctx)
+        };
     }
 
     name(ctx: any): string {
@@ -127,6 +168,10 @@ export class SequenceAstVisitor extends BaseVisitor {
         }
         
         return final;
+    }
+
+    participantLabel(ctx: any): string {
+        return this.label(ctx);
     }
 
     payload(ctx: any): string {
@@ -243,12 +288,19 @@ export class SequenceAstVisitor extends BaseVisitor {
             ctx.targets.forEach((t: any) => targets.push(this.visit(t)));
         }
 
+        let color = ctx.Color ? ctx.Color[0].image : undefined;
+        let shape = "note";
+        if (ctx.Hnote) shape = "hnote";
+        if (ctx.Rnote) shape = "rnote";
+
         return {
             type: "note",
             placement: placement as any,
             target: targets[0],
             targets: targets.length > 0 ? targets : undefined,
             text: text.trim(),
+            color,
+            shape,
             offset: this.getOffsets(ctx)
         };
     }
@@ -261,7 +313,7 @@ export class SequenceAstVisitor extends BaseVisitor {
     }
 
     blockDeclaration(ctx: any): IRGroup {
-        const keywordToken = Object.keys(ctx).find(k => ["Alt", "Opt", "Loop", "Par", "Group", "Box"].includes(k));
+        const keywordToken = Object.keys(ctx).find(k => ["Alt", "Opt", "Loop", "Par", "Group", "Partition", "Box"].includes(k));
         const keyword = keywordToken ? keywordToken.toLowerCase() : "group";
         
         const sections = [

@@ -20,8 +20,8 @@ export class PlantUmlScanner {
             deployment: 0
         };
 
-        // Sequence indicators
-        if (/\b(?:participant|actor|boundary|control|entity|database|collections|queue|autonumber|newpage|box|activate|deactivate|destroy|return)\b/i.test(text)) scores.sequence += 50;
+        if (/\b(?:participant|actor|boundary|control|entity|database|collections|queue|autonumber|newpage|box|activate|deactivate|destroy|return|partition|mainframe)\b/i.test(text)) scores.sequence += 50;
+        if (/\+\+|--(?:\s|:|$)/.test(text)) scores.sequence += 40; // Activation shorthand
         if (/\b(?:alt|opt|loop|par|break|critical|group)\b/i.test(text)) scores.sequence += 40;
         if (/->>|<<-|->x|x<-|->\?|\?<-|\[->|<-]|->\+|-->-|->\*|!->/.test(text)) scores.sequence += 60;
         if (/(?<!-)>(?!-)|(?<!-)<(?!-)/.test(text)) scores.sequence += 20; // Single arrows like -> or <-
@@ -33,12 +33,13 @@ export class PlantUmlScanner {
         if (/[{}]/.test(text) && /\b(?:class|interface|enum)\b/i.test(text)) scores.class += 40;
 
         // Deployment indicators
-        if (/\b(?:artifact|cloud|component|node|storage|rectangle|card|file|hexagon|person|process|agent|label|usecase|action|frame|rect|package|namespace|folder)\b/i.test(text)) scores.deployment += 50;
+        if (/\b(?:artifact|cloud|component|node|storage|rectangle|card|file|hexagon|person|process|agent|usecase|action|frame|rect|package|namespace|folder)\b/i.test(text)) scores.deployment += 50;
         if (/\b(?:database|collections|queue|stack)\b/i.test(text)) scores.deployment += 30;
+        if (/\blabel\b/i.test(text)) scores.deployment += 20; // Reduced weight
         if (/-up-|-down-|-left-|-right-/.test(text)) scores.deployment += 40;
         if (/\[/.test(text) && /]/.test(text)) {
             // Check if brackets are for components [A] or colored arrows -[#red]>
-            if (!/-\[/.test(text)) scores.deployment += 40;
+            if (!/-\[/.test(text)) scores.deployment += 25; // Reduced weight
             else scores.deployment += 10; // Weak indicator if it's only colored arrows
         }
 
