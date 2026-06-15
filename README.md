@@ -1,5 +1,10 @@
 # Posit
 
+> [!WARNING]
+> **Project Status:** This project is in its **early experimental phase** and is not yet fully functional. It is actively being developed and is subject to frequent breaking changes.
+
+**Live Demo:** [https://nochoco-lee.github.io/posit/](https://nochoco-lee.github.io/posit/)
+
 I use PlantUML and Mermaid.js a lot because writing diagrams as code is incredibly convenient. It’s easy to version control, edit on the fly, and maintain. 
 
 However, I constantly ran into the same frustrating issue: as soon as a diagram grows past a few nodes, the automatic layout engines (like Graphviz) tend to make a total mess. Lines overlap awkwardly, components get pushed to random corners, and the diagram becomes hard to read. When I wanted to share a diagram with my team, post it to Confluence, or add it to a GitHub README, I found myself spending way too much time wrestling with syntax hacks just to make it look decent.
