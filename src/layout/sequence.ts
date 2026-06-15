@@ -52,7 +52,7 @@ export class SequenceLayoutManager {
         this.processImplicitNodes(ir.statements, declaredNodes);
 
         const maxNodeHeight = Math.max(...Object.values(this.map.nodes).map(n => n.size.height), DEFAULTS.PARTICIPANT_HEIGHT);
-        this.currentSequenceY = DEFAULTS.SEQUENCE_START_Y + maxNodeHeight + 50;
+        this.currentSequenceY = DEFAULTS.SEQUENCE_START_Y + maxNodeHeight + 100;
 
         ir.statements.forEach((statement: IRStatement) => {
             this.processStatement(statement);
@@ -214,8 +214,16 @@ export class SequenceLayoutManager {
                 labelHeight = wrappedSize.height;
             } else labelHeight = textSize.height;
         }
-        if (conn.layout) { calculatedY = Math.max(conn.layout.y, this.currentSequenceY + labelHeight); position = { x: conn.layout.x, y: calculatedY }; this.currentSequenceY = calculatedY + DEFAULTS.SEQUENCE_MIN_Y_GAP; }
-        else { const step = Math.max(DEFAULTS.SEQUENCE_DEFAULT_Y_STEP, labelHeight + 20); calculatedY = this.currentSequenceY + labelHeight; this.currentSequenceY = calculatedY + step; }
+        if (conn.layout) { 
+            calculatedY = Math.max(conn.layout.y, this.currentSequenceY); 
+            position = { x: conn.layout.x, y: calculatedY }; 
+            this.currentSequenceY = calculatedY + DEFAULTS.SEQUENCE_MIN_Y_GAP; 
+        }
+        else { 
+            const step = Math.max(DEFAULTS.SEQUENCE_DEFAULT_Y_STEP, labelHeight + 20); 
+            calculatedY = this.currentSequenceY; 
+            this.currentSequenceY = calculatedY + step; 
+        }
         let autonumberStr: string | undefined = undefined;
         if (this.autonumberActive) { autonumberStr = this.autonumberValue.toString(); this.autonumberValue += this.autonumberStep; }
         const layoutConn: LayoutConnection = { from: conn.from, fromLabel: conn.fromLabel, to: conn.to, toLabel: conn.toLabel, type: conn.arrow, label: finalLabel, number: autonumberStr, position, calculatedY };
