@@ -11,7 +11,7 @@ export class Emitter {
             throw new Error("Emitter expects a Diagram IR node");
         }
 
-        const patches: Array<{ start: number; end: number; replacement: string }> = [];
+        const patchesMap = new Map<string, { start: number; end: number; replacement: string }>();
         const syntax = ir.syntax || 'plantuml';
 
         // Recursive search helper to find all statements
@@ -31,6 +31,12 @@ export class Emitter {
 
         const allStatements = findAll(ir.statements);
 
+        const addPatch = (patch: { start: number; end: number; replacement: string } | null) => {
+            if (!patch) return;
+            const key = `${patch.start}-${patch.end}`;
+            patchesMap.set(key, patch);
+        };
+
         // Process Nodes
         for (const [id, layoutNode] of Object.entries(layoutMap.nodes)) {
             const matches = allStatements.filter((s: IRStatement) => 
@@ -39,37 +45,34 @@ export class Emitter {
             
             if (matches.length > 0) {
                 const target = matches[0];
-                const patch = this.createPatchContext(originalText, target, layoutNode.position, syntax);
-                if (patch) patches.push(patch);
+                addPatch(this.createPatchContext(originalText, target, layoutNode.position, syntax));
             } else if (ir.diagramType === 'sequence') {
                 const insertionPoint = this.findInsertionPoint(originalText, syntax);
                 const prefix = syntax === 'mermaid' ? '    ' : '';
                 const declaration = `${prefix}participant ${id}${formatPosComment(layoutNode.position.x, layoutNode.position.y, syntax)}\n`;
                 
-                patches.push({
+                addPatch({
                     start: insertionPoint,
                     end: insertionPoint,
                     replacement: declaration
                 });
             }
         }
-
-        // Process Connections
-        for (const conn of layoutMap.connections) {
-            const matches = allStatements.filter((s: IRStatement) => {
-                if (!s || s.type !== "edge") return false;
-                const edge = s as IREdge;
-                if (edge.from !== conn.from || edge.to !== conn.to) return false;
-                const normIrLabel = (edge.label || "").replace(/\s+/g, "");
-                const normLayoutLabel = (conn.label || "").replace(/\s+/g, "");
-                return normIrLabel === normLayoutLabel;
-            });
-            
-            if (matches.length > 0 && conn.position) {
-                const patch = this.createPatchContext(originalText, matches[0], conn.position, syntax);
-                if (patch) patches.push(patch);
-            }
-        }
+// Process Connections
+for (const conn of layoutMap.connections) {
+    const matches = allStatements.filter((s: IRStatement) => {
+        if (!s || s.type !== "edge") return false;
+        const edge = s as IREdge;
+        if (edge.from !== conn.from || edge.to !== conn.to) return false;
+        const normIrLabel = (edge.label || "").replace(/\s+/g, "");
+        const normLayoutLabel = (conn.label || "").replace(/\s+/g, "");
+        return normIrLabel === normLayoutLabel;
+    });
+    if (matches.length > 0 && conn.position) {
+        const target = matches[0];
+        addPatch(this.createPatchContext(originalText, target, conn.position, syntax));
+    }
+}
 
         // Process Groups/Containers
         for (const group of layoutMap.groups) {
@@ -94,8 +97,7 @@ export class Emitter {
              });
 
             if (matches.length > 0) {
-                const patch = this.createPatchContext(originalText, matches[0], group.position, syntax);
-                if (patch) patches.push(patch);
+                addPatch(this.createPatchContext(originalText, matches[0], group.position, syntax));
             }
         }
 
@@ -104,8 +106,7 @@ export class Emitter {
             for (const div of layoutMap.dividers) {
                 const irDiv = allStatements.find((s: IRStatement) => s.type === 'divider' && (s as IRDivider).label === div.label);
                 if (irDiv && div.position) {
-                    const patch = this.createPatchContext(originalText, irDiv, div.position, syntax);
-                    if (patch) patches.push(patch);
+                    addPatch(this.createPatchContext(originalText, irDiv, div.position, syntax));
                 }
             }
         }
@@ -114,11 +115,11 @@ export class Emitter {
         for (const note of layoutMap.notes) {
             const irNote = allStatements.find((s: IRStatement) => s.type === 'note' && (s as IRNote).text === note.text);
             if (irNote && note.position) {
-                const patch = this.createPatchContext(originalText, irNote, note.position, syntax);
-                if (patch) patches.push(patch);
+                addPatch(this.createPatchContext(originalText, irNote, note.position, syntax));
             }
         }
 
+        const patches = Array.from(patchesMap.values());
         // Sort patches in reverse order by start index to avoid invalidating offsets!
         patches.sort((a, b) => b.start - a.start);
 
@@ -141,7 +142,7 @@ export class Emitter {
 
         const posRegex = syntax === 'mermaid' 
             ? /%%\s*@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/g
-            : /\/'\s*@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)\s*'\//g;
+            : /\/'\s*@pos[\s\S]*?'\//g;
 
         // Use the end of the statement (ignoring trailing newlines) to find "the line"
         let anchor = Math.max(0, offset.end - 1);
@@ -156,18 +157,19 @@ export class Emitter {
 
         if (lineText.match(posRegex)) {
              // User's requested behavior: clean the whole line of any @pos tags and add the new one.
-             const cleanedLine = lineText.replace(posRegex, '').trimEnd();
+             const cleanedLine = lineText.replace(posRegex, '').trim();
              return {
                  start: lineStart,
                  end: lineEnd,
-                 replacement: cleanedLine + replacementStr
+                 replacement: (cleanedLine ? cleanedLine + " " : "") + replacementStr.trim()
              };
         }
 
-        // No @pos found on this line, just append to the statement end.
+
+        // No @pos found on this line, just append to the statement end (before trailing newlines).
         return {
-            start: offset.end,
-            end: offset.end,
+            start: anchor + 1,
+            end: anchor + 1,
             replacement: replacementStr
         };
     }

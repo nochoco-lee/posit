@@ -182,13 +182,14 @@ export class ClassLayoutManager {
 
     private processContainerPass1(container: IRContainer, x: number) {
         const startY = this.currentClassY;
+        const position = container.layout ? { x: container.layout.x, y: container.layout.y } : { x, y: startY };
         const layoutGroup: LayoutGroup = {
             type: "group",
             id: container.name || `group-${Math.random()}`,
             keyword: container.keyword,
             label: container.name || "",
             sections: [{ statements: container.statements }],
-            position: { x, y: startY },
+            position,
             size: { width: 450, height: 0 },
             dividerYs: []
         };
@@ -196,37 +197,46 @@ export class ClassLayoutManager {
         this.map.groups.push(layoutGroup);
 
         const oldY = this.currentClassY;
-        this.currentClassY += 40; // Header padding
-        this.processStatementsPass1(container.statements, x + 20);
+        if (!container.layout) {
+            this.currentClassY += 40; // Header padding
+        }
+        this.processStatementsPass1(container.statements, position.x + 20);
         
         const endY = this.currentClassY;
-        this.map.groups[groupIndex].size.height = Math.max(100, endY - startY);
-        this.currentClassY += 20;
+        this.map.groups[groupIndex].size.height = Math.max(100, endY - (container.layout ? container.layout.y : startY));
+        if (!container.layout) {
+            this.currentClassY += 20;
+        }
     }
 
     private processGroupPass1(group: IRGroup, x: number) {
         const startY = this.currentClassY;
+        const position = group.layout ? { x: group.layout.x, y: group.layout.y } : { x, y: startY };
         const layoutGroup: LayoutGroup = {
             type: "group",
             id: group.label || `group-${Math.random()}`,
             keyword: group.keyword,
             label: group.label || "",
             sections: group.sections,
-            position: { x, y: startY },
+            position,
             size: { width: 450, height: 0 },
             dividerYs: []
         };
         const groupIndex = this.map.groups.length;
         this.map.groups.push(layoutGroup);
 
-        this.currentClassY += 40;
+        if (!group.layout) {
+            this.currentClassY += 40;
+        }
         group.sections.forEach(section => {
-            this.processStatementsPass1(section.statements, x + 20);
+            this.processStatementsPass1(section.statements, position.x + 20);
         });
 
         const endY = this.currentClassY;
-        this.map.groups[groupIndex].size.height = Math.max(100, endY - startY);
-        this.currentClassY += 20;
+        this.map.groups[groupIndex].size.height = Math.max(100, endY - (group.layout ? group.layout.y : startY));
+        if (!group.layout) {
+            this.currentClassY += 20;
+        }
     }
 
     private processStatementsPass2(statements: IRStatement[]) {
@@ -438,7 +448,7 @@ export class ClassLayoutManager {
             placement: note.placement,
             targets: targets,
             text: note.text,
-            position: { x, y },
+            position: note.layout ? { x: note.layout.x, y: note.layout.y } : { x, y },
             size: { width: DEFAULTS.NOTE_WIDTH, height: DEFAULTS.NOTE_HEIGHT }
         };
 

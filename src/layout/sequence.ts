@@ -278,7 +278,7 @@ export class SequenceLayoutManager {
         }
         
         let labelHeight = 0;
-        let finalLabel = conn.label || null;
+        let finalLabel = conn.label ?? null;
         if ((originNode || fromExternal) && (targetNode || toExternal) && conn.label) {
             const isSelfMessage = conn.from === conn.to;
             const originX = fromExternal ? (targetNode?.position.x || 0) : (originNode!.position.x + originNode!.size.width / 2);

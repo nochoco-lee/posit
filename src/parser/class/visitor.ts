@@ -1,7 +1,8 @@
 import { CstNode, IToken } from "chevrotain";
-import { IRDiagram, IREdge, IRNode, IRStatement, IRContainer, IRGroup, IRNote, IROffset } from "../../ir/types";
+import { IRDiagram, IREdge, IRNode, IRStatement, IRContainer, IRGroup, IRNote, IROffset, IRDivider } from "../../ir/types";
 import { POS_COMMENT_REGEX } from "../../ir/constants";
 import { ClassParser } from "./parser";
+import * as common from "../common/tokens";
 
 const parser = new ClassParser();
 const BaseVisitor = parser.getBaseCstVisitorConstructor();
@@ -23,7 +24,6 @@ export class ClassAstVisitor extends BaseVisitor {
             } else if (obj.children) {
                 Object.values(obj.children).forEach(collectTokens);
             } else {
-                // Handle the case where obj is the children object itself
                 Object.values(obj).forEach(collectTokens);
             }
         };
@@ -33,7 +33,8 @@ export class ClassAstVisitor extends BaseVisitor {
         
         allTokens.sort((a, b) => a.startOffset - b.startOffset);
         const start = allTokens[0].startOffset;
-        const end = (allTokens[allTokens.length - 1].endOffset !== undefined ? allTokens[allTokens.length - 1].endOffset! + 1 : allTokens[allTokens.length - 1].startOffset + (allTokens[allTokens.length - 1].image?.length || 0));
+        const lastToken = allTokens[allTokens.length - 1];
+        const end = (lastToken.endOffset !== undefined ? lastToken.endOffset + 1 : lastToken.startOffset + (lastToken.image?.length || 0));
 
         let layoutStart: number | undefined = undefined;
         let layoutEnd: number | undefined = undefined;
@@ -41,7 +42,8 @@ export class ClassAstVisitor extends BaseVisitor {
         if (layoutTokens && layoutTokens.length > 0) {
             layoutTokens.sort((a, b) => a.startOffset - b.startOffset);
             layoutStart = layoutTokens[0].startOffset;
-            layoutEnd = (layoutTokens[layoutTokens.length - 1].endOffset !== undefined ? layoutTokens[layoutTokens.length - 1].endOffset! + 1 : layoutTokens[layoutTokens.length - 1].startOffset + (layoutTokens[layoutTokens.length - 1].image?.length || 0));
+            const lastLayoutToken = layoutTokens[layoutTokens.length - 1];
+            layoutEnd = (lastLayoutToken.endOffset !== undefined ? lastLayoutToken.endOffset + 1 : lastLayoutToken.startOffset + (lastLayoutToken.image?.length || 0));
         }
 
         return { start, end, layoutStart, layoutEnd };
@@ -94,16 +96,19 @@ export class ClassAstVisitor extends BaseVisitor {
 
     noteDeclaration(ctx: any): IRNote {
         let text = "";
-        const allChildren: any[] = [];
-        if (ctx.anyToken) allChildren.push(...ctx.anyToken.map((t: any) => ({ node: t, offset: t.location?.startOffset ?? t.startOffset ?? 0 })));
-        
-        if (allChildren.length > 0) {
-            allChildren.sort((a, b) => a.offset - b.offset);
-            text = allChildren.map(c => this.visit(c.node)).join(" ").trim();
+        if (ctx.noteText) {
+            text = ctx.noteText[0].image.slice(1, -1);
         }
 
-        const placement = ctx.placement ? ctx.placement[0].image.toLowerCase() : "top";
+        if (ctx.noteBody) {
+             const bodyText = this.visit(ctx.noteBody[0]);
+             if (text) text += " " + bodyText;
+             else text = bodyText;
+        }
+
+        const placement = ctx.placement ? ctx.placement[0].image.toLowerCase() : "right";
         const targets = ctx.target ? [this.visit(ctx.target[0])] : [];
+        const alias = ctx.alias ? this.visit(ctx.alias[0]) : undefined;
 
         let layout: any = undefined;
         if (ctx.layout) {
@@ -114,23 +119,69 @@ export class ClassAstVisitor extends BaseVisitor {
 
         return {
             type: "note",
+            name: alias || "note_" + Math.random().toString(36).substr(2, 9),
             placement,
             targets,
             text,
+            label: text,
             layout,
             offset: this.getOffsets(ctx, ctx.layout)
         };
     }
 
-    name(ctx: any): string {
-        let prefix = ctx.leadingDot ? "." : "";
-        let result = prefix + this.visit(ctx.part[0]);
-        if (ctx.sep) {
-            for (let i = 0; i < ctx.sep.length; i++) {
-                result += ctx.sep[i].image + this.visit(ctx.part[i + 1]);
-            }
+    noteBody(ctx: any): string {
+        let text = "";
+        const allChildren = this.getTokensFromCst(ctx);
+        
+        if (allChildren.length > 0) {
+            allChildren.sort((a, b) => a.startOffset - b.startOffset);
+            
+            let result = "";
+            let started = false;
+            allChildren.forEach((child, index) => {
+                const isNewline = child.tokenType === common.Newline;
+                if (!started) {
+                    if (isNewline) started = true;
+                    else {
+                        if (child.tokenType !== common.Colon) {
+                            result += child.image + " ";
+                        }
+                    }
+                    return;
+                }
+                if (isNewline) {
+                    result += "\n";
+                } else {
+                    result += child.image + " ";
+                }
+            });
+            text = result.trim();
         }
-        return result;
+        return text;
+    }
+
+    private getTokensFromCst(ctx: any): IToken[] {
+        const tokens: IToken[] = [];
+        const collect = (obj: any) => {
+            if (!obj) return;
+            if (Array.isArray(obj)) obj.forEach(collect);
+            else if (obj.image) tokens.push(obj);
+            else if (obj.children) Object.values(obj.children).forEach(collect);
+            else if (typeof obj === 'object') {
+                 Object.values(obj).forEach(collect);
+            }
+        };
+        collect(ctx);
+        return tokens;
+    }
+
+    name(ctx: any): string {
+        const allChildren = this.getTokensFromCst(ctx);
+        allChildren.sort((a, b) => a.startOffset - b.startOffset);
+        return allChildren.map(c => {
+             if (c.tokenType && (c.tokenType.name === "StringLiteral" || c.tokenType.name === "NamePartStringLiteral")) return c.image.slice(1, -1);
+             return c.image;
+        }).join("");
     }
 
     namePart(ctx: any): string {
@@ -148,7 +199,7 @@ export class ClassAstVisitor extends BaseVisitor {
         return "";
     }
 
-    classDeclaration(ctx: any): IRNode | IRStatement[] {
+    classDeclaration(ctx: any): IRStatement[] {
         const name = this.visit(ctx.name[0]);
         let shape = "class";
         if (ctx.LParen && ctx.RParen) {
@@ -156,16 +207,32 @@ export class ClassAstVisitor extends BaseVisitor {
         } else if (ctx.LAngle && ctx.RAngle) {
             shape = "diamond";
         } else {
-            const shapeToken = Object.keys(ctx).find(k => !["name", "LBrace", "RBrace", "classMember", "Newline", "parents", "color", "layout", "LParen", "RParen", "LAngle", "RAngle", "memberDeclaration", "Stereotype", "RecordKeyword"].includes(k));
-            shape = shapeToken ? shapeToken.toLowerCase() : "class";
+            const shapeToken = Object.keys(ctx).find(k => !["name", "LBrace", "RBrace", "classMember", "Newline", "parents", "color", "layout", "LParen", "RParen", "memberDeclaration", "Stereotype", "RecordKeyword", "dividers", "Plus", "Minus", "Hash", "Tilde"].includes(k));
+            if (shapeToken) {
+                shape = shapeToken.toLowerCase().replace("keyword", "");
+            } else {
+                shape = "class";
+            }
         }
         
         const stereotype = ctx.Stereotype ? ctx.Stereotype[0].image : undefined;
         
         const members: any[] = [];
+        const bodyDividers: IRDivider[] = [];
+        
         if (ctx.memberDeclaration) {
             ctx.memberDeclaration.forEach((m: any) => {
                 members.push(this.visit(m));
+            });
+        }
+        
+        if (ctx.dividers) {
+            ctx.dividers.forEach((d: IToken) => {
+                bodyDividers.push({
+                    type: "divider",
+                    label: d.image.replace(/[.=_ -]+/g, "").trim(),
+                    offset: { start: d.startOffset, end: d.endOffset! + 1 }
+                });
             });
         }
 
@@ -181,6 +248,12 @@ export class ClassAstVisitor extends BaseVisitor {
             if (match) layout = { x: parseFloat(match[1]), y: parseFloat(match[2]) };
         }
 
+        let visibility: string | undefined = undefined;
+        if (ctx.Plus) visibility = "+";
+        else if (ctx.Minus) visibility = "-";
+        else if (ctx.Hash) visibility = "#";
+        else if (ctx.Tilde) visibility = "~";
+
         const node: IRNode = {
             type: "node",
             shape,
@@ -190,11 +263,12 @@ export class ClassAstVisitor extends BaseVisitor {
             members,
             color,
             layout,
+            visibility,
             offset: this.getOffsets(ctx, ctx.layout)
         };
 
+        const results: IRStatement[] = [node];
         if (ctx.parents) {
-            const results: IRStatement[] = [node];
             ctx.parents.forEach((p: any) => {
                 results.push({
                     type: "edge",
@@ -204,44 +278,72 @@ export class ClassAstVisitor extends BaseVisitor {
                     offset: this.getOffsets(ctx, ctx.layout)
                 } as any);
             });
-            return results;
+        }
+        
+        if (bodyDividers.length > 0) {
+            results.push(...bodyDividers);
         }
 
-        return node;
-    }
-
-    colorValue(ctx: any): string {
-        const values = Object.values(ctx);
-        if (values.length > 0) {
-            const tokens = values[0] as IToken[];
-            return tokens[0].image;
-        }
-        return "";
+        return results;
     }
 
     memberDeclaration(ctx: any): any {
-        const visibility = ctx.Plus || ctx.Minus || ctx.Hash || ctx.Tilde ? (ctx.Plus || ctx.Minus || ctx.Hash || ctx.Tilde)[0].image : undefined;
-        const isStatic = !!ctx.Static;
-        const text = ctx.anyToken ? ctx.anyToken.map((t: any) => this.visit(t)).join(" ").trim() : "";
+        const allTokens = this.getTokensFromCst(ctx);
+        allTokens.sort((a, b) => a.startOffset - b.startOffset);
         
-        const isMethod = text.includes("(");
+        let isStatic = allTokens.some(t => t.image === "static" || t.image === "{static}");
+        let isAbstract = allTokens.some(t => t.image === "abstract" || t.image === "{abstract}");
+        
+        const cleanTokens = allTokens.filter(t => !["static", "{static}", "abstract", "{abstract}", "{", "}"].includes(t.image));
+        const text = cleanTokens.map(t => t.image).join(" ").trim();
+        
+        const visibilityMatch = text.match(/^[+#-~]/);
+        const visibility = visibilityMatch ? visibilityMatch[0] : undefined;
+        const textWithoutVisibility = text.replace(/^[+#-~]\s*/, "").trim();
+        
+        const isMethod = textWithoutVisibility.includes("(");
+        
+        const colonSplit = textWithoutVisibility.split(":");
+        let namePart = colonSplit[0].trim();
+        let type = colonSplit[1] ? colonSplit[1].split(/[()]/)[0].trim() : undefined;
+        
+        // Handle methods where type might be after )
+        if (isMethod && textWithoutVisibility.includes(")")) {
+             const afterParen = textWithoutVisibility.split(")")[1].trim();
+             if (afterParen.startsWith(":")) {
+                 type = afterParen.slice(1).trim();
+             }
+        }
+        
+        const name = namePart.split("(")[0].trim();
+
+        const parameters: string[] = [];
+        if (textWithoutVisibility.includes("(") && textWithoutVisibility.includes(")")) {
+             const paramStr = textWithoutVisibility.split("(")[1].split(")")[0].trim();
+             if (paramStr) {
+                 paramStr.split(",").forEach(p => {
+                     parameters.push(p.replace(/\s*:\s*/g, ": ").trim());
+                 });
+             }
+        }
+
         return {
-            text,
+            text: allTokens.map(t => t.image).join(" ").trim(),
             visibility,
+            name,
+            type,
+            parameters: isMethod ? parameters : undefined,
             isStatic,
+            isAbstract,
             isMethod,
             isField: !isMethod
         };
     }
 
     label(ctx: any): string {
-        let result = "";
-        if (ctx.anyToken) {
-            ctx.anyToken.forEach((t: any) => {
-                result += this.visit(t) + " ";
-            });
-        }
-        return result.trim();
+        const allTokens = this.getTokensFromCst(ctx);
+        allTokens.sort((a, b) => a.startOffset - b.startOffset);
+        return allTokens.map(t => t.image).join(" ").trim();
     }
 
     connectionDeclaration(ctx: any): IREdge | IREdge[] {
@@ -257,8 +359,8 @@ export class ClassAstVisitor extends BaseVisitor {
             ];
         }
 
-        const fromLabel = ctx.fromLabel ? ctx.fromLabel[0].image.slice(1, -1) : undefined;
-        const toLabel = ctx.toLabel ? ctx.toLabel[0].image.slice(1, -1) : undefined;
+        const fromLabel = ctx.fromMultiplicity ? ctx.fromMultiplicity[0].image.slice(1, -1) : undefined;
+        const toLabel = ctx.toMultiplicity ? ctx.toMultiplicity[0].image.slice(1, -1) : undefined;
 
         if (arrow === "<|--" || arrow === "<|..") {
             const temp = from;
@@ -291,16 +393,11 @@ export class ClassAstVisitor extends BaseVisitor {
         return null;
     }
 
+    memberToken(ctx: any): string {
+        return "";
+    }
+
     anyToken(ctx: any): string {
-        const values = Object.values(ctx);
-        if (values.length > 0) {
-            const tokens = values[0] as IToken[];
-            let image = tokens[0].image;
-            if (tokens[0].tokenType.name === "StringLiteral") {
-                return image.slice(1, -1).replace(/\\n/g, '\n').replace(/\\"/g, '"');
-            }
-            return image;
-        }
         return "";
     }
 }

@@ -51,7 +51,16 @@ describe('Pos comment persistence across all class diagrams', () => {
             const matches = puml3.match(/@pos/g);
             
             // A simpler but robust check: AST3 should have no duplicated pos tags on any statement
-            const statementsWithPos = ast3.statements.filter((s: any) => s.layout);
+            const findAllWithPos = (stmts: any[]): any[] => {
+                let res: any[] = [];
+                for (const s of stmts) {
+                    if (s.layout) res.push(s);
+                    if (s.statements) res.push(...findAllWithPos(s.statements));
+                    if (s.sections) res.push(...findAllWithPos(s.sections.flatMap((sec: any) => sec.statements)));
+                }
+                return res;
+            };
+            const statementsWithPos = findAllWithPos(ast3.statements);
             
             // Check that total @pos in text matches number of statements with pos in AST
             expect(matches?.length || 0).toBe(statementsWithPos.length);

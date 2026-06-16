@@ -10,32 +10,43 @@ export class PlantUmlScanner {
             if (!trimmed || trimmed.startsWith("'") || trimmed.startsWith("@")) continue;
             
             // 1. Strong Connection Patterns (+300)
-            // Sequence: A -> B : label
-            if (/\w+\s*[-=.]+>\s*\w+\s*:[^:]/.test(trimmed)) scores.sequence += 300;
+            // Sequence ONLY: ->>, <<-, ->x, etc.
             if (/->>|<<-|->x|x<-|->\?|\?<-|\[->|<-]|->\+|-->-|->\*|!->|--\+\+|--\*/.test(trimmed)) scores.sequence += 300;
             if (/\b(?:autoactivate|autonumber|return)\b/i.test(trimmed)) scores.sequence += 300;
 
-            // Class: A <|-- B or A *-- B
+            // Class ONLY: <|--, *--, o--, etc.
             if (/<\||\|>|\*--|--\*|o--|--o|\+--|--\+|#--|--#|--\+/.test(trimmed)) scores.class += 300;
-            if (/\b(?:class|interface|enum|struct|annotation|abstract|dataclass|protocol|exception)\s+[\w"()]+\s*\{/i.test(trimmed)) scores.class += 300;
+            if (/\b(?:class|interface|enum|struct|annotation|abstract|dataclass|protocol|exception|object)\s+[\w"()]+\s*\{/i.test(trimmed)) scores.class += 300;
             if (/-+(?:up|down|left|right|hidden|horizontal|vertical|[lrud])-*>/i.test(trimmed)) scores.class += 300;
 
-            // Deployment: [comp] -> [other]
+            // Deployment ONLY: [comp]
             if (/\[.+\]\s*[-=.~]+\s*\[.+\]/.test(trimmed)) scores.deployment += 300;
             if (/\[.+\]\s*[-=.~]+>\s*\[.+\]/.test(trimmed)) scores.deployment += 300;
-            if (/\b(?:node|artifact|cloud|component|storage|rectangle|card|file|hexagon|person|process|agent|usecase|action|frame|rect|folder|together)\s+[\w"()]+\s*\{/i.test(trimmed)) scores.deployment += 300;
-            if (/\b(?:node|artifact|cloud|component|storage|rectangle|card|file|hexagon|person|process|agent|usecase|action|frame|rect|folder|together)\s+[\w"()]+\s+as\b/i.test(trimmed)) scores.deployment += 300;
+            if (/\b(?:node|artifact|cloud|component|storage|rectangle|card|file|hexagon|person|process|agent|usecase|action|frame|rect|folder|together|database)\s+[\w"()]+\s*\{/i.test(trimmed)) scores.deployment += 300;
 
-            // 2. Medium Keywords (+100)
-            if (/\b(?:participant|actor|boundary|control|entity|database|collections|queue)\b/i.test(trimmed)) scores.sequence += 100;
-            if (/\b(?:class|interface|enum|struct|annotation|abstract|metaclass|protocol|record|stereotype)\b/i.test(trimmed)) scores.class += 100;
-            if (/\b(?:artifact|cloud|component|storage|rectangle|node|stack)\b/i.test(trimmed)) scores.deployment += 100;
+            // 2. Ambiguous but characteristic patterns
+            // A -> B : label (Common in Sequence and Class)
+            if (/\w+\s*[-=.]+>\s*\w+\s*:[^:]/.test(trimmed)) {
+                // Check for other indicators to decide
+                if (scores.class > scores.sequence) scores.class += 200;
+                else if (scores.sequence > scores.class) scores.sequence += 200;
+                else if (scores.deployment > scores.sequence) scores.deployment += 200;
+                else {
+                     // Truly ambiguous, give sequence a slight edge for simple arrows
+                     scores.sequence += 150;
+                     scores.class += 100;
+                }
+            }
 
-            // 3. Weak Indicators (+20)
+            // 3. Medium Keywords (+100)
+            if (/\b(?:participant|actor|boundary|control|entity|collections|queue)\b/i.test(trimmed)) scores.sequence += 150;
+            if (/\b(?:class|interface|enum|struct|annotation|abstract|metaclass|protocol|record|stereotype|object)\b/i.test(trimmed)) scores.class += 150;
+            if (/\b(?:artifact|cloud|component|storage|rectangle|node|stack|frame|folder|database)\b/i.test(trimmed)) scores.deployment += 150;
+
+            // 4. Weak Indicators (+20)
             if (/\w+\s*[-=.]+>\s*\w+/.test(trimmed)) {
-                // If we see a basic arrow, it's likely sequence if we haven't seen class/deployment indicators yet
-                if (scores.class === 0 && scores.deployment === 0) scores.sequence += 50;
-                else scores.sequence += 20;
+                scores.sequence += 20;
+                scores.class += 20;
             }
         }
 
@@ -45,9 +56,11 @@ export class PlantUmlScanner {
             return 'unknown';
         }
         
-        // Tie-breaking: Sequence > Class > Deployment
-        if (scores.sequence >= max) return 'sequence';
-        if (scores.class >= max) return 'class';
-        return 'deployment';
+        // Tie-breaking: Sequence > Class > Deployment (Sequence is the most common)
+        if (scores.sequence >= max && scores.sequence > 0) return 'sequence';
+        if (scores.class >= max && scores.class > 0) return 'class';
+        if (scores.deployment >= max && scores.deployment > 0) return 'deployment';
+        
+        return 'unknown';
     }
 }

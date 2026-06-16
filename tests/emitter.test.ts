@@ -57,13 +57,17 @@ class User /' @pos(10, 20) '/
     it("should inject and update @pos comments on connections", () => {
         const input = `
 @startuml
+participant A
+participant B
+participant C
+participant D
 A -> B : message /' @pos(50, 50) '/
 C *-- D
 @enduml
 `;
         const ast = parsePlantUml(input);
         const layoutMap: LayoutMap = {
-            diagramType: "unknown",
+            diagramType: "sequence",
             nodes: {},
             connections: [
                 { from: "A", to: "B", type: "->", label: "message", position: { x: 100, y: 100 } },

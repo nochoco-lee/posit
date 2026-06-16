@@ -62,6 +62,8 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Database) },
             { ALT: () => this.CONSUME(lexer.Collections) },
             { ALT: () => this.CONSUME(lexer.Queue) },
+            { ALT: () => this.CONSUME(lexer.Class) },
+            { ALT: () => this.CONSUME(lexer.ObjectKeyword) },
             { ALT: () => this.CONSUME(lexer.Alt) },
             { ALT: () => this.CONSUME(lexer.Opt) },
             { ALT: () => this.CONSUME(lexer.Loop) },
@@ -105,11 +107,10 @@ export class SequenceParser extends CstParser {
     public nodeIdentifier = this.RULE("nodeIdentifier", () => {
         this.OR([
             { ALT: () => this.CONSUME(common.Identifier) },
-            { ALT: () => this.CONSUME(common.NumberToken) },
-            { ALT: () => this.CONSUME(common.LBracket) },
-            { ALT: () => this.CONSUME(common.RBracket) },
             { ALT: () => this.CONSUME(lexer.Participant) },
             { ALT: () => this.CONSUME(lexer.Actor) },
+            { ALT: () => this.CONSUME(lexer.Class) },
+            { ALT: () => this.CONSUME(lexer.ObjectKeyword) },
             { ALT: () => this.CONSUME(lexer.Alt) },
             { ALT: () => this.CONSUME(lexer.Else) },
             { ALT: () => this.CONSUME(lexer.Opt) },
@@ -117,7 +118,10 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Par) },
             { ALT: () => this.CONSUME(lexer.Group) },
             { ALT: () => this.CONSUME(lexer.Partition) },
-            { ALT: () => this.CONSUME(lexer.Box) }
+            { ALT: () => this.CONSUME(lexer.Box) },
+            { ALT: () => this.CONSUME(common.NumberToken) },
+            { ALT: () => this.CONSUME(common.LBracket) },
+            { ALT: () => this.CONSUME(common.RBracket) }
         ]);
     });
     public namePart = this.RULE("namePart", () => { this.OR([{ ALT: () => this.SUBRULE(this.nodeIdentifier) }, { ALT: () => this.CONSUME(common.StringLiteral) }]); });
@@ -174,7 +178,9 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Entity) },
             { ALT: () => this.CONSUME(lexer.Database) },
             { ALT: () => this.CONSUME(lexer.Collections) },
-            { ALT: () => this.CONSUME(lexer.Queue) }
+            { ALT: () => this.CONSUME(lexer.Queue) },
+            { ALT: () => this.CONSUME(lexer.Class) },
+            { ALT: () => this.CONSUME(lexer.ObjectKeyword) }
         ]);
         this.SUBRULE(this.name, { LABEL: "name" });
         this.MANY(() => {
@@ -392,9 +398,9 @@ export class SequenceParser extends CstParser {
 
     public statement = this.RULE("statement", () => {
         this.OR([
-            { GATE: this.isIgnored, ALT: () => this.SUBRULE(this.ignoredStatement) },
+            { GATE: () => this.isIgnored(), ALT: () => this.SUBRULE(this.ignoredStatement) },
             { ALT: () => this.SUBRULE(this.participantDeclaration) },
-            { GATE: this.isConnection, ALT: () => this.SUBRULE(this.connectionDeclaration) },
+            { GATE: () => this.isConnection(), ALT: () => this.SUBRULE(this.connectionDeclaration) },
             { ALT: () => this.SUBRULE(this.noteDeclaration) },
             { ALT: () => this.SUBRULE(this.refDeclaration) },
             { ALT: () => this.SUBRULE(this.blockDeclaration) },

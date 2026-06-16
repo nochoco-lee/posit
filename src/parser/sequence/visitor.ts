@@ -1,7 +1,7 @@
 import * as parser from "./parser";
 import * as lexer from "./lexer";
 import * as common from "../common/tokens";
-import { IRDiagram, IRStatement, IRNode, IREdge, IRGroup, IRMetadata } from "../../ir/types";
+import { IRDiagram, IRStatement, IRNode, IREdge, IRGroup, IRMetadata, IROffset } from "../../ir/types";
 import { POS_COMMENT_REGEX } from "../../ir/constants";
 import { IToken } from "chevrotain";
 
@@ -33,24 +33,51 @@ export class SequenceAstVisitor extends BaseVisitor {
         };
     }
 
+    private getOffsets(ctx: any): IROffset {
+        const allTokens: IToken[] = [];
+        const collectTokens = (obj: any) => {
+            if (!obj) return;
+            if (Array.isArray(obj)) {
+                obj.forEach(collectTokens);
+            } else if (obj.image) {
+                allTokens.push(obj);
+            } else if (obj.children) {
+                Object.values(obj.children).forEach(collectTokens);
+            } else {
+                Object.values(obj).forEach(collectTokens);
+            }
+        };
+        collectTokens(ctx);
+        
+        if (allTokens.length === 0) return { start: 0, end: 0 };
+        
+        allTokens.sort((a, b) => a.startOffset - b.startOffset);
+        const start = allTokens[0].startOffset;
+        const lastToken = allTokens[allTokens.length - 1];
+        const end = (lastToken.endOffset !== undefined ? lastToken.endOffset + 1 : lastToken.startOffset + (lastToken.image?.length || 0));
+
+        return { start, end };
+    }
+
     statement(ctx: any): any {
-        if (ctx.participantDeclaration) return this.visit(ctx.participantDeclaration[0]);
-        if (ctx.connectionDeclaration) return this.visit(ctx.connectionDeclaration[0]);
-        if (ctx.noteDeclaration) return this.visit(ctx.noteDeclaration[0]);
-        if (ctx.refDeclaration) return this.visit(ctx.refDeclaration[0]);
-        if (ctx.blockDeclaration) return this.visit(ctx.blockDeclaration[0]);
-        if (ctx.ignoredStatement) return null;
+        let result: any = null;
+        if (ctx.participantDeclaration) result = this.visit(ctx.participantDeclaration[0]);
+        else if (ctx.connectionDeclaration) result = this.visit(ctx.connectionDeclaration[0]);
+        else if (ctx.noteDeclaration) result = this.visit(ctx.noteDeclaration[0]);
+        else if (ctx.refDeclaration) result = this.visit(ctx.refDeclaration[0]);
+        else if (ctx.blockDeclaration) result = this.visit(ctx.blockDeclaration[0]);
+        else if (ctx.ignoredStatement) return null;
         
         // Handle standalone commands
-        if (ctx.Activate) return { type: "activation", action: "activate", target: this.visit(ctx.activeNode[0]) };
-        if (ctx.Deactivate) return { type: "activation", action: "deactivate", target: this.visit(ctx.activeNode[0]) };
-        if (ctx.Destroy) return { type: "activation", action: "destroy", target: this.visit(ctx.activeNode[0]) };
-        if (ctx.Bye) return { type: "activation", action: "destroy", target: this.visit(ctx.activeNode[0]) };
-        if (ctx.Return) {
+        else if (ctx.Activate) result = { type: "activation", action: "activate", target: this.visit(ctx.activeNode[0]) };
+        else if (ctx.Deactivate) result = { type: "activation", action: "deactivate", target: this.visit(ctx.activeNode[0]) };
+        else if (ctx.Destroy) result = { type: "activation", action: "destroy", target: this.visit(ctx.activeNode[0]) };
+        else if (ctx.Bye) result = { type: "activation", action: "destroy", target: this.visit(ctx.activeNode[0]) };
+        else if (ctx.Return) {
             const label = ctx.returnPayload ? this.visit(ctx.returnPayload[0]) : undefined;
-            return { type: "return", label };
+            result = { type: "return", label };
         }
-        if (ctx.Delay) {
+        else if (ctx.Delay) {
             let text = "";
             const children = Object.values(ctx).flat().filter((c: any) => c !== undefined) as any[];
             children.sort((a, b) => {
@@ -61,12 +88,17 @@ export class SequenceAstVisitor extends BaseVisitor {
             children.forEach((child, idx) => {
                 const image = child.image || this.visit(child);
                 text += image;
-                if (idx < children.length - 1) text += " ";
+                if (idx < children.length - 1) {
+                    const nextChild = children[idx + 1];
+                    const endOfCurrent = child.endOffset !== undefined ? child.endOffset + 1 : (child.location ? child.location.endOffset + 1 : 0);
+                    const startOfNext = nextChild.startOffset !== undefined ? nextChild.startOffset : (nextChild.location ? nextChild.location.startOffset : 0);
+                    if (startOfNext > endOfCurrent) text += " ";
+                }
             });
             text = text.replace(/\.\.\./g, "").trim();
-            return { type: "delay", text };
+            result = { type: "delay", text };
         }
-        if (ctx.Divider) {
+        else if (ctx.Divider) {
             let label = "";
             const children = Object.values(ctx).flat().filter((c: any) => c !== undefined) as any[];
             children.sort((a, b) => {
@@ -77,13 +109,21 @@ export class SequenceAstVisitor extends BaseVisitor {
             children.forEach((child, idx) => {
                 const image = child.image || this.visit(child);
                 label += image;
-                if (idx < children.length - 1) label += " ";
+                if (idx < children.length - 1) {
+                    const nextChild = children[idx + 1];
+                    const endOfCurrent = child.endOffset !== undefined ? child.endOffset + 1 : (child.location ? child.location.endOffset + 1 : 0);
+                    const startOfNext = nextChild.startOffset !== undefined ? nextChild.startOffset : (nextChild.location ? nextChild.location.startOffset : 0);
+                    if (startOfNext > endOfCurrent) label += " ";
+                }
             });
             label = label.replace(/==+/g, "").trim();
-            return { type: "divider", label };
+            result = { type: "divider", label };
         }
 
-        return null;
+        if (result && !result.offset) {
+            result.offset = this.getOffsets(ctx);
+        }
+        return result;
     }
 
     name(ctx: any): string {
@@ -138,6 +178,8 @@ export class SequenceAstVisitor extends BaseVisitor {
         else if (ctx.Database) shape = "database";
         else if (ctx.Collections) shape = "collections";
         else if (ctx.Queue) shape = "queue";
+        else if (ctx.Class) shape = "class";
+        else if (ctx.ObjectKeyword) shape = "object";
 
         const node: IRNode = {
             type: "node",
@@ -145,7 +187,8 @@ export class SequenceAstVisitor extends BaseVisitor {
             origName: name,
             label,
             shape,
-            layout: undefined
+            layout: undefined,
+            offset: this.getOffsets(ctx)
         };
 
         if (ctx.layout) {
@@ -203,7 +246,8 @@ export class SequenceAstVisitor extends BaseVisitor {
             label,
             isCreation: false,
             isDeletion: false,
-            layout: undefined
+            layout: undefined,
+            offset: this.getOffsets(ctx)
         };
 
         if (ctx.layout) {
@@ -264,8 +308,9 @@ export class SequenceAstVisitor extends BaseVisitor {
                 text += image;
                 if (index < children.length - 1) {
                     const nextChild = children[index + 1];
-                    const nextImage = nextChild.image || (nextChild.name ? this.visit(nextChild) : "");
-                    if (image !== "\n" && nextImage !== "\n" && nextImage !== "" && !image.endsWith(" ") && !".:!,?;".includes(nextImage[0])) {
+                    const endOfCurrent = child.endOffset !== undefined ? child.endOffset + 1 : (child.location ? child.location.endOffset + 1 : 0);
+                    const startOfNext = nextChild.startOffset !== undefined ? nextChild.startOffset : (nextChild.location ? nextChild.location.startOffset : 0);
+                    if (startOfNext > endOfCurrent && image !== "\n") {
                         text += " ";
                     }
                 }
@@ -284,13 +329,14 @@ export class SequenceAstVisitor extends BaseVisitor {
         if (ctx.targets) ctx.targets.forEach((t: any) => targets.push(this.visit(t)));
 
         return {
-            type: "node",
+            type: "note",
             name: "note_" + Math.random().toString(36).substr(2, 9),
             text,
             label: text,
             shape: "note",
             placement,
-            targets
+            targets,
+            offset: this.getOffsets(ctx)
         };
     }
 
@@ -313,11 +359,12 @@ export class SequenceAstVisitor extends BaseVisitor {
         children.forEach((child, index) => {
             const image = child.image || (child.name === "anyToken" ? this.visit(child) : "CST");
             result += image;
-            // Add space only if needed (not before newline, not after newline, not before punctuation)
             if (index < children.length - 1) {
                 const nextChild = children[index + 1];
-                const nextImage = nextChild.image || (nextChild.name ? this.visit(nextChild) : "");
-                if (image !== "\n" && nextImage !== "\n" && nextImage !== "" && !image.endsWith(" ") && !".:!,?;".includes(nextImage[0])) {
+                const endOfCurrent = child.endOffset !== undefined ? child.endOffset + 1 : (child.location ? child.location.endOffset + 1 : 0);
+                const startOfNext = nextChild.startOffset !== undefined ? nextChild.startOffset : (nextChild.location ? nextChild.location.startOffset : 0);
+                
+                if (startOfNext > endOfCurrent && image !== "\n") {
                     result += " ";
                 }
             }
@@ -361,7 +408,8 @@ export class SequenceAstVisitor extends BaseVisitor {
             name: "block",
             keyword,
             label,
-            sections
+            sections,
+            offset: this.getOffsets(ctx)
         };
     }
 
@@ -375,7 +423,8 @@ export class SequenceAstVisitor extends BaseVisitor {
         }
         return {
             label: ctx.label ? this.visit(ctx.label[0]) : "",
-            statements
+            statements,
+            offset: this.getOffsets(ctx)
         };
     }
 
@@ -412,8 +461,10 @@ export class SequenceAstVisitor extends BaseVisitor {
             result += image;
             if (index < children.length - 1) {
                 const nextChild = children[index + 1];
-                const nextImage = nextChild.image || (nextChild.name ? this.visit(nextChild) : "");
-                if (image !== "\n" && nextImage !== "\n" && nextImage !== "" && !image.endsWith(" ") && !".:!,?;".includes(nextImage[0])) {
+                const endOfCurrent = child.endOffset !== undefined ? child.endOffset + 1 : (child.location ? child.location.endOffset + 1 : 0);
+                const startOfNext = nextChild.startOffset !== undefined ? nextChild.startOffset : (nextChild.location ? nextChild.location.startOffset : 0);
+                
+                if (startOfNext > endOfCurrent && image !== "\n") {
                     result += " ";
                 }
             }

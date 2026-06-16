@@ -2,6 +2,7 @@ import { createToken, Lexer } from "chevrotain";
 import * as common from "../common/tokens";
 
 export const Class = createToken({ name: "Class", pattern: /class\b/i });
+export const ObjectKeyword = createToken({ name: "ObjectKeyword", pattern: /object\b/i });
 export const Interface = createToken({ name: "Interface", pattern: /interface\b/i });
 export const Enum = createToken({ name: "Enum", pattern: /enum\b/i });
 export const Annotation = createToken({ name: "Annotation", pattern: /annotation\b/i });
@@ -44,6 +45,11 @@ export const Arrow = createToken({
 export const LBrace = createToken({ name: "LBrace", pattern: /\{/ });
 export const RBrace = createToken({ name: "RBrace", pattern: /\}/ });
 
+export const DividerDot = createToken({ name: "DividerDot", pattern: /\.\.+/ });
+export const DividerEquals = createToken({ name: "DividerEquals", pattern: /==+/ });
+export const DividerUnderscore = createToken({ name: "DividerUnderscore", pattern: /__+/ });
+export const DividerMinus = createToken({ name: "DividerMinus", pattern: /--+/ });
+
 export const allClassTokens = [
     common.WhiteSpace,
     common.Newline,
@@ -54,9 +60,15 @@ export const allClassTokens = [
     common.LineComment,
 
     Arrow, // High priority
+    DividerDot,
+    DividerEquals,
+    DividerUnderscore,
+    DividerMinus,
+
     Stereotype,
 
     Class,
+    ObjectKeyword,
     Interface,
     Enum,
     Annotation,

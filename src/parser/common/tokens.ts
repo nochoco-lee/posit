@@ -6,7 +6,7 @@ export const EndUml = createToken({ name: "EndUml", pattern: /@enduml/ });
 
 export const PosComment = createToken({
     name: "PosComment",
-    pattern: /\/'\s*@pos\s*\(\s*-?\d+\s*,\s*-?\d+\s*\)\s*'\//
+    pattern: /\/'[ \t]*@pos\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)[ \t]*'\//
 });
 
 export const MultiLineComment = createToken({

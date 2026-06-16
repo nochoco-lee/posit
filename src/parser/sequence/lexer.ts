@@ -9,6 +9,8 @@ export const Entity = createToken({ name: "Entity", pattern: /entity/i });
 export const Database = createToken({ name: "Database", pattern: /database/i });
 export const Collections = createToken({ name: "Collections", pattern: /collections/i });
 export const Queue = createToken({ name: "Queue", pattern: /queue/i });
+export const Class = createToken({ name: "Class", pattern: /class\b/i });
+export const ObjectKeyword = createToken({ name: "ObjectKeyword", pattern: /object\b/i });
 
 export const Alt = createToken({ name: "Alt", pattern: /alt\b/i });
 export const Else = createToken({ name: "Else", pattern: /else\b/i });
@@ -103,6 +105,8 @@ export const allSequenceTokens = [
     Database,
     Collections,
     Queue,
+    Class,
+    ObjectKeyword,
     Note,
     Hnote,
     Rnote,
