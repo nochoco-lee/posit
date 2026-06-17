@@ -61,12 +61,18 @@ export class SequenceAstVisitor extends BaseVisitor {
 
     statement(ctx: any): any {
         let result: any = null;
-        if (ctx.participantDeclaration) result = this.visit(ctx.participantDeclaration[0]);
+        if (ctx.timingDeclaration) result = this.visit(ctx.timingDeclaration[0]);
+        else if (ctx.autoactivateDeclaration) result = this.visit(ctx.autoactivateDeclaration[0]);
+        else if (ctx.participantDeclaration) result = this.visit(ctx.participantDeclaration[0]);
         else if (ctx.connectionDeclaration) result = this.visit(ctx.connectionDeclaration[0]);
         else if (ctx.noteDeclaration) result = this.visit(ctx.noteDeclaration[0]);
         else if (ctx.refDeclaration) result = this.visit(ctx.refDeclaration[0]);
         else if (ctx.blockDeclaration) result = this.visit(ctx.blockDeclaration[0]);
         else if (ctx.ignoredStatement) return null;
+        else if (ctx.Return) {
+            const label = ctx.returnPayload ? this.visit(ctx.returnPayload[0]) : undefined;
+            result = { type: "return", label };
+        }
         
         // Handle standalone commands
         else if (ctx.Activate) result = { type: "activation", action: "activate", target: this.visit(ctx.activeNode[0]) };
@@ -160,6 +166,24 @@ export class SequenceAstVisitor extends BaseVisitor {
         const firstChild = Object.values(ctx)[0] as any[];
         if (firstChild && firstChild[0]) return firstChild[0].image;
         return "";
+    }
+
+    timingDeclaration(ctx: any): any {
+        const name = ctx.anyToken ? ctx.anyToken.map((t: any) => this.visit(t)).join("") : "";
+        return {
+            type: "metadata",
+            name: "timing",
+            value: name,
+            offset: this.getOffsets(ctx)
+        };
+    }
+
+    autoactivateDeclaration(ctx: any): any {
+        return {
+            type: "autoactivate",
+            value: ctx.on !== undefined,
+            offset: this.getOffsets(ctx)
+        };
     }
 
     participantDeclaration(ctx: any): IRNode {

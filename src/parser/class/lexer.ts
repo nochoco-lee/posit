@@ -39,7 +39,7 @@ export const Stereotype = createToken({ name: "Stereotype", pattern: /<<[^>]+>>/
 const head = "[<*#@^x()\\[\\]\\\\/|+o{}>]";
 export const Arrow = createToken({
     name: "Arrow",
-    pattern: new RegExp(`${head}+[-.]+([du][lr])*[-.]*${head}*|${head}*[-.]+([du][lr])*[-.]*${head}+|[-.]{2,}`),
+    pattern: new RegExp(`${head}+[-.]+(left|right|up|down|[dlur]{1,2})?[-.]*${head}*|${head}*[-.]+(left|right|up|down|[dlur]{1,2})?[-.]*${head}+|[-.]{2,}`),
 });
 
 export const LBrace = createToken({ name: "LBrace", pattern: /\{/ });

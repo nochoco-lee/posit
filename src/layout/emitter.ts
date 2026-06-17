@@ -11,7 +11,7 @@ export class Emitter {
             throw new Error("Emitter expects a Diagram IR node");
         }
 
-        const patchesMap = new Map<string, { start: number; end: number; replacement: string }>();
+        const patches: { start: number; end: number; replacement: string }[] = [];
         const syntax = ir.syntax || 'plantuml';
 
         // Recursive search helper to find all statements
@@ -33,8 +33,7 @@ export class Emitter {
 
         const addPatch = (patch: { start: number; end: number; replacement: string } | null) => {
             if (!patch) return;
-            const key = `${patch.start}-${patch.end}`;
-            patchesMap.set(key, patch);
+            patches.push(patch);
         };
 
         // Process Nodes
@@ -119,7 +118,6 @@ for (const conn of layoutMap.connections) {
             }
         }
 
-        const patches = Array.from(patchesMap.values());
         // Sort patches in reverse order by start index to avoid invalidating offsets!
         patches.sort((a, b) => b.start - a.start);
 

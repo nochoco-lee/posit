@@ -109,6 +109,12 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(common.Identifier) },
             { ALT: () => this.CONSUME(lexer.Participant) },
             { ALT: () => this.CONSUME(lexer.Actor) },
+            { ALT: () => this.CONSUME(lexer.Boundary) },
+            { ALT: () => this.CONSUME(lexer.Control) },
+            { ALT: () => this.CONSUME(lexer.Entity) },
+            { ALT: () => this.CONSUME(lexer.Database) },
+            { ALT: () => this.CONSUME(lexer.Collections) },
+            { ALT: () => this.CONSUME(lexer.Queue) },
             { ALT: () => this.CONSUME(lexer.Class) },
             { ALT: () => this.CONSUME(lexer.ObjectKeyword) },
             { ALT: () => this.CONSUME(lexer.Alt) },
@@ -117,6 +123,7 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Loop) },
             { ALT: () => this.CONSUME(lexer.Par) },
             { ALT: () => this.CONSUME(lexer.Group) },
+            { ALT: () => this.CONSUME(lexer.End) },
             { ALT: () => this.CONSUME(lexer.Partition) },
             { ALT: () => this.CONSUME(lexer.Box) },
             { ALT: () => this.CONSUME(common.NumberToken) },
@@ -213,7 +220,7 @@ export class SequenceParser extends CstParser {
         ]);
         this.MANY1(() => { this.OR2([ { ALT: () => this.CONSUME1(common.Plus, { LABEL: "suffixPlus" }) }, { ALT: () => this.CONSUME1(common.Minus, { LABEL: "suffixMinus" }) } ]); });
         this.OPTION5(() => {
-            this.CONSUME1(common.LParen);
+            this.OPTION7(() => this.CONSUME1(common.LParen));
             this.CONSUME1(common.NumberToken);
             this.CONSUME1(common.RParen);
         });
@@ -375,7 +382,6 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(common.Header) },
             { ALT: () => this.CONSUME(common.Footer) },
             { ALT: () => this.CONSUME(common.Title) },
-            { ALT: () => this.CONSUME(lexer.Autoactivate) },
             { ALT: () => this.CONSUME(lexer.Newpage) },
             { ALT: () => this.CONSUME(lexer.Mainframe) }
         ]);
@@ -396,9 +402,39 @@ export class SequenceParser extends CstParser {
         });
     });
 
+    public timingDeclaration = this.RULE("timingDeclaration", () => {
+        this.CONSUME(common.LBrace);
+        this.MANY({
+            GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== common.Newline && this.LA(1).tokenType !== common.EndUml && this.LA(1).tokenType !== EOF,
+            DEF: () => this.SUBRULE(this.anyToken)
+        });
+        this.CONSUME(common.RBrace);
+        this.OPTION(() => {
+            this.CONSUME(lexer.Arrow);
+            this.CONSUME1(common.LBrace);
+            this.MANY1({
+                GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== common.Newline && this.LA(1).tokenType !== common.EndUml && this.LA(1).tokenType !== EOF,
+                DEF: () => this.SUBRULE1(this.anyToken)
+            });
+            this.CONSUME1(common.RBrace);
+        });
+        this.OPTION1(() => this.SUBRULE(this.payload));
+        this.OPTION2(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
+    });
+
+    public autoactivateDeclaration = this.RULE("autoactivateDeclaration", () => {
+        this.CONSUME(lexer.Autoactivate);
+        this.OR([
+            { ALT: () => this.CONSUME(lexer.On, { LABEL: "on" }) },
+            { ALT: () => this.CONSUME(lexer.Off, { LABEL: "off" }) }
+        ]);
+    });
+
     public statement = this.RULE("statement", () => {
         this.OR([
             { GATE: () => this.isIgnored(), ALT: () => this.SUBRULE(this.ignoredStatement) },
+            { ALT: () => this.SUBRULE(this.timingDeclaration) },
+            { ALT: () => this.SUBRULE(this.autoactivateDeclaration) },
             { ALT: () => this.SUBRULE(this.participantDeclaration) },
             { GATE: () => this.isConnection(), ALT: () => this.SUBRULE(this.connectionDeclaration) },
             { ALT: () => this.SUBRULE(this.noteDeclaration) },
@@ -449,7 +485,7 @@ export class SequenceParser extends CstParser {
 
     private isIgnored(): boolean {
         const tok = this.LA(1).tokenType;
-        return tok === common.Exclamation || tok === common.Skinparam || tok === common.Hide || tok === common.Show || tok === common.Page || tok === common.Header || tok === common.Footer || tok === common.Title || tok === lexer.Autoactivate || tok === lexer.Newpage || tok === lexer.Ignore || tok === lexer.Mainframe;
+        return tok === common.Exclamation || tok === common.Skinparam || tok === common.Hide || tok === common.Show || tok === common.Page || tok === common.Header || tok === common.Footer || tok === common.Title || tok === lexer.Newpage || tok === lexer.Ignore || tok === lexer.Mainframe;
     }
 
     private isConnection(): boolean {

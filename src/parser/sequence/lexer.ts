@@ -64,12 +64,12 @@ export const Divider = createToken({ name: "Divider", pattern: /==+/ });
 
 // Use a string pattern to avoid literal regex escaping pitfalls.
 // Require at least one stick char AND (head OR multiple sticks).
-const headChars = "?#*x<>\\[\\]\\\\/|o()";
+const headChars = "?#*x<>\\[\\]\\\\/|o";
 const head = `[${headChars}]`;
 const arrowBody = `[-=.]+(?:\\[#[^\\]\\s]+\\])?[-=.]*`;
 export const Arrow = createToken({
     name: "Arrow",
-    pattern: new RegExp(`(${head}*${arrowBody}>${head}*|${head}*${arrowBody}${head}+|${head}+${arrowBody}${head}*|[-=.]{2,}(?:\\[#[^\\]\\s]+\\])?[-=.]*${head}*)`),
+    pattern: new RegExp(`(${head}+${arrowBody}${head}*|${head}*${arrowBody}${head}+|${head}*${arrowBody}>${head}*)`),
 });
 
 export const allSequenceTokens = [
