@@ -70,7 +70,11 @@ export class DeploymentParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Database) },
             { ALT: () => this.CONSUME(lexer.Collections) },
             { ALT: () => this.CONSUME(lexer.Queue) },
-            { ALT: () => this.CONSUME(lexer.Stack) }
+            { ALT: () => this.CONSUME(lexer.Stack) },
+            { ALT: () => this.CONSUME(lexer.Actor) },
+            { ALT: () => this.CONSUME(lexer.ActorSlash) },
+            { ALT: () => this.CONSUME(lexer.UsecaseSlash) },
+            { ALT: () => this.CONSUME(lexer.Interface) }
         ]);
     });
 
@@ -104,7 +108,11 @@ export class DeploymentParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Database) },
             { ALT: () => this.CONSUME(lexer.Collections) },
             { ALT: () => this.CONSUME(lexer.Queue) },
-            { ALT: () => this.CONSUME(lexer.Stack) }
+            { ALT: () => this.CONSUME(lexer.Stack) },
+            { ALT: () => this.CONSUME(lexer.Actor) },
+            { ALT: () => this.CONSUME(lexer.ActorSlash) },
+            { ALT: () => this.CONSUME(lexer.UsecaseSlash) },
+            { ALT: () => this.CONSUME(lexer.Interface) }
         ]);
     });
 
@@ -128,6 +136,14 @@ export class DeploymentParser extends CstParser {
                     DEF: () => this.SUBRULE1(this.anyToken) 
                 });
                 this.OPTION1(() => this.CONSUME1(common.RParen));
+            }},
+            { ALT: () => {
+                this.CONSUME(common.Colon);
+                this.MANY2({
+                    GATE: () => this.LA(1).tokenType !== common.Colon,
+                    DEF: () => this.SUBRULE2(this.anyToken)
+                });
+                this.CONSUME1(common.Colon);
             }}
         ]); 
     });
@@ -149,36 +165,42 @@ export class DeploymentParser extends CstParser {
     });
 
     public nodeOrContainer = this.RULE("nodeOrContainer", () => {
-        this.OR([
-            { ALT: () => this.CONSUME(lexer.Package) },
-            { ALT: () => this.CONSUME(lexer.Namespace) },
-            { ALT: () => this.CONSUME(lexer.Folder) },
-            { ALT: () => this.CONSUME(lexer.Cloud) },
-            { ALT: () => this.CONSUME(lexer.Frame) },
-            { ALT: () => this.CONSUME(lexer.Artifact) },
-            { ALT: () => this.CONSUME(lexer.Storage) },
-            { ALT: () => this.CONSUME(lexer.Rectangle) },
-            { ALT: () => this.CONSUME(lexer.Card) },
-            { ALT: () => this.CONSUME(lexer.Component) },
-            { ALT: () => this.CONSUME(lexer.NodeKeyword) },
-            { ALT: () => this.CONSUME(lexer.Database) },
-            { ALT: () => this.CONSUME(lexer.FileKeyword) },
-            { ALT: () => this.CONSUME(lexer.Hexagon) },
-            { ALT: () => this.CONSUME(lexer.Person) },
-            { ALT: () => this.CONSUME(lexer.Process) },
-            { ALT: () => this.CONSUME(lexer.Agent) },
-            { ALT: () => this.CONSUME(lexer.Usecase) },
-            { ALT: () => this.CONSUME(lexer.Action) },
-            { ALT: () => this.CONSUME(lexer.LabelEntity) },
-            { ALT: () => this.CONSUME(lexer.Together) },
-            { ALT: () => this.CONSUME(lexer.Control) },
-            { ALT: () => this.CONSUME(lexer.Boundary) },
-            { ALT: () => this.CONSUME(lexer.Entity) },
-            { ALT: () => this.CONSUME(lexer.Collections) },
-            { ALT: () => this.CONSUME(lexer.Queue) },
-            { ALT: () => this.CONSUME(lexer.Stack) },
-            { ALT: () => { this.CONSUME(common.LParen); this.CONSUME(common.RParen); } }
-        ]);
+        this.OPTION(() => {
+            this.OR([
+                { ALT: () => this.CONSUME(lexer.Package) },
+                { ALT: () => this.CONSUME(lexer.Namespace) },
+                { ALT: () => this.CONSUME(lexer.Folder) },
+                { ALT: () => this.CONSUME(lexer.Cloud) },
+                { ALT: () => this.CONSUME(lexer.Frame) },
+                { ALT: () => this.CONSUME(lexer.Artifact) },
+                { ALT: () => this.CONSUME(lexer.Storage) },
+                { ALT: () => this.CONSUME(lexer.Rectangle) },
+                { ALT: () => this.CONSUME(lexer.Card) },
+                { ALT: () => this.CONSUME(lexer.Component) },
+                { ALT: () => this.CONSUME(lexer.NodeKeyword) },
+                { ALT: () => this.CONSUME(lexer.Database) },
+                { ALT: () => this.CONSUME(lexer.FileKeyword) },
+                { ALT: () => this.CONSUME(lexer.Hexagon) },
+                { ALT: () => this.CONSUME(lexer.Person) },
+                { ALT: () => this.CONSUME(lexer.Process) },
+                { ALT: () => this.CONSUME(lexer.Agent) },
+                { ALT: () => this.CONSUME(lexer.Usecase) },
+                { ALT: () => this.CONSUME(lexer.Action) },
+                { ALT: () => this.CONSUME(lexer.LabelEntity) },
+                { ALT: () => this.CONSUME(lexer.Together) },
+                { ALT: () => this.CONSUME(lexer.Control) },
+                { ALT: () => this.CONSUME(lexer.Boundary) },
+                { ALT: () => this.CONSUME(lexer.Entity) },
+                { ALT: () => this.CONSUME(lexer.Collections) },
+                { ALT: () => this.CONSUME(lexer.Queue) },
+                { ALT: () => this.CONSUME(lexer.Stack) },
+                { ALT: () => this.CONSUME(lexer.Actor) },
+                { ALT: () => this.CONSUME(lexer.ActorSlash) },
+                { ALT: () => this.CONSUME(lexer.UsecaseSlash) },
+                { ALT: () => this.CONSUME(lexer.Interface) },
+                { ALT: () => { this.CONSUME(common.LParen); this.CONSUME(common.RParen); } }
+            ]);
+        });
         this.SUBRULE(this.name, { LABEL: "name" });
         this.MANY(() => {
             this.OR1([
@@ -187,14 +209,26 @@ export class DeploymentParser extends CstParser {
                 { ALT: () => this.CONSUME(common.Color, { LABEL: "color" }) }
             ]);
         });
-        this.OPTION(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
-        this.OPTION1(() => {
-            this.CONSUME(common.LBrace);
-            this.MANY1({
-                GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== common.EndUml,
-                DEF: () => this.OR2([ { ALT: () => this.CONSUME(common.Newline) }, { ALT: () => this.SUBRULE(this.statement) } ])
-            });
-            this.CONSUME(common.RBrace);
+        this.OPTION1(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
+        this.OPTION2(() => {
+            this.OR3([
+                { ALT: () => {
+                    this.CONSUME(common.LBrace);
+                    this.MANY1({
+                        GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== common.EndUml,
+                        DEF: () => this.OR2([ { ALT: () => this.CONSUME(common.Newline) }, { ALT: () => this.SUBRULE(this.statement) } ])
+                    });
+                    this.CONSUME(common.RBrace);
+                }},
+                { ALT: () => {
+                    this.CONSUME(common.LBracket);
+                    this.MANY2({
+                        GATE: () => this.LA(1).tokenType !== common.RBracket && this.LA(1).tokenType !== common.EndUml,
+                        DEF: () => this.OR4([ { ALT: () => this.CONSUME1(common.Newline) }, { ALT: () => this.SUBRULE3(this.anyToken) } ])
+                    });
+                    this.CONSUME(common.RBracket);
+                }}
+            ]);
         });
     });
 
@@ -202,19 +236,28 @@ export class DeploymentParser extends CstParser {
         this.SUBRULE1(this.name, { LABEL: "from" });
         this.CONSUME(lexer.Arrow, { LABEL: "arrow" });
         this.SUBRULE2(this.name, { LABEL: "to" });
+        this.OPTION2(() => this.CONSUME(common.Color, { LABEL: "color" }));
         this.OPTION(() => this.SUBRULE(this.payload));
         this.OPTION1(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
     });
 
     public ignoredStatement = this.RULE("ignoredStatement", () => {
         this.OR([
+            { ALT: () => this.CONSUME(common.Exclamation) },
             { ALT: () => this.CONSUME(common.Skinparam) },
             { ALT: () => this.CONSUME(common.Hide) },
             { ALT: () => this.CONSUME(common.Show) },
             { ALT: () => this.CONSUME(common.Page) },
             { ALT: () => this.CONSUME(common.Header) },
             { ALT: () => this.CONSUME(common.Footer) },
-            { ALT: () => this.CONSUME(common.Title) }
+            { ALT: () => this.CONSUME(common.Title) },
+            { ALT: () => {
+                // Direction setting e.g., "left to right direction"
+                this.CONSUME(common.Identifier); // left/top/etc.
+                this.CONSUME1(common.Identifier); // to
+                this.CONSUME2(common.Identifier); // right/bottom/etc.
+                this.CONSUME3(common.Identifier); // direction
+            }}
         ]);
         this.MANY({
              GATE: () => this.LA(1).tokenType !== common.Newline && this.LA(1).tokenType !== common.LBrace && this.LA(1).tokenType !== common.EndUml,
@@ -236,14 +279,25 @@ export class DeploymentParser extends CstParser {
     public statement = this.RULE("statement", () => {
         this.OR([
             { GATE: this.isIgnored, ALT: () => this.SUBRULE(this.ignoredStatement) },
-            { ALT: () => this.SUBRULE(this.nodeOrContainer) },
-            { GATE: this.isConnection, ALT: () => this.SUBRULE(this.connectionDeclaration) }
+            { GATE: this.isConnection, ALT: () => this.SUBRULE(this.connectionDeclaration) },
+            { ALT: () => this.SUBRULE(this.nodeOrContainer) }
         ]);
     });
 
     private isIgnored(): boolean {
         const tok = this.LA(1).tokenType;
-        return tok === common.Skinparam || tok === common.Hide || tok === common.Show || tok === common.Page || tok === common.Header || tok === common.Footer || tok === common.Title;
+        if (tok === common.Exclamation || tok === common.Skinparam || tok === common.Hide || tok === common.Show || tok === common.Page || tok === common.Header || tok === common.Footer || tok === common.Title) return true;
+        // Check for direction setting: e.g. "left to right direction" or "top to bottom direction"
+        const nextImage = this.LA(1).image?.toLowerCase();
+        if (nextImage === 'left' || nextImage === 'right' || nextImage === 'top' || nextImage === 'bottom') {
+             const secondImage = this.LA(2).image?.toLowerCase();
+             const thirdImage = this.LA(3).image?.toLowerCase();
+             const fourthImage = this.LA(4).image?.toLowerCase();
+             if (secondImage === 'to' && (thirdImage === 'left' || thirdImage === 'right' || thirdImage === 'top' || thirdImage === 'bottom') && fourthImage === 'direction') {
+                 return true;
+             }
+        }
+        return false;
     }
 
     private isConnection(): boolean {

@@ -85,6 +85,10 @@ export class DeploymentAstVisitor extends BaseVisitor {
             if (!ctx.anyToken) return "";
             return ctx.anyToken.map((t: any) => this.visit(t)).join(" ");
         }
+        if (ctx.Colon) {
+            if (!ctx.anyToken) return "";
+            return ":" + ctx.anyToken.map((t: any) => this.visit(t)).join(" ") + ":";
+        }
         return "";
     }
 
@@ -106,7 +110,7 @@ export class DeploymentAstVisitor extends BaseVisitor {
     }
 
     nodeOrContainer(ctx: any): IRNode | IRContainer {
-        const keywordToken = Object.keys(ctx).find(k => !["name", "LBrace", "RBrace", "statement", "Newline", "stereo", "color", "alias", "layout"].includes(k));
+        const keywordToken = Object.keys(ctx).find(k => !["name", "LBrace", "RBrace", "LBracket", "RBracket", "statement", "Newline", "stereo", "color", "alias", "layout"].includes(k));
         const keyword = keywordToken ? keywordToken.toLowerCase() : "package";
         const name = this.visit(ctx.name[0]);
         const alias = ctx.alias ? this.visit(ctx.alias[0]) : name;
@@ -162,12 +166,15 @@ export class DeploymentAstVisitor extends BaseVisitor {
             if (match) layout = { x: parseFloat(match[1]), y: parseFloat(match[2]) };
         }
 
+        const color = ctx.color ? ctx.color[0].image : undefined;
+
         return {
             type: "edge",
             from: this.visit(ctx.from[0]),
             to: this.visit(ctx.to[0]),
             arrow: ctx.arrow[0].image,
             label: ctx.payload ? this.visit(ctx.payload[0]) : undefined,
+            color,
             layout,
             offset: this.getOffsets(ctx, ctx.layout)
         };

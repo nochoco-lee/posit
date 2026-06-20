@@ -18,6 +18,29 @@ export class DeploymentRenderer {
         this.onNodeMove = callback;
     }
 
+    public syncPositions(map: LayoutMap) {
+        this.map = map;
+        // 1. Sync Nodes
+        Object.values(map.nodes).forEach(node => {
+            const group = this.nodeGroups[node.id];
+            if (group) {
+                group.position(node.position);
+                this.updateConnections(node.id);
+            }
+        });
+
+        // 2. Sync Notes
+        map.notes.forEach(noteDef => {
+            const noteId = `note-${noteDef.text.substring(0, 10)}`;
+            const group = this.layer.findOne(`#${noteId}`) as Konva.Group;
+            if (group) {
+                group.position(noteDef.position);
+            }
+        });
+
+        this.layer.batchDraw();
+    }
+
     public render(map: LayoutMap) {
         this.map = map;
         this.layer.destroyChildren();

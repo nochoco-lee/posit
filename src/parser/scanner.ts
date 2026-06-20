@@ -22,7 +22,10 @@ export class PlantUmlScanner {
             // Deployment ONLY: [comp]
             if (/\[.+\]\s*[-=.~]+\s*\[.+\]/.test(trimmed)) scores.deployment += 300;
             if (/\[.+\]\s*[-=.~]+>\s*\[.+\]/.test(trimmed)) scores.deployment += 300;
-            if (/\b(?:node|artifact|cloud|component|storage|rectangle|card|file|hexagon|person|process|agent|usecase|action|frame|rect|folder|together|database)\s+[\w"()]+\s*\{/i.test(trimmed)) scores.deployment += 300;
+            if (/\b(?:node|artifact|cloud|component|storage|rectangle|card|file|hexagon|person|process|agent|usecase|action|frame|rect|folder|together|database|stack)\s+[\w"()]+\s*\{/i.test(trimmed)) scores.deployment += 300;
+            if (/^\s*(?:node|artifact|cloud|component|storage|rectangle|card|file|hexagon|person|process|agent|usecase|action|frame|rect|folder|together|database|stack)\s+[\w"()\[\]]/i.test(trimmed)) scores.deployment += 300;
+            if (/^\s*\[[^\]]+\]\s*$/.test(trimmed)) scores.deployment += 150;
+            if (/^\s*\([^)]+\)\s*$/.test(trimmed)) scores.deployment += 150;
 
             // 2. Ambiguous but characteristic patterns
             // A -> B : label (Common in Sequence and Class)

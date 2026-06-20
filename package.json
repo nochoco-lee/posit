@@ -10,7 +10,13 @@
     "build": "vite build",
     "plantuml-sequence": "vitest --run --pool=forks -c vitest.coverage.config.ts test_scripts/syntax-coverage.test.ts",
     "plantuml-class": "vitest --run --pool=forks -c vitest.class.coverage.config.ts test_scripts/class-syntax-coverage.test.ts",
-    "plantuml-deployment": "vitest --run --pool=forks -c vitest.deployment.coverage.config.ts test_scripts/deployment-syntax-coverage.test.ts"
+    "plantuml-deployment": "vitest --run --pool=forks -c vitest.deployment.coverage.config.ts test_scripts/deployment-syntax-coverage.test.ts",
+    "test:plantuml_sequence": "vitest --run --pool=forks -c vitest.coverage.config.ts test_scripts/syntax-coverage.test.ts",
+    "test:plantuml_class": "vitest --run --pool=forks -c vitest.class.coverage.config.ts test_scripts/class-syntax-coverage.test.ts",
+    "test:plantuml_deployment": "vitest --run --pool=forks -c vitest.deployment.coverage.config.ts test_scripts/deployment-syntax-coverage.test.ts",
+    "test:mermaid_sequence": "vitest --run --pool=forks -c vitest.mermaid.sequence.config.ts test_scripts/mermaid-sequence-coverage.test.ts",
+    "test:mermaid_class": "vitest --run --pool=forks -c vitest.mermaid.class.config.ts test_scripts/mermaid-class-coverage.test.ts",
+    "test:mermaid_flowchart": "vitest --run --pool=forks -c vitest.mermaid.flowchart.config.ts test_scripts/mermaid-flowchart-coverage.test.ts"
   },
   "keywords": [],
   "author": "",

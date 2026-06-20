@@ -28,13 +28,17 @@ export const Database = createToken({ name: "Database", pattern: /database\b/i, 
 export const Collections = createToken({ name: "Collections", pattern: /collections\b/i, categories: [common.IdentifierLike] });
 export const Queue = createToken({ name: "Queue", pattern: /queue\b/i, categories: [common.IdentifierLike] });
 export const Stack = createToken({ name: "Stack", pattern: /stack\b/i, categories: [common.IdentifierLike] });
+export const Actor = createToken({ name: "Actor", pattern: /actor\b/i, categories: [common.IdentifierLike] });
+export const ActorSlash = createToken({ name: "ActorSlash", pattern: /actor\//i, categories: [common.IdentifierLike] });
+export const UsecaseSlash = createToken({ name: "UsecaseSlash", pattern: /usecase\//i, categories: [common.IdentifierLike] });
+export const Interface = createToken({ name: "Interface", pattern: /interface\b/i, categories: [common.IdentifierLike] });
 
 export const As = createToken({ name: "As", pattern: /as\b/i, categories: [common.IdentifierLike] });
 export const Stereotype = createToken({ name: "Stereotype", pattern: /<<[^>]+>>/ });
 
 export const Arrow = createToken({
     name: "Arrow",
-    pattern: /[-=.~]{1,4}(?:up|down|left|right|hidden|horizontal|vertical|[lrud])?[-=.~]{0,4}(?:\|>|>>|[>x\/\\o*?^+#])+/
+    pattern: /[-=.~]+(?:\[[^\]]+\])[-=.~]*(?:\|>|>>|[>x\/\\o*?^+#])*|[<>*+#o()0\-=\.~\\/|x]{1,4}(?:left|right|up|down|le|ri|do|ur|dl|ld|rd|[lrud])?[<>*+#o()0\-=\.~\\/|x]{1,6}|[<>*+#o()0\-=\.~\\/|x]{2,12}/
 });
 
 export const allDeploymentTokens = [
@@ -64,6 +68,7 @@ export const allDeploymentTokens = [
     Person,
     Process,
     Agent,
+    UsecaseSlash,
     Usecase,
     Action,
     LabelEntity,
@@ -79,6 +84,9 @@ export const allDeploymentTokens = [
     Collections,
     Queue,
     Stack,
+    ActorSlash,
+    Actor,
+    Interface,
     common.Skinparam,
     common.Title,
     common.Header,

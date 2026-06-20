@@ -51,7 +51,10 @@ export class LayoutPumlRenderer {
     public syncPositions(map: LayoutMap) {
         if (map.diagramType === 'sequence' || map.diagramType === 'unknown') {
             this.sequenceRenderer.syncPositions(map);
+        } else if (map.diagramType === 'class') {
+            this.classRenderer.syncPositions(map);
+        } else if (map.diagramType === 'deployment') {
+            this.deploymentRenderer.syncPositions(map);
         }
-        // ClassRenderer sync could be added later if needed
     }
 }
