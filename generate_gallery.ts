@@ -166,9 +166,12 @@ testDirs.forEach(dirInfo => {
                         <div class="puml-source">${testCase.source.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
                     </div>
                     <div class="col">
-                        <div class="col-header">2. Official (Puml only)</div>
+                        <div class="col-header">${testCase.syntax === 'Mermaid' ? '2. Official (Mermaid)' : '2. Official (Puml only)'}</div>
                         <div class="img-container">
-                            ${testCase.officialUrl ? `<img src="${testCase.officialUrl}" alt="Official Render">` : '<span class="missing-info">No official render</span>'}
+                            ${testCase.syntax === 'Mermaid'
+                                ? `<pre class="mermaid" style="background: transparent; border: none; padding: 0; margin: 0; display: block; font-family: inherit; font-size: inherit; text-align: center; width: 100%;">${testCase.source}</pre>`
+                                : (testCase.officialUrl ? `<img src="${testCase.officialUrl}" alt="Official Render">` : '<span class="missing-info">No official render</span>')
+                            }
                         </div>
                     </div>
                     <div class="col">
@@ -202,6 +205,10 @@ testDirs.forEach(dirInfo => {
         .error { color: #d9534f; font-size: 14px; padding: 10px; background: #f2dede; border-radius: 4px; }
         .missing-info { color: #999; font-style: italic; }
     </style>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
 </head>
 <body>
     <div class="nav">
