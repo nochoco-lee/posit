@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import { LayoutMap, LayoutNode, LayoutConnection, LayoutGroup, LayoutNote } from "../layout/types";
+import { THEME } from "./primitives";
 
 export class DeploymentRenderer {
     protected layer: Konva.Layer;
@@ -64,8 +65,8 @@ export class DeploymentRenderer {
 
     private getShapeColors(type: string, customColor?: string) {
         return {
-            fill: customColor || '#FEFECE',
-            stroke: '#A80036',
+            fill: customColor || THEME.nodeFill,
+            stroke: THEME.stroke,
             strokeWidth: 1.5
         };
     }
@@ -455,8 +456,8 @@ export class DeploymentRenderer {
             points: [originCenterX, originCenterY, targetCenterX, targetCenterY],
             pointerLength: 10,
             pointerWidth: 10,
-            fill: '#A80036',
-            stroke: '#A80036',
+            fill: THEME.stroke,
+            stroke: THEME.stroke,
             strokeWidth: 2,
             dash: conn.type.includes('..') ? [10, 5] : undefined
         });
@@ -550,7 +551,7 @@ export class DeploymentRenderer {
 
         const label = new Konva.Text({
             text: labelText,
-            fontSize: 12, fontStyle: 'bold', padding: 5, fill: '#A80036'
+            fontSize: 12, fontStyle: 'bold', padding: 5, fill: THEME.stroke
         });
         group.add(label);
         this.layer.add(group);
@@ -568,7 +569,7 @@ export class DeploymentRenderer {
         group.on('dragend', (e: any) => {
             if (this.onNodeMove) this.onNodeMove(group.id(), Math.round(e.target.x()), Math.round(e.target.y()));
         });
-        const rect = new Konva.Rect({ width: noteDef.size.width, height: noteDef.size.height, fill: '#FBFB77', stroke: '#A80036', strokeWidth: 1 });
+        const rect = new Konva.Rect({ width: noteDef.size.width, height: noteDef.size.height, fill: THEME.noteFill, stroke: THEME.stroke, strokeWidth: 1 });
         const text = new Konva.Text({ text: noteDef.text, width: noteDef.size.width, padding: 5, fontSize: 12, align: 'center' });
         group.add(rect); group.add(text); this.layer.add(group);
     }

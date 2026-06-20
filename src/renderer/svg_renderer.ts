@@ -1,4 +1,5 @@
 import { LayoutMap, LayoutNode, LayoutConnection, LayoutGroup, LayoutNote, LayoutActivation } from "../layout/types";
+import { getIntersection, getMemberText, THEME } from "./primitives";
 
 export class LayoutPumlSvgRenderer {
     private width: number = 2000;
@@ -24,7 +25,7 @@ export class LayoutPumlSvgRenderer {
     }
 
     private getMemberSvg(x: number, y: number, member: any): string {
-        const text = this.getMemberText(member);
+        const text = getMemberText(member);
         return this.renderText(x + 5, y, text, 10, "start", "black", member.isAbstract, member.isStatic);
     }
 
@@ -50,59 +51,7 @@ export class LayoutPumlSvgRenderer {
         return leftEdge;
     }
 
-    private getIntersection(p1: { x: number, y: number }, p2: { x: number, y: number }, rect: { x: number, y: number, width: number, height: number }): { x: number, y: number } {
-        const { x, y, width, height } = rect;
-        const left = x;
-        const right = x + width;
-        const top = y;
-        const bottom = y + height;
 
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-
-        if (dx === 0 && dy === 0) return p2;
-
-        let tMin = -Infinity;
-        let tMax = Infinity;
-
-        if (dx !== 0) {
-            const t1 = (left - p1.x) / dx;
-            const t2 = (right - p1.x) / dx;
-            tMin = Math.max(tMin, Math.min(t1, t2));
-            tMax = Math.min(tMax, Math.max(t1, t2));
-        } else if (p1.x < left || p1.x > right) return p2;
-
-        if (dy !== 0) {
-            const t1 = (top - p1.y) / dy;
-            const t2 = (bottom - p1.y) / dy;
-            tMin = Math.max(tMin, Math.min(t1, t2));
-            tMax = Math.min(tMax, Math.max(t1, t2));
-        } else if (p1.y < top || p1.y > bottom) return p2;
-
-        if (tMin <= tMax && tMin >= 0 && tMin <= 1) {
-            return { x: p1.x + tMin * dx, y: p1.y + tMin * dy };
-        }
-
-        return p2;
-    }
-
-    private getMemberText(member: any): string {
-        let memberText = "";
-        const v = member.visibility;
-        if (v === "+" || v === "-" || v === "#" || v === "~") memberText += v + " ";
-        else if (v === "public") memberText += "+ ";
-        else if (v === "private") memberText += "- ";
-        else if (v === "protected") memberText += "# ";
-        else if (v === "package") memberText += "~ ";
-        else if (v) memberText += v + " ";
-
-        if (member.isStatic) memberText += "{static} ";
-        if (member.isAbstract) memberText += "{abstract} ";
-        memberText += member.name;
-        if (member.parameters) memberText += "(" + member.parameters.join(", ") + ")";
-        if (member.type) memberText += " : " + member.type;
-        return memberText;
-    }
 
     public render(map: LayoutMap): string {
         // Calculate bounds
@@ -473,8 +422,8 @@ export class LayoutPumlSvgRenderer {
                 const oRect = { x: originNode.position.x, y: originNode.position.y, width: originNode.size.width, height: originNode.size.height };
                 const tRect = { x: targetNode.position.x, y: targetNode.position.y, width: targetNode.size.width, height: targetNode.size.height };
 
-                const startPt = this.getIntersection({ x: tCenterX, y: tCenterY }, { x: oCenterX, y: oCenterY }, oRect);
-                const endPt = this.getIntersection({ x: oCenterX, y: oCenterY }, { x: tCenterX, y: tCenterY }, tRect);
+                const startPt = getIntersection({ x: tCenterX, y: tCenterY }, { x: oCenterX, y: oCenterY }, oRect);
+                const endPt = getIntersection({ x: oCenterX, y: oCenterY }, { x: tCenterX, y: tCenterY }, tRect);
 
                 ox = startPt.x; oy = startPt.y;
                 tx = endPt.x; ty = endPt.y;

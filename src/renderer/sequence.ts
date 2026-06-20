@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import { LayoutMap, LayoutNode, LayoutConnection, LayoutGroup, LayoutNote, LayoutActivation, LayoutDivider, DEFAULTS } from "../layout/types";
+import { THEME } from "./primitives";
 
 export class SequenceRenderer {
     protected layer: Konva.Layer;
@@ -102,13 +103,13 @@ export class SequenceRenderer {
             const destroyAct = this.map.activations.find(act => act.nodeId === nodeDef.id && act.isDestroy);
             if (destroyAct) maxY = destroyAct.startPosition.y + destroyAct.size.height;
         }
-        const line = new Konva.Line({ points: [nodeDef.lifelineX, nodeDef.lifelineY, nodeDef.lifelineX, maxY], stroke: '#A80036', strokeWidth: 1, dash: [5, 5] });
+        const line = new Konva.Line({ points: [nodeDef.lifelineX, nodeDef.lifelineY, nodeDef.lifelineX, maxY], stroke: THEME.stroke, strokeWidth: 1, dash: [5, 5] });
         this.lifelines[nodeDef.id] = line;
         this.layer.add(line);
     }
 
     private drawActivation(act: LayoutActivation) {
-        const rect = new Konva.Rect({ x: act.startPosition.x, y: act.startPosition.y, width: act.size.width, height: act.size.height, fill: '#E2E2F0', stroke: '#A80036', strokeWidth: 1 });
+        const rect = new Konva.Rect({ x: act.startPosition.x, y: act.startPosition.y, width: act.size.width, height: act.size.height, fill: THEME.activationFill, stroke: THEME.stroke, strokeWidth: 1 });
         const activationGroup = new Konva.Group();
         activationGroup.add(rect);
         if (!this.activationRects[act.nodeId]) this.activationRects[act.nodeId] = [];
@@ -119,8 +120,8 @@ export class SequenceRenderer {
         if (act.isDestroy) {
             const centerX = act.startPosition.x + act.size.width / 2; const endY = act.startPosition.y + act.size.height;
             const size = 20; const x1 = centerX - size / 2; const x2 = centerX + size / 2; const y1 = endY - size / 2; const y2 = endY + size / 2;
-            destroyX1 = new Konva.Line({ points: [x1, y1, x2, y2], stroke: '#A80036', strokeWidth: 4 });
-            destroyX2 = new Konva.Line({ points: [x2, y1, x1, y2], stroke: '#A80036', strokeWidth: 4 });
+            destroyX1 = new Konva.Line({ points: [x1, y1, x2, y2], stroke: THEME.stroke, strokeWidth: 4 });
+            destroyX2 = new Konva.Line({ points: [x2, y1, x1, y2], stroke: THEME.stroke, strokeWidth: 4 });
             activationGroup.add(destroyX1); activationGroup.add(destroyX2);
         }
         this.activationRects[act.nodeId].push({ rect, def: act, destroyX1, destroyX2 });
@@ -155,10 +156,10 @@ export class SequenceRenderer {
         group.on('dragmove', () => { this.updateConnections(nodeDef.id); });
         if (nodeDef.type === 'actor') {
             const centerX = nodeDef.size.width / 2; const headRadius = 10; const headY = headRadius;
-            const head = new Konva.Circle({ x: centerX, y: headY, radius: headRadius, stroke: '#A80036', strokeWidth: 2, fill: '#E2E2F0' });
-            const body = new Konva.Line({ points: [centerX, headY + headRadius, centerX, headY + headRadius + 20], stroke: '#A80036', strokeWidth: 2 });
-            const arms = new Konva.Line({ points: [centerX - 15, headY + headRadius + 5, centerX + 15, headY + headRadius + 5], stroke: '#A80036', strokeWidth: 2 });
-            const legs = new Konva.Line({ points: [centerX - 10, headY + headRadius + 35, centerX, headY + headRadius + 20, centerX + 10, headY + headRadius + 35], stroke: '#A80036', strokeWidth: 2 });
+            const head = new Konva.Circle({ x: centerX, y: headY, radius: headRadius, stroke: THEME.stroke, strokeWidth: 2, fill: THEME.sequenceFill });
+            const body = new Konva.Line({ points: [centerX, headY + headRadius, centerX, headY + headRadius + 20], stroke: THEME.stroke, strokeWidth: 2 });
+            const arms = new Konva.Line({ points: [centerX - 15, headY + headRadius + 5, centerX + 15, headY + headRadius + 5], stroke: THEME.stroke, strokeWidth: 2 });
+            const legs = new Konva.Line({ points: [centerX - 10, headY + headRadius + 35, centerX, headY + headRadius + 20, centerX + 10, headY + headRadius + 35], stroke: THEME.stroke, strokeWidth: 2 });
             group.add(head); group.add(body); group.add(arms); group.add(legs);
             const text = new Konva.Text({
                 text: nodeDef.origName + (nodeDef.stereotype ? `\n${nodeDef.stereotype}` : ""),
@@ -166,7 +167,7 @@ export class SequenceRenderer {
             });
             group.add(text);
         } else {
-            const rect = new Konva.Rect({ width: nodeDef.size.width, height: nodeDef.size.height, fill: '#E2E2F0', stroke: '#A80036', strokeWidth: 1.5, cornerRadius: 5, shadowColor: 'black', shadowBlur: 5, shadowOffset: { x: 2, y: 2 }, shadowOpacity: 0.2, });
+            const rect = new Konva.Rect({ width: nodeDef.size.width, height: nodeDef.size.height, fill: THEME.sequenceFill, stroke: THEME.stroke, strokeWidth: 1.5, cornerRadius: 5, shadowColor: 'black', shadowBlur: 5, shadowOffset: { x: 2, y: 2 }, shadowOpacity: 0.2, });
             const text = new Konva.Text({
                 text: nodeDef.origName + (nodeDef.stereotype ? `\n${nodeDef.stereotype}` : ""),
                 fontSize: 14, fontFamily: 'sans-serif', fill: 'black', width: nodeDef.size.width, height: nodeDef.size.height, align: 'center', verticalAlign: 'middle',
@@ -320,7 +321,7 @@ export class SequenceRenderer {
         connGroup.on('dragend', (e: any) => { if (this.onNodeMove) { const newY = Math.round(e.target.y()); this.onNodeMove(connGroup.id(), 0, newY); } });
 
         let visualArrow: Konva.Arrow;
-        const color = '#A80036';
+        const color = THEME.stroke;
         let headObj: Konva.Shape | undefined;
         let startHeadObj: Konva.Shape | undefined;
 
@@ -381,16 +382,16 @@ export class SequenceRenderer {
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });
         group.on('dragend', (e: any) => { if (this.onNodeMove) this.onNodeMove(`div-${div.label}`, Math.round(e.target.x()), Math.round(e.target.y())); });
-        const text = new Konva.Text({ text: div.label, fontSize: 14, fontStyle: 'bold', width: div.size.width, align: 'center', fill: '#A80036', padding: 10 });
+        const text = new Konva.Text({ text: div.label, fontSize: 14, fontStyle: 'bold', width: div.size.width, align: 'center', fill: THEME.stroke, padding: 10 });
         const textWidth = text.getTextWidth() + 20; const midX = div.size.width / 2; const gap = textWidth / 2;
         const boxWidth = textWidth; const boxHeight = text.height(); const boxX = midX - boxWidth/2;
-        const rect = new Konva.Rect({ x: boxX, y: 0, width: boxWidth, height: boxHeight, stroke: '#A80036', strokeWidth: 1, fill: '#EEEEEE' });
+        const rect = new Konva.Rect({ x: boxX, y: 0, width: boxWidth, height: boxHeight, stroke: THEME.stroke, strokeWidth: 1, fill: THEME.headerFill });
         group.add(rect);
         const lineY = text.height() / 2;
-        const doubleLineLeft = new Konva.Line({ points: [0, lineY - 3, midX - gap, lineY - 3], stroke: '#A80036', strokeWidth: 2 });
-        const doubleLineRight = new Konva.Line({ points: [midX + gap, lineY - 3, div.size.width, lineY - 3], stroke: '#A80036', strokeWidth: 2 });
-        const doubleLineLeft2 = new Konva.Line({ points: [0, lineY + 3, midX - gap, lineY + 3], stroke: '#A80036', strokeWidth: 2 });
-        const doubleLineRight2 = new Konva.Line({ points: [midX + gap, lineY + 3, div.size.width, lineY + 3], stroke: '#A80036', strokeWidth: 2 });
+        const doubleLineLeft = new Konva.Line({ points: [0, lineY - 3, midX - gap, lineY - 3], stroke: THEME.stroke, strokeWidth: 2 });
+        const doubleLineRight = new Konva.Line({ points: [midX + gap, lineY - 3, div.size.width, lineY - 3], stroke: THEME.stroke, strokeWidth: 2 });
+        const doubleLineLeft2 = new Konva.Line({ points: [0, lineY + 3, midX - gap, lineY + 3], stroke: THEME.stroke, strokeWidth: 2 });
+        const doubleLineRight2 = new Konva.Line({ points: [midX + gap, lineY + 3, div.size.width, lineY + 3], stroke: THEME.stroke, strokeWidth: 2 });
         
         const doubleLines = [doubleLineLeft, doubleLineRight, doubleLineLeft2, doubleLineRight2];
         doubleLines.forEach(l => group.add(l));
@@ -400,8 +401,8 @@ export class SequenceRenderer {
 
     private drawDelay(delay: any) {
         const group = new Konva.Group({ x: delay.position.x, y: delay.position.y });
-        for (let i = 0; i < 3; i++) { group.add(new Konva.Circle({ x: 0, y: i * 10, radius: 2, fill: '#A80036' })); }
-        if (delay.text) { group.add(new Konva.Text({ text: delay.text, fontSize: 12, fill: '#A80036', fontStyle: 'italic', y: 5, x: 10 })); }
+        for (let i = 0; i < 3; i++) { group.add(new Konva.Circle({ x: 0, y: i * 10, radius: 2, fill: THEME.stroke })); }
+        if (delay.text) { group.add(new Konva.Text({ text: delay.text, fontSize: 12, fill: THEME.stroke, fontStyle: 'italic', y: 5, x: 10 })); }
         this.layer.add(group);
     }
 
@@ -410,7 +411,7 @@ export class SequenceRenderer {
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });
         group.on('dragend', (e: any) => { if (this.onNodeMove) this.onNodeMove(group.id(), Math.round(e.target.x()), Math.round(e.target.y())); });
-        const rect = new Konva.Rect({ width: noteDef.size.width, height: noteDef.size.height, fill: '#FBFB77', stroke: '#A80036', strokeWidth: 1 });
+        const rect = new Konva.Rect({ width: noteDef.size.width, height: noteDef.size.height, fill: THEME.noteFill, stroke: THEME.stroke, strokeWidth: 1 });
         const text = new Konva.Text({ text: noteDef.text, width: noteDef.size.width, padding: 5, fontSize: 12, align: 'center' });
         group.add(rect); group.add(text);
         this.layer.add(group);
@@ -565,23 +566,23 @@ export class SequenceRenderer {
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });
         group.on('dragend', (e: any) => { if (this.onNodeMove) this.onNodeMove(groupDef.id, Math.round(e.target.x()), Math.round(e.target.y())); });
-        const rect = new Konva.Rect({ width: groupDef.size.width, height: groupDef.size.height, stroke: groupDef.color || '#A80036', strokeWidth: 2, fill: groupDef.color ? groupDef.color : (isBox ? '#DDDDDD' : undefined), fillOpacity: groupDef.color ? 0.1 : (isBox ? 0.3 : 0) });
+        const rect = new Konva.Rect({ width: groupDef.size.width, height: groupDef.size.height, stroke: groupDef.color || THEME.stroke, strokeWidth: 2, fill: groupDef.color ? groupDef.color : (isBox ? THEME.boxFill : undefined), fillOpacity: groupDef.color ? 0.1 : (isBox ? 0.3 : 0) });
         group.add(rect);
         if (!isBox) {
             const keyword = groupDef.keyword === 'group' ? 'alt' : groupDef.keyword;
             const keywordText = new Konva.Text({ text: isRef ? 'ref' : keyword, fontSize: 12, fontStyle: 'bold', padding: 5, fill: 'black' });
-            const keywordRect = new Konva.Rect({ width: keywordText.width(), height: keywordText.height(), fill: '#EEEEEE', stroke: groupDef.color || '#A80036', strokeWidth: 1 });
+            const keywordRect = new Konva.Rect({ width: keywordText.width(), height: keywordText.height(), fill: THEME.headerFill, stroke: groupDef.color || THEME.stroke, strokeWidth: 1 });
             group.add(keywordRect); group.add(keywordText);
             if (isRef) { group.add(new Konva.Text({ x: 0, y: groupDef.size.height / 2 - 10, text: groupDef.label || '', fontSize: 12, fontStyle: 'bold', width: groupDef.size.width, align: 'center', fill: 'black' })); }
-            else { group.add(new Konva.Text({ x: keywordRect.width() + 5, y: 5, text: groupDef.label ? `[${groupDef.label}]` : '', fontSize: 12, fontStyle: 'bold', fill: groupDef.color || '#A80036' })); }
+            else { group.add(new Konva.Text({ x: keywordRect.width() + 5, y: 5, text: groupDef.label ? `[${groupDef.label}]` : '', fontSize: 12, fontStyle: 'bold', fill: groupDef.color || THEME.stroke })); }
         } else { group.add(new Konva.Text({ x: 0, y: 5, text: groupDef.label || '', width: groupDef.size.width, align: 'center', fontSize: 14, fontStyle: 'bold', fill: 'black' })); }
         if (groupDef.dividerYs) {
             groupDef.dividerYs.forEach((dividerY, index) => {
                 const relativeY = dividerY - groupDef.position.y;
-                const divider = new Konva.Line({ points: [0, relativeY, groupDef.size.width, relativeY], stroke: '#A80036', strokeWidth: 1, dash: [5, 5] });
+                const divider = new Konva.Line({ points: [0, relativeY, groupDef.size.width, relativeY], stroke: THEME.stroke, strokeWidth: 1, dash: [5, 5] });
                 group.add(divider);
                 const nextSection = groupDef.sections[index + 1];
-                if (nextSection && nextSection.label) { group.add(new Konva.Text({ x: 5, y: relativeY + 10, text: `[${nextSection.label}]`, fontSize: 11, fontStyle: 'italic', fill: groupDef.color || '#A80036' })); }
+                if (nextSection && nextSection.label) { group.add(new Konva.Text({ x: 5, y: relativeY + 10, text: `[${nextSection.label}]`, fontSize: 11, fontStyle: 'italic', fill: groupDef.color || THEME.stroke })); }
             });
         }
         this.groupVisuals.push({ group, rect, dividers: [], labels: [], def: groupDef }); this.layer.add(group);

@@ -94,8 +94,8 @@ export class ClassRenderer {
         });
 
         const isClass = nodeDef.type === 'class' || nodeDef.type === 'interface';
-        const fill = '#FEFECE';
-        const stroke = '#A80036';
+        const fill = THEME.nodeFill;
+        const stroke = THEME.stroke;
 
         const rect = new Konva.Rect({
             width: nodeDef.size.width,
@@ -178,20 +178,7 @@ export class ClassRenderer {
     }
 
     private createMemberLabel(member: any, y: number, width: number): Konva.Text {
-        let memberText = "";
-        if (member.visibility === "+" || member.visibility === "-" || member.visibility === "#" || member.visibility === "~") {
-            memberText += member.visibility + " ";
-        } else if (member.visibility === "public") memberText += "+ ";
-        else if (member.visibility === "private") memberText += "- ";
-        else if (member.visibility === "protected") memberText += "# ";
-        else if (member.visibility === "package") memberText += "~ ";
-        else if (member.visibility) memberText += member.visibility + " ";
-
-        if (member.isStatic) memberText += "{static} ";
-        if (member.isAbstract) memberText += "{abstract} ";
-        memberText += member.name;
-        if (member.parameters) memberText += "(" + member.parameters.join(", ") + ")";
-        if (member.type) memberText += " : " + member.type;
+        const memberText = getMemberText(member);
 
         return new Konva.Text({
             text: memberText,
@@ -204,42 +191,6 @@ export class ClassRenderer {
             fontStyle: member.isAbstract ? 'italic' : 'normal',
             textDecoration: member.isStatic ? 'underline' : ''
         });
-    }
-
-    private getIntersection(p1: { x: number, y: number }, p2: { x: number, y: number }, rect: { x: number, y: number, width: number, height: number }): { x: number, y: number } {
-        const { x, y, width, height } = rect;
-        const left = x;
-        const right = x + width;
-        const top = y;
-        const bottom = y + height;
-
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-
-        if (dx === 0 && dy === 0) return p2;
-
-        let tMin = -Infinity;
-        let tMax = Infinity;
-
-        if (dx !== 0) {
-            const t1 = (left - p1.x) / dx;
-            const t2 = (right - p1.x) / dx;
-            tMin = Math.max(tMin, Math.min(t1, t2));
-            tMax = Math.min(tMax, Math.max(t1, t2));
-        } else if (p1.x < left || p1.x > right) return p2;
-
-        if (dy !== 0) {
-            const t1 = (top - p1.y) / dy;
-            const t2 = (bottom - p1.y) / dy;
-            tMin = Math.max(tMin, Math.min(t1, t2));
-            tMax = Math.min(tMax, Math.max(t1, t2));
-        } else if (p1.y < top || p1.y > bottom) return p2;
-
-        if (tMin <= tMax && tMin >= 0 && tMin <= 1) {
-            return { x: p1.x + tMin * dx, y: p1.y + tMin * dy };
-        }
-
-        return p2;
     }
 
     private drawConnection(conn: LayoutConnection) {
@@ -257,8 +208,8 @@ export class ClassRenderer {
         const originRect = { x: originNode.position.x, y: originNode.position.y, width: originNode.size.width, height: originNode.size.height };
         const targetRect = { x: targetNode.position.x, y: targetNode.position.y, width: targetNode.size.width, height: targetNode.size.height };
 
-        const startPt = this.getIntersection({ x: targetCenterX, y: targetCenterY }, { x: originCenterX, y: originCenterY }, originRect);
-        const endPt = this.getIntersection({ x: originCenterX, y: originCenterY }, { x: targetCenterX, y: targetCenterY }, targetRect);
+        const startPt = getIntersection({ x: targetCenterX, y: targetCenterY }, { x: originCenterX, y: originCenterY }, originRect);
+        const endPt = getIntersection({ x: originCenterX, y: originCenterY }, { x: targetCenterX, y: targetCenterY }, targetRect);
 
         const isDashed = conn.type.includes('..');
         
@@ -272,8 +223,8 @@ export class ClassRenderer {
             points: [startPt.x, startPt.y, endPt.x, endPt.y],
             pointerLength: arrowType !== 'default' ? 15 : 10,
             pointerWidth: arrowType !== 'default' ? 15 : 10,
-            fill: arrowType === 'extend' ? 'white' : (arrowType === 'compose' ? 'black' : (arrowType === 'aggregate' ? 'white' : '#A80036')),
-            stroke: '#A80036',
+            fill: arrowType === 'extend' ? 'white' : (arrowType === 'compose' ? 'black' : (arrowType === 'aggregate' ? 'white' : THEME.stroke)),
+            stroke: THEME.stroke,
             strokeWidth: 2,
             dash: isDashed ? [10, 5] : undefined
         });
@@ -385,8 +336,8 @@ export class ClassRenderer {
             const originRect = { x: originGroup.x(), y: originGroup.y(), width: originBase.size.width, height: originBase.size.height };
             const targetRect = { x: targetGroup.x(), y: targetGroup.y(), width: targetBase.size.width, height: targetBase.size.height };
 
-            const startPt = this.getIntersection({ x: targetCenterX, y: targetCenterY }, { x: originCenterX, y: originCenterY }, originRect);
-            const endPt = this.getIntersection({ x: originCenterX, y: originCenterY }, { x: targetCenterX, y: targetCenterY }, targetRect);
+            const startPt = getIntersection({ x: targetCenterX, y: targetCenterY }, { x: originCenterX, y: originCenterY }, originRect);
+            const endPt = getIntersection({ x: originCenterX, y: originCenterY }, { x: targetCenterX, y: targetCenterY }, targetRect);
 
             (conn.konvaObj as Konva.Arrow).points([startPt.x, startPt.y, endPt.x, endPt.y]);
 
@@ -422,11 +373,11 @@ export class ClassRenderer {
         const group = new Konva.Group({ x: groupDef.position.x, y: groupDef.position.y });
         const rect = new Konva.Rect({
             width: groupDef.size.width, height: groupDef.size.height,
-            stroke: '#A80036', strokeWidth: 2, dash: [5, 5]
+            stroke: THEME.stroke, strokeWidth: 2, dash: [5, 5]
         });
         const label = new Konva.Text({
             text: `${groupDef.keyword} [${groupDef.label}]`,
-            fontSize: 12, fontStyle: 'bold', padding: 5, fill: '#A80036'
+            fontSize: 12, fontStyle: 'bold', padding: 5, fill: THEME.stroke
         });
         group.add(rect); group.add(label); this.layer.add(group);
     }
@@ -443,7 +394,7 @@ export class ClassRenderer {
         group.on('dragend', (e: any) => {
             if (this.onNodeMove) this.onNodeMove(group.id(), Math.round(e.target.x()), Math.round(e.target.y()));
         });
-        const rect = new Konva.Rect({ width: noteDef.size.width, height: noteDef.size.height, fill: '#FBFB77', stroke: '#A80036', strokeWidth: 1 });
+        const rect = new Konva.Rect({ width: noteDef.size.width, height: noteDef.size.height, fill: THEME.noteFill, stroke: THEME.stroke, strokeWidth: 1 });
         const text = new Konva.Text({ text: noteDef.text, width: noteDef.size.width, padding: 5, fontSize: 12, align: 'center' });
         group.add(rect); group.add(text); this.layer.add(group);
     }
