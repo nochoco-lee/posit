@@ -32,6 +32,11 @@ export const Top = createToken({ name: "Top", pattern: /top\b/i });
 export const Bottom = createToken({ name: "Bottom", pattern: /bottom\b/i });
 export const Of = createToken({ name: "Of", pattern: /of\b/i });
 export const As = createToken({ name: "As", pattern: /as\b/i });
+export const Remove = createToken({ name: "Remove", pattern: /remove\b/i });
+export const Restore = createToken({ name: "Restore", pattern: /restore\b/i });
+export const Scale = createToken({ name: "Scale", pattern: /scale\b/i });
+export const Set = createToken({ name: "Set", pattern: /set\b/i });
+export const Json = createToken({ name: "Json", pattern: /json\b/i });
 
 export const Stereotype = createToken({ name: "Stereotype", pattern: /<<[^>]+>>/ });
 
@@ -97,6 +102,11 @@ export const allClassTokens = [
     Bottom,
     Of,
     As,
+    Remove,
+    Restore,
+    Scale,
+    Set,
+    Json,
     LBrace,
     RBrace,
 

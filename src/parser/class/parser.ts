@@ -76,12 +76,12 @@ export class ClassParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.As) },
             { ALT: () => this.CONSUME(lexer.Of) },
             { ALT: () => this.CONSUME(lexer.Note) },
-            { ALT: () => this.CONSUME(lexer.End) },
-            { ALT: () => this.CONSUME(lexer.Left) },
-            { ALT: () => this.CONSUME(lexer.Right) },
-            { ALT: () => this.CONSUME(lexer.Top) },
-            { ALT: () => this.CONSUME(lexer.Bottom) },
-            { ALT: () => this.CONSUME(lexer.Package) },
+        { ALT: () => this.CONSUME(lexer.End) },
+        { ALT: () => this.CONSUME(lexer.Left) },
+        { ALT: () => this.CONSUME(lexer.Right) },
+        { ALT: () => this.CONSUME(lexer.Top) },
+        { ALT: () => this.CONSUME(lexer.Bottom) },
+        { ALT: () => this.CONSUME(lexer.Package) },
             { ALT: () => this.CONSUME(lexer.Namespace) },
             { ALT: () => this.CONSUME(lexer.Together) },
             { ALT: () => this.CONSUME(lexer.DividerDot) },
@@ -206,6 +206,10 @@ export class ClassParser extends CstParser {
             { ALT: () => { this.CONSUME(common.LAngle); this.CONSUME(common.RAngle); } }
         ]);
         this.SUBRULE(this.name, { LABEL: "name" });
+        this.OPTION5(() => {
+            this.CONSUME(lexer.As);
+            this.SUBRULE2(this.name, { LABEL: "alias" });
+        });
         this.OPTION2(() => this.CONSUME(lexer.Stereotype));
         this.MANY(() => {
             this.OR3([
@@ -402,7 +406,12 @@ export class ClassParser extends CstParser {
             { ALT: () => this.CONSUME(common.Page) },
             { ALT: () => this.CONSUME(common.Header) },
             { ALT: () => this.CONSUME(common.Footer) },
-            { ALT: () => this.CONSUME(common.Title) }
+            { ALT: () => this.CONSUME(common.Title) },
+            { ALT: () => this.CONSUME(lexer.Remove) },
+            { ALT: () => this.CONSUME(lexer.Restore) },
+            { ALT: () => this.CONSUME(lexer.Scale) },
+            { ALT: () => this.CONSUME(lexer.Set) },
+            { ALT: () => this.CONSUME(lexer.Json) }
         ]);
         this.MANY(() => {
              this.SUBRULE(this.anyToken);
@@ -436,7 +445,7 @@ export class ClassParser extends CstParser {
 
     private isIgnored(): boolean {
         const tok = this.LA(1).tokenType;
-        return tok === common.Exclamation || tok === common.Skinparam || tok === common.Hide || tok === common.Show || tok === common.Page || tok === common.Header || tok === common.Footer || tok === common.Title;
+        return tok === common.Exclamation || tok === common.Skinparam || tok === common.Hide || tok === common.Show || tok === common.Page || tok === common.Header || tok === common.Footer || tok === common.Title || tok === lexer.Remove || tok === lexer.Restore || tok === lexer.Scale || tok === lexer.Set || tok === lexer.Json;
     }
 
     private isMemberStart(): boolean {
@@ -447,6 +456,15 @@ export class ClassParser extends CstParser {
     private isDivider(): boolean {
         const next = this.LA(1).tokenType;
         return next === lexer.DividerDot || next === lexer.DividerEquals || next === lexer.DividerUnderscore || next === lexer.DividerMinus;
+    }
+
+    private isLeftToRightDirection(): boolean {
+        return this.LA(1).tokenType === lexer.Left &&
+               this.LA(2).tokenType === common.Identifier &&
+               this.LA(2).image.toLowerCase() === "to" &&
+               this.LA(3).tokenType === lexer.Right &&
+               this.LA(4).tokenType === common.Identifier &&
+               this.LA(4).image.toLowerCase() === "direction";
     }
 
     private isConnection(): boolean {
@@ -473,6 +491,12 @@ export class ClassParser extends CstParser {
                 { ALT: () => this.CONSUME(common.Newline) },
                 { ALT: () => this.CONSUME(common.StartUml) },
                 { ALT: () => this.CONSUME(common.PosComment) },
+                { GATE: () => this.isLeftToRightDirection(), ALT: () => {
+                    this.CONSUME(lexer.Left);
+                    this.CONSUME(common.Identifier);
+                    this.CONSUME1(lexer.Right);
+                    this.CONSUME1(common.Identifier);
+                }},
                 { ALT: () => this.SUBRULE(this.statement) },
                 { ALT: () => this.CONSUME(common.EndUml) }
             ]);

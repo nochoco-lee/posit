@@ -238,7 +238,7 @@ export class ClassAstVisitor extends BaseVisitor {
 
         let color: string | undefined = undefined;
         if (ctx.color) {
-            color = this.visit(ctx.color[0]);
+            color = ctx.color[0].image;
         }
 
         let layout: any = undefined;
