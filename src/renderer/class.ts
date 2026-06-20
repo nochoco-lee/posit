@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import { LayoutMap, LayoutNode, LayoutConnection, LayoutGroup, LayoutNote } from "../layout/types";
+import { getIntersection, getMemberText, THEME } from "./primitives";
 
 export class ClassRenderer {
     protected layer: Konva.Layer;

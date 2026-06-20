@@ -205,12 +205,15 @@ export class SequenceAstVisitor extends BaseVisitor {
         else if (ctx.Class) shape = "class";
         else if (ctx.ObjectKeyword) shape = "object";
 
+        let stereotype = ctx.stereo ? ctx.stereo[0].image : undefined;
+
         const node: IRNode = {
             type: "node",
             name: alias,
             origName: name,
             label,
             shape,
+            stereotype,
             layout: undefined,
             offset: this.getOffsets(ctx)
         };

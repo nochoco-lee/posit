@@ -6,7 +6,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "test": "vitest --run --pool=forks",
+    "test": "vitest --run --pool=forks -c vitest.basic.config.ts",
+    "test:all": "vitest --run --pool=forks",
     "build": "vite build",
     "plantuml-sequence": "vitest --run --pool=forks -c vitest.coverage.config.ts test_scripts/syntax-coverage.test.ts",
     "plantuml-class": "vitest --run --pool=forks -c vitest.class.coverage.config.ts test_scripts/class-syntax-coverage.test.ts",

@@ -45,6 +45,7 @@ export const Mainframe = createToken({ name: "Mainframe", pattern: /mainframe/i 
 export const Order = createToken({ name: "Order", pattern: /order/i });
 
 export const As = createToken({ name: "As", pattern: /as\b/i });
+export const Stereotype = createToken({ name: "Stereotype", pattern: /<<[^>]+>>/ });
 export const Left = createToken({ name: "Left", pattern: /left\b/i });
 export const Right = createToken({ name: "Right", pattern: /right\b/i });
 export const Top = createToken({ name: "Top", pattern: /top\b/i });
@@ -81,6 +82,7 @@ export const allSequenceTokens = [
     common.MultiLineComment,
     common.LineComment,
     
+    Stereotype,
     Delay,
     Divider,
     Arrow, // High priority

@@ -86,6 +86,7 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Bye) },
             { ALT: () => this.CONSUME(lexer.Mainframe) },
             { ALT: () => this.CONSUME(lexer.As) },
+            { ALT: () => this.CONSUME(lexer.Stereotype) },
             { ALT: () => this.CONSUME(lexer.Left) },
             { ALT: () => this.CONSUME(lexer.Right) },
             { ALT: () => this.CONSUME(lexer.Top) },
@@ -195,6 +196,7 @@ export class SequenceParser extends CstParser {
                 { ALT: () => { this.CONSUME(lexer.As); this.SUBRULE1(this.name, { LABEL: "alias" }); }},
                 { GATE: () => { const next = this.LA(1).tokenType; return next === common.Identifier || next === common.StringLiteral || next === common.NumberToken || next === common.IdentifierLike; }, ALT: () => this.SUBRULE2(this.name, { LABEL: "alias" }) },
                 { ALT: () => this.CONSUME(common.Color, { LABEL: "color" }) },
+                { ALT: () => this.CONSUME(lexer.Stereotype, { LABEL: "stereo" }) },
                 { ALT: () => { this.CONSUME(lexer.Order); this.CONSUME(common.NumberToken, { LABEL: "order" }); } },
                 { ALT: () => { this.CONSUME(common.LBracket); this.SUBRULE(this.participantLabel, { LABEL: "multilineLabel" }); this.CONSUME(common.RBracket); } }
             ]);
