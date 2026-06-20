@@ -14,7 +14,7 @@ describe('PlantUML Sequence Syntax Coverage', () => {
 
     let successCount = 0;
     const totalCount = files.length;
-    const failedFiles: string[] = [];
+    const failedFiles: { file: string; error: string }[] = [];
 
     files.forEach(file => {
         it(`should parse and process ${file}`, () => {
@@ -34,10 +34,9 @@ describe('PlantUML Sequence Syntax Coverage', () => {
                 expect(layoutMap).toBeDefined();
 
                 successCount++;
-            } catch (e) {
-                failedFiles.push(file);
-                console.error(`Failed ${file}:`, e);
-                // Suppressing throw here so the afterAll summary is cleanly visible without gigabytes of stack traces!
+            } catch (e: any) {
+                failedFiles.push({ file, error: e.message || String(e) });
+                throw e;
             }
         });
     });
@@ -49,7 +48,10 @@ describe('PlantUML Sequence Syntax Coverage', () => {
             console.log(`SYNTAX COVERAGE RESULT: ${successCount} / ${totalCount} (${percentage}%)`);
             if (failedFiles.length > 0) {
                 console.log(`\nFailed Scripts (${failedFiles.length}):`);
-                failedFiles.forEach(f => console.log(`  - ${f}`));
+                failedFiles.forEach(f => {
+                    const firstLine = f.error.split('\n')[0];
+                    console.log(`  - ${f.file}: ${firstLine}`);
+                });
             }
             console.log(`========================================\n`);
         } else {

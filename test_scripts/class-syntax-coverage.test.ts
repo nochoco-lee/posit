@@ -45,8 +45,7 @@ describe('PlantUML Class Syntax Coverage', () => {
                 successCount++;
             } catch (e: any) {
                 failedFiles.push({ file, error: e.message || String(e) });
-                console.error(`Failed ${file}:`, e);
-                // Suppressing throw here so the afterAll summary is cleanly visible
+                throw e;
             }
         });
     });
