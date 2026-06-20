@@ -62,7 +62,13 @@ export function parsePlantUml(text: string): IRDiagram {
     const cst = parser.diagram();
 
     if (parser.errors.length > 0) {
-        throw new Error(`Parsing errors (${diagramType}): ` + parser.errors.map((e: any) => e.message).join(", "));
+        const maxErrors = 5;
+        const messages = parser.errors.slice(0, maxErrors).map((e: any) => e.message);
+        let combined = messages.join("; ");
+        if (parser.errors.length > maxErrors) {
+            combined += `; ... and ${parser.errors.length - maxErrors} more error(s)`;
+        }
+        throw new Error(`Parsing errors (${diagramType}): ` + combined);
     }
 
     const ast = visitor.visit(cst);

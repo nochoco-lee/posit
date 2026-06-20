@@ -2,10 +2,18 @@ import { CstParser, EOF, defaultParserErrorProvider } from "chevrotain";
 import * as lexer from "./lexer";
 import * as common from "../common/tokens";
 
+const fastErrorProvider = {
+    ...defaultParserErrorProvider,
+    buildNoViableAltMessage: (options: any) => {
+        return `Expecting one of the possible Token sequences, but found: '${options.actual[0].image}'`;
+    }
+};
+
 export class ClassParser extends CstParser {
     constructor() {
         super(lexer.allClassTokens, { 
             skipValidations: false,
+            errorMessageProvider: fastErrorProvider,
             nodeLocationTracking: "full"
         });
         this.performSelfAnalysis();
