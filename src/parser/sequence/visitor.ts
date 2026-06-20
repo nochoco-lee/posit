@@ -419,8 +419,11 @@ export class SequenceAstVisitor extends BaseVisitor {
         if (ctx.Loop) keyword = "loop";
         if (ctx.Par) keyword = "par";
         if (ctx.Group) keyword = "group";
+        if (ctx.Partition) keyword = "partition";
+        if (ctx.Box) keyword = "box";
 
         const label = ctx.label ? this.visit(ctx.label[0]) : "";
+        const color = ctx.color ? ctx.color[0].image : undefined;
         const sections: any[] = [];
         sections.push({ label, statements: [...statements] });
         
@@ -435,6 +438,7 @@ export class SequenceAstVisitor extends BaseVisitor {
             name: "block",
             keyword,
             label,
+            color,
             sections,
             offset: this.getOffsets(ctx)
         };

@@ -69,6 +69,8 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Loop) },
             { ALT: () => this.CONSUME(lexer.Par) },
             { ALT: () => this.CONSUME(lexer.Group) },
+            { ALT: () => this.CONSUME(lexer.Partition) },
+            { ALT: () => this.CONSUME(lexer.Box) },
             { ALT: () => this.CONSUME(lexer.Else) },
             { ALT: () => this.CONSUME(lexer.End) },
             { ALT: () => this.CONSUME(lexer.Note) },
@@ -361,6 +363,7 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Box) }
         ]);
         this.SUBRULE(this.label);
+        this.OPTION3(() => this.CONSUME(common.Color, { LABEL: "color" }));
         this.MANY({
             GATE: () => this.LA(1).tokenType !== lexer.End && this.LA(1).tokenType !== lexer.Else,
             DEF: () => {
@@ -372,36 +375,79 @@ export class SequenceParser extends CstParser {
         });
         this.MANY1(() => this.SUBRULE(this.elseBlock));
         this.CONSUME(lexer.End);
+        this.OPTION2(() => {
+            this.OR2([
+                { ALT: () => this.CONSUME1(lexer.Alt) },
+                { ALT: () => this.CONSUME1(lexer.Opt) },
+                { ALT: () => this.CONSUME1(lexer.Loop) },
+                { ALT: () => this.CONSUME1(lexer.Par) },
+                { ALT: () => this.CONSUME1(lexer.Group) },
+                { ALT: () => this.CONSUME1(lexer.Partition) },
+                { ALT: () => this.CONSUME1(lexer.Box) }
+            ]);
+        });
     });
 
     public ignoredStatement = this.RULE("ignoredStatement", () => {
         this.OR([
-            { ALT: () => this.CONSUME(common.Exclamation) },
-            { ALT: () => this.CONSUME(common.Skinparam) },
-            { ALT: () => this.CONSUME(common.Hide) },
-            { ALT: () => this.CONSUME(common.Show) },
-            { ALT: () => this.CONSUME(common.Page) },
-            { ALT: () => this.CONSUME(common.Header) },
-            { ALT: () => this.CONSUME(common.Footer) },
-            { ALT: () => this.CONSUME(common.Title) },
-            { ALT: () => this.CONSUME(lexer.Newpage) },
-            { ALT: () => this.CONSUME(lexer.Mainframe) }
+            { GATE: () => this.LA(2).tokenType === common.Newline, ALT: () => {
+                this.OR1([
+                    { ALT: () => this.CONSUME(common.Title) },
+                    { ALT: () => this.CONSUME(common.Header) },
+                    { ALT: () => this.CONSUME(common.Footer) }
+                ]);
+                this.CONSUME(common.Newline);
+                this.MANY3({
+                    GATE: () => {
+                        const next = this.LA(1).tokenType;
+                        const next2 = this.LA(2).tokenType;
+                        if (next === lexer.End && (next2 === common.Title || next2 === common.Header || next2 === common.Footer)) {
+                            return false;
+                        }
+                        return next !== common.EndUml && next !== EOF;
+                    },
+                    DEF: () => this.OR2([
+                        { ALT: () => this.CONSUME1(common.Newline) },
+                        { ALT: () => this.SUBRULE(this.anyToken) }
+                    ])
+                });
+                this.CONSUME(lexer.End);
+                this.OR3([
+                    { ALT: () => this.CONSUME1(common.Title) },
+                    { ALT: () => this.CONSUME1(common.Header) },
+                    { ALT: () => this.CONSUME1(common.Footer) }
+                ]);
+            }},
+            { ALT: () => {
+                this.OR4([
+                    { ALT: () => this.CONSUME(common.Exclamation) },
+                    { ALT: () => this.CONSUME(common.Skinparam) },
+                    { ALT: () => this.CONSUME(common.Hide) },
+                    { ALT: () => this.CONSUME(common.Show) },
+                    { ALT: () => this.CONSUME(common.Page) },
+                    { ALT: () => this.CONSUME2(common.Header) },
+                    { ALT: () => this.CONSUME2(common.Footer) },
+                    { ALT: () => this.CONSUME2(common.Title) },
+                    { ALT: () => this.CONSUME(lexer.Newpage) },
+                    { ALT: () => this.CONSUME(lexer.Mainframe) }
+                ]);
+                this.MANY({
+                     GATE: () => this.LA(1).tokenType !== common.Newline && this.LA(1).tokenType !== common.LBrace && this.LA(1).tokenType !== common.EndUml,
+                     DEF: () => this.SUBRULE2(this.anyToken)
+                });
+                this.OPTION(() => {
+                    this.CONSUME(common.LBrace);
+                    this.MANY1({
+                        GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== common.EndUml && this.LA(1).tokenType !== EOF,
+                        DEF: () => this.OR5([
+                            { ALT: () => this.CONSUME3(common.Newline) },
+                            { ALT: () => this.SUBRULE1(this.anyToken) }
+                        ])
+                    });
+                    this.CONSUME(common.RBrace);
+                });
+            }}
         ]);
-        this.MANY({
-             GATE: () => this.LA(1).tokenType !== common.Newline && this.LA(1).tokenType !== common.LBrace && this.LA(1).tokenType !== common.EndUml,
-             DEF: () => this.SUBRULE(this.anyToken)
-        });
-        this.OPTION(() => {
-            this.CONSUME(common.LBrace);
-            this.MANY1({
-                GATE: () => this.LA(1).tokenType !== common.RBrace && this.LA(1).tokenType !== common.EndUml && this.LA(1).tokenType !== EOF,
-                DEF: () => this.OR1([
-                    { ALT: () => this.CONSUME(common.Newline) },
-                    { ALT: () => this.SUBRULE1(this.anyToken) }
-                ])
-            });
-            this.CONSUME(common.RBrace);
-        });
     });
 
     public timingDeclaration = this.RULE("timingDeclaration", () => {
