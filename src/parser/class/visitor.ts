@@ -65,7 +65,20 @@ export class ClassAstVisitor extends BaseVisitor {
         if (ctx.connectionDeclaration) return this.visit(ctx.connectionDeclaration[0]);
         if (ctx.noteDeclaration) return this.visit(ctx.noteDeclaration[0]);
         if (ctx.containerDeclaration) return this.visit(ctx.containerDeclaration[0]);
+        if (ctx.implicitMemberDeclaration) return this.visit(ctx.implicitMemberDeclaration[0]);
         return null;
+    }
+
+    implicitMemberDeclaration(ctx: any): IRNode {
+        const name = this.visit(ctx.className[0]);
+        return {
+            type: "node",
+            shape: "class",
+            name,
+            origName: name,
+            members: [],
+            offset: this.getOffsets(ctx)
+        };
     }
 
     containerDeclaration(ctx: any): IRContainer {
