@@ -110,7 +110,7 @@ export class DeploymentAstVisitor extends BaseVisitor {
     }
 
     nodeOrContainer(ctx: any): IRNode | IRContainer {
-        const keywordToken = Object.keys(ctx).find(k => !["name", "LBrace", "RBrace", "LBracket", "RBracket", "statement", "Newline", "stereo", "color", "alias", "layout"].includes(k));
+        const keywordToken = Object.keys(ctx).find(k => !["name", "LBrace", "RBrace", "LBracket", "RBracket", "statement", "Newline", "stereo", "color", "alias", "layout", "As"].includes(k));
         const keyword = keywordToken ? keywordToken.toLowerCase() : "package";
         const name = this.visit(ctx.name[0]);
         const alias = ctx.alias ? this.visit(ctx.alias[0]) : name;
