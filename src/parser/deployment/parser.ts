@@ -110,7 +110,8 @@ export class DeploymentParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Json) },
             { ALT: () => this.CONSUME(lexer.Pragma) },
             { ALT: () => this.CONSUME(lexer.Style) },
-            { ALT: () => this.CONSUME(lexer.EmptyParens) }
+            { ALT: () => this.CONSUME(lexer.EmptyParens) },
+            { ALT: () => this.CONSUME(lexer.EmptyAngleBrackets) }
         ]);
     });
 
@@ -180,7 +181,8 @@ export class DeploymentParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Json) },
             { ALT: () => this.CONSUME(lexer.Pragma) },
             { ALT: () => this.CONSUME(lexer.Style) },
-            { ALT: () => this.CONSUME(lexer.EmptyParens) }
+            { ALT: () => this.CONSUME(lexer.EmptyParens) },
+            { ALT: () => this.CONSUME(lexer.EmptyAngleBrackets) }
         ]);
     });
 
@@ -281,6 +283,7 @@ export class DeploymentParser extends CstParser {
                 { ALT: () => this.CONSUME(lexer.Map) },
                 { ALT: () => this.CONSUME(lexer.State) },
                 { ALT: () => this.CONSUME(lexer.EmptyParens) },
+                { ALT: () => this.CONSUME(lexer.EmptyAngleBrackets) },
                 { ALT: () => { this.CONSUME(common.LParen); this.CONSUME(common.RParen); } },
             ]);
         });

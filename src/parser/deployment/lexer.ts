@@ -67,6 +67,7 @@ export const StyleBlock = createToken({
 });
 
 export const EmptyParens = createToken({ name: "EmptyParens", pattern: /\(\)/ });
+export const EmptyAngleBrackets = createToken({ name: "EmptyAngleBrackets", pattern: /<>/ });
 
 export const Arrow = createToken({
     name: "Arrow",
@@ -84,6 +85,7 @@ export const allDeploymentTokens = [
     common.LineComment,
     StyleBlock,
     EmptyParens,
+    EmptyAngleBrackets,
     Stereotype,
     Arrow,
     common.Plus,
