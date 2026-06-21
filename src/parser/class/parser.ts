@@ -129,15 +129,37 @@ export class ClassParser extends CstParser {
     public namePart = this.RULE("namePart", () => { this.OR([{ ALT: () => this.SUBRULE(this.nodeIdentifier) }, { ALT: () => this.CONSUME(common.StringLiteral) }, { ALT: () => this.CONSUME(common.NumberToken) }]); });
 
     public connectionName = this.RULE("connectionName", () => {
+        let hasDot = false;
+        this.OPTION(() => {
+            this.CONSUME(common.Dot);
+            hasDot = true;
+        });
         this.AT_LEAST_ONE({
             GATE: () => {
                 const next = this.LA(1).tokenType;
                 if (next === common.Colon) return this.LA(2).tokenType === common.Colon;
+                if (next === common.Dot) {
+                    if (hasDot) return true;
+                    const afterDot = this.LA(2).tokenType;
+                    if (afterDot !== common.Identifier && afterDot !== common.NumberToken && afterDot !== common.StringLiteral &&
+                        afterDot !== lexer.Class && afterDot !== lexer.ObjectKeyword && afterDot !== lexer.Interface && afterDot !== lexer.Enum &&
+                        afterDot !== lexer.Annotation && afterDot !== lexer.Abstract && afterDot !== lexer.Entity && afterDot !== lexer.Struct &&
+                        afterDot !== lexer.Protocol && afterDot !== lexer.RecordKeyword && afterDot !== lexer.Metaclass && afterDot !== lexer.StereotypeKeyword &&
+                        afterDot !== lexer.Dataclass && afterDot !== lexer.Exception && afterDot !== lexer.Circle && afterDot !== lexer.Diamond &&
+                        afterDot !== lexer.Left && afterDot !== lexer.Right && afterDot !== lexer.Top && afterDot !== lexer.Bottom &&
+                        afterDot !== lexer.Extends && afterDot !== lexer.Implements && afterDot !== lexer.Note) return false;
+                    const afterName = this.LA(3).tokenType;
+                    return afterName !== common.Newline && afterName !== common.EndUml && afterName !== EOF;
+                }
                 return next === common.Identifier || next === common.NumberToken || next === common.StringLiteral || next === lexer.Class || next === lexer.ObjectKeyword || next === lexer.Interface || next === lexer.Enum || next === lexer.Annotation || next === lexer.Abstract || next === lexer.Entity || next === lexer.Struct || next === lexer.Protocol || next === lexer.RecordKeyword || next === lexer.Metaclass || next === lexer.StereotypeKeyword || next === lexer.Dataclass || next === lexer.Exception || next === lexer.Circle || next === lexer.Diamond || next === lexer.Left || next === lexer.Right || next === lexer.Top || next === lexer.Bottom || next === lexer.Extends || next === lexer.Implements || next === common.Tilde || next === common.LAngle || next === common.RAngle || next === common.QuestionMark || next === common.Comma || next === common.LParen || next === common.RParen || next === common.Slash;
             },
             DEF: () => {
                 this.OR([
                     { ALT: () => this.SUBRULE(this.namePart, { LABEL: "parts" }) },
+                    { ALT: () => {
+                        this.CONSUME(common.Dot, { LABEL: "seps" });
+                        hasDot = true;
+                    }},
                     { ALT: () => this.CONSUME(common.Tilde, { LABEL: "seps" }) },
                     { ALT: () => this.CONSUME(common.LAngle, { LABEL: "seps" }) },
                     { ALT: () => this.CONSUME(common.RAngle, { LABEL: "seps" }) },
@@ -387,10 +409,11 @@ export class ClassParser extends CstParser {
                     this.CONSUME(lexer.Of);
                     this.SUBRULE2(this.name, { LABEL: "target" });
                 });
-                this.OPTION5(() => this.SUBRULE1(this.noteBody));
+                this.OPTION5(() => this.CONSUME(common.Color));
+                this.OPTION6(() => this.SUBRULE1(this.noteBody));
             }}
         ]);
-        this.OPTION6(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
+        this.OPTION7(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
     });
 
     public noteBody = this.RULE("noteBody", () => {
@@ -436,6 +459,9 @@ export class ClassParser extends CstParser {
             this.CONSUME(common.Color);
         });
         this.OPTION2(() => {
+            this.CONSUME(lexer.Stereotype);
+        });
+        this.OPTION3(() => {
             this.CONSUME(common.PosComment, { LABEL: "layout" });
         });
         this.CONSUME(lexer.LBrace);
@@ -464,8 +490,12 @@ export class ClassParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Set) },
             { ALT: () => this.CONSUME(lexer.Json) }
         ]);
-        this.MANY(() => {
-             this.SUBRULE(this.anyToken);
+        this.MANY({
+            GATE: () => {
+                const next = this.LA(1).tokenType;
+                return next !== common.Newline && next !== common.EndUml && next !== EOF && next !== lexer.LBrace;
+            },
+            DEF: () => this.SUBRULE(this.anyToken)
         });
         this.OPTION(() => {
             this.CONSUME(lexer.LBrace);
