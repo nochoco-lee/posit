@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { parsePlantUml } from '../src/parser';
 import { ClassLayoutManager } from '../src/layout/class';
 
-describe('Diagram 2 Layout Reproduction', () => {
-    it('should layout independent pairs horizontally', () => {
+describe('Diagram 2 Layout Reproduction', async () => {
+    it('should layout independent pairs horizontally', async () => {
         const puml = `@startuml
 Class01 <|-- Class02
 Class03 *-- Class04
@@ -11,7 +11,7 @@ Class05 o-- Class06
 Class07 .. Class08
 Class09 -- Class10
 @enduml`;
-        const ast = parsePlantUml(puml);
+        const ast = await parsePlantUml(puml);
         const layoutManager = new ClassLayoutManager();
         const map = layoutManager.process(ast);
 
@@ -39,3 +39,6 @@ Class09 -- Class10
         expect(map.nodes['Class04'].position.x).toBe(map.nodes['Class03'].position.x);
     });
 });
+
+
+

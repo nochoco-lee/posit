@@ -3,8 +3,8 @@ import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser";
 import { LayoutManager } from "../src/layout/engine";
 
-describe("Sequence Group Layout", () => {
-    it("should process alt/else groups and record section info", () => {
+describe("Sequence Group Layout", async () => {
+    it("should process alt/else groups and record section info", async () => {
         const input = `
 @startuml
 alt success
@@ -15,7 +15,7 @@ end
 @enduml
 `;
 
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         const layoutManager = new LayoutManager();
         const map = layoutManager.process(ast);
 
@@ -27,3 +27,6 @@ end
         expect(group.dividerYs[0]).toBeLessThan(group.position.y + group.size.height);
     });
 });
+
+
+

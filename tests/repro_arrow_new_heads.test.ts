@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { SequenceLexer } from "../src/parser/sequence/lexer";
 
-describe("Arrow token new heads", () => {
+describe("Arrow token new heads", async () => {
     const lex = (input: string) => {
         const lexResult = SequenceLexer.tokenize(input);
         return lexResult.tokens.map(t => ({
@@ -10,7 +10,7 @@ describe("Arrow token new heads", () => {
         }));
     };
 
-    it("should match arrows with ( and ) heads separately to support duration", () => {
+    it("should match arrows with ( and ) heads separately to support duration", async () => {
         const testCases = [
             "->)",
             "(<-",
@@ -25,7 +25,7 @@ describe("Arrow token new heads", () => {
         }
     });
 
-    it("should match arrows with [ and ] heads", () => {
+    it("should match arrows with [ and ] heads", async () => {
         const testCases = [
             "->]",
             "[<-",
@@ -45,7 +45,7 @@ describe("Arrow token new heads", () => {
         }
     });
 
-    it("should match arrows with multiple heads separately", () => {
+    it("should match arrows with multiple heads separately", async () => {
         const tokens = lex("->))");
         expect(tokens.length).toBe(3);
         expect(tokens[0].type).toBe("Arrow");
@@ -53,3 +53,6 @@ describe("Arrow token new heads", () => {
         expect(tokens[2].type).toBe("RParen");
     });
 });
+
+
+

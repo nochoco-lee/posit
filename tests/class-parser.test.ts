@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
 
-describe("Class Diagram Parser", () => {
-    it("should parse classes and interfaces with layout metadata", () => {
+describe("Class Diagram Parser", async () => {
+    it("should parse classes and interfaces with layout metadata", async () => {
         const input = `
 @startuml
 class User /' @pos(100, 200) '/
@@ -12,7 +12,7 @@ User *-- Order
 @enduml
     `;
 
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
 
         expect(ast.type).toBe("Diagram");
         expect(ast.statements.length).toBe(4);
@@ -52,3 +52,6 @@ User *-- Order
         });
     });
 });
+
+
+

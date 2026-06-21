@@ -3,12 +3,12 @@ import { parsePlantUml } from '../src/parser';
 import { Emitter } from '../src/layout/emitter';
 import { SequenceLayoutManager } from '../src/layout/sequence';
 
-describe('Emitter implicit participant auto-generation', () => {
-    it('should generate participant tags for implicit participants', () => {
+describe('Emitter implicit participant auto-generation', async () => {
+    it('should generate participant tags for implicit participants', async () => {
         const puml = `@startuml
 A -> B
 @enduml`;
-        const ast = parsePlantUml(puml);
+        const ast = await parsePlantUml(puml);
         const layoutManager = new SequenceLayoutManager();
         const map = layoutManager.process(ast);
         
@@ -24,7 +24,7 @@ A -> B
         expect(updatedPuml).toContain("A -> B");
     });
 
-    it('should generate participant tags for implicit participants in Mermaid', () => {
+    it('should generate participant tags for implicit participants in Mermaid', async () => {
         const mermaid = `sequenceDiagram
 A->>B: hi`;
         const ast = {
@@ -54,11 +54,11 @@ A->>B: hi`;
         expect(updatedMermaid).toContain("A->>B: hi");
     });
 
-    it('should update auto-generated participant tags on subsequent moves', () => {
+    it('should update auto-generated participant tags on subsequent moves', async () => {
         const puml = `@startuml
 A -> B
 @enduml`;
-        const ast1 = parsePlantUml(puml);
+        const ast1 = await parsePlantUml(puml);
         const layoutManager = new SequenceLayoutManager();
         const map1 = layoutManager.process(ast1);
         
@@ -71,7 +71,7 @@ A -> B
         expect(puml2).toContain("participant A /' @pos(100, 100) '/");
         
         // Second move
-        const ast2 = parsePlantUml(puml2);
+        const ast2 = await parsePlantUml(puml2);
         const map2 = layoutManager.process(ast2);
         map2.nodes['A'].position = { x: 200, y: 200 };
         
@@ -84,3 +84,6 @@ A -> B
         expect(matches?.length).toBe(2);
     });
 });
+
+
+

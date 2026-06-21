@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
 
-describe("Sequence Diagram Parser", () => {
-    it("should parse a simple sequence diagram with layout metadata", () => {
+describe("Sequence Diagram Parser", async () => {
+    it("should parse a simple sequence diagram with layout metadata", async () => {
         const input = `
 @startuml
 participant Alice /' @pos(100, 200) '/
@@ -12,7 +12,7 @@ Bob --> Alice : Authentication Response
 @enduml
     `;
 
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
 
         expect(ast.type).toBe("Diagram");
         expect(ast.statements.length).toBe(4);
@@ -52,7 +52,7 @@ Bob --> Alice : Authentication Response
         });
     });
 
-    it("should parse quoted labels with spaces and newlines", () => {
+    it("should parse quoted labels with spaces and newlines", async () => {
         const input = `
 @startuml
 Alice -> Bob : "Authentication\\nRequest"
@@ -60,7 +60,7 @@ Bob --> Alice : "Authentication Response"
 @enduml
     `;
 
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
 
         expect(ast.statements[0]).toMatchObject({
             type: "edge",
@@ -73,14 +73,14 @@ Bob --> Alice : "Authentication Response"
         });
     });
 
-    it("should parse quoted participant labels in connections", () => {
+    it("should parse quoted participant labels in connections", async () => {
         const input = `
 @startuml
 "User" -> Alice : Hello
 Alice -> "Web Server" : Request
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements[0]).toMatchObject({
             type: "edge",
             from: "User",
@@ -95,14 +95,14 @@ Alice -> "Web Server" : Request
         });
     });
 
-    it("should parse participant aliases", () => {
+    it("should parse participant aliases", async () => {
         const input = `
 @startuml
 participant "External User" as EU
 EU -> Alice : Hello
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements[0]).toMatchObject({
             type: "node",
             name: "EU",
@@ -115,13 +115,13 @@ EU -> Alice : Hello
         });
     });
 
-    it("should parse quoted participant names in connections", () => {
+    it("should parse quoted participant names in connections", async () => {
         const input = `
 @startuml
 Bob -> "Uncle Tom" : abc
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements[0]).toMatchObject({
             type: "edge",
             from: "Bob",
@@ -129,33 +129,33 @@ Bob -> "Uncle Tom" : abc
         });
     });
 
-    it("should parse unquoted labels with spaces and keywords", () => {
+    it("should parse unquoted labels with spaces and keywords", async () => {
         const input = `
 @startuml
 Foo -> Foo1 : To actor
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements[0]).toMatchObject({
             type: "edge",
             label: "To actor"
         });
     });
 
-    it("should parse unquoted labels with \\n for multiline text", () => {
+    it("should parse unquoted labels with \\n for multiline text", async () => {
         const input = `
 @startuml
 Alice -> Alice: This is a signal to self.\\nIt also demonstrates\\nmultiline \\ntext
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements[0]).toMatchObject({
             type: "edge",
             label: "This is a signal to self.\nIt also demonstrates\nmultiline \ntext"
         });
     });
 
-    it("should ignore single-line comments starting with '", () => {
+    it("should ignore single-line comments starting with '", async () => {
         const input = `
 @startuml
 ' This is a comment
@@ -163,7 +163,7 @@ Alice -> Bob : Hello
 ' Another comment
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements.length).toBe(1);
         expect(ast.statements[0]).toMatchObject({
             type: "edge",
@@ -172,7 +172,7 @@ Alice -> Bob : Hello
         });
     });
 
-    it("should ignore multi-line comments starting with /' and ending with '/", () => {
+    it("should ignore multi-line comments starting with /' and ending with '/", async () => {
         const input = `
 @startuml
 /' 
@@ -183,7 +183,7 @@ Alice -> Bob : Hello
 /' Another multi-line comment '/
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements.length).toBe(1);
         expect(ast.statements[0]).toMatchObject({
             type: "edge",
@@ -192,7 +192,7 @@ Alice -> Bob : Hello
         });
     });
 
-    it("should ignore skinparam and hide statements", () => {
+    it("should ignore skinparam and hide statements", async () => {
         const input = `
 @startuml
 skinparam handwritten true
@@ -201,7 +201,7 @@ Alice -> Bob : Hello
 skinparam backgroundColor #EEE
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         // statements[0] is null from visitor for ignoredStatement
         // Let's filter out nulls if we want to be clean, but currently AST has them
         const validStatements = ast.statements.filter(s => s !== null);
@@ -213,7 +213,7 @@ skinparam backgroundColor #EEE
         });
     });
 
-    it("should not throw error when hide statement is at the end", () => {
+    it("should not throw error when hide statement is at the end", async () => {
         const input = `
 @startuml
 actor Alice
@@ -222,17 +222,20 @@ Alice -> Bob : hello
 hide footbox
 @enduml
 `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast).toBeDefined();
         // This input used to cause "Cannot read properties of null (reading 'type')"
     });
 
-    it("should throw on invalid syntax", () => {
+    it("should throw on invalid syntax", async () => {
         const input = `
 @startuml
 badsyntax
 @enduml
     `;
-        expect(() => parsePlantUml(input)).toThrow(/Parsing errors/);
+        await expect(parsePlantUml(input)).rejects.toThrow(/Parsing errors/);
     });
 });
+
+
+

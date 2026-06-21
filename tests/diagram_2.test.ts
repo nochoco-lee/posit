@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
 
-describe("Sequence Diagram Parser - Diagram 2", () => {
-    it("should parse diagram_2.puml with various participant types", () => {
+describe("Sequence Diagram Parser - Diagram 2", async () => {
+    it("should parse diagram_2.puml with various participant types", async () => {
         const input = `
 @startuml
 participant Participant as Foo
@@ -22,7 +22,7 @@ Foo -> Foo6 : To collections
 Foo -> Foo7: To queue
 @enduml
 `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.type).toBe("Diagram");
         
         const validStatements = ast.statements.filter(s => s !== null);
@@ -43,3 +43,6 @@ Foo -> Foo7: To queue
         expect(validStatements[9]).toMatchObject({ type: "edge", from: "Foo", to: "Foo2", label: "To boundary" });
     });
 });
+
+
+

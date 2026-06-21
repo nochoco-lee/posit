@@ -7,7 +7,7 @@ import { LayoutManager } from '../src/layout/engine';
 const type = 'sequence';
 const testScriptsDir = path.join(__dirname, `mermaid_${type}`);
 
-describe(`Mermaid ${type} Syntax Coverage`, () => {
+describe(`Mermaid ${type} Syntax Coverage`, async () => {
     let files: string[] = [];
     if (fs.existsSync(testScriptsDir)) {
         files = fs.readdirSync(testScriptsDir).filter(f => f.endsWith('.mmd'));
@@ -18,12 +18,12 @@ describe(`Mermaid ${type} Syntax Coverage`, () => {
     const failedFiles: string[] = [];
 
     files.forEach(file => {
-        it(`should parse and process ${file}`, () => {
+        it(`should parse and process ${file}`, async () => {
             let content = fs.readFileSync(path.join(testScriptsDir, file), 'utf-8');
             
             try {
                 // Should not throw errors during parsing
-                const ast = parseMermaid(content);
+                const ast = await parseMermaid(content);
                 expect(ast.type).toBe("Diagram");
                 
                 // Should not throw errors during layout generation
@@ -55,3 +55,6 @@ describe(`Mermaid ${type} Syntax Coverage`, () => {
         }
     });
 });
+
+
+

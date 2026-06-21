@@ -1,8 +1,8 @@
 import { describe, it } from 'vitest';
 import { ClassLexer } from '../src/parser/class/lexer';
 
-describe('Parser Debug', () => {
-    it('should parse diagram_34 correctly', () => {
+describe('Parser Debug', async () => {
+    it('should parse diagram_34 correctly', async () => {
         const text = `@startuml
 package "My Package" {
   class ClassA {
@@ -17,3 +17,6 @@ package "My Package" {
         }
     });
 });
+
+
+

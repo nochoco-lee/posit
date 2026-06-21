@@ -5,12 +5,12 @@ import { SequenceLayoutManager } from '../src/layout/sequence';
 import { ClassLayoutManager } from '../src/layout/class';
 import { DeploymentLayoutManager } from '../src/layout/deployment';
 
-describe('Harden @pos injection', () => {
-    it('should NOT split words when injecting @pos', () => {
+describe('Harden @pos injection', async () => {
+    it('should NOT split words when injecting @pos', async () => {
         const puml = `@startuml
 Alice -> Bob : Hello
 @enduml`;
-        const ast = parsePlantUml(puml);
+        const ast = await parsePlantUml(puml);
         const layoutManager = new SequenceLayoutManager();
         const map = layoutManager.process(ast);
         
@@ -27,14 +27,14 @@ Alice -> Bob : Hello
         expect(updatedPuml).toContain("Hello");
     });
 
-    it('should NOT split words in class declarations', () => {
+    it('should NOT split words in class declarations', async () => {
         const puml = `@startuml
 class User {
   String name
   void login()
 }
 @enduml`;
-        const ast = parsePlantUml(puml);
+        const ast = await parsePlantUml(puml);
         const layoutManager = new ClassLayoutManager();
         const map = layoutManager.process(ast);
         
@@ -52,11 +52,11 @@ class User {
         expect(updatedPuml).not.toContain("Us /' @pos");
     });
 
-    it('should NOT split words in deployment nodes', () => {
+    it('should NOT split words in deployment nodes', async () => {
         const puml = `@startuml
 node "Application Server" as App
 @enduml`;
-        const ast = parsePlantUml(puml);
+        const ast = await parsePlantUml(puml);
         const layoutManager = new DeploymentLayoutManager();
         const map = layoutManager.process(ast);
         
@@ -71,3 +71,6 @@ node "Application Server" as App
         expect(updatedPuml).not.toContain("Ap /' @pos");
     });
 });
+
+
+

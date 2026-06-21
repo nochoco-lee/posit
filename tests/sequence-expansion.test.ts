@@ -3,8 +3,8 @@ import { parsePlantUml } from "../src/parser/index";
 import { IRGroup, IRNote, IRActivation, IREdge } from "../src/ir/types";
 import { LayoutManager } from "../src/layout/engine";
 
-describe("Sequence Diagram Expansion", () => {
-    it("should parse expanded message types and activation shortcuts", () => {
+describe("Sequence Diagram Expansion", async () => {
+    it("should parse expanded message types and activation shortcuts", async () => {
         const input = `
 @startuml
 A ->> B : Head 1
@@ -16,7 +16,7 @@ B x--x A : Both lost
 A ->o B : Open circle
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements.length).toBe(7);
 
         expect((ast.statements[0] as IREdge).arrow).toBe("->>");
@@ -28,7 +28,7 @@ A ->o B : Open circle
         expect((ast.statements[6] as IREdge).arrow).toBe("->o");
     });
 
-    it("should parse expanded diagram_14 arrow types", () => {
+    it("should parse expanded diagram_14 arrow types", async () => {
         const input = `
 @startuml
 Bob ->x Alice
@@ -45,28 +45,28 @@ Bob <-> Alice
 Bob <->o Alice
 @enduml
         `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements.length).toBe(10);
 
         const layoutManager = new LayoutManager();
         layoutManager.process(ast);
     });
 
-    it("should parse expanded diagram_15 colored arrows", () => {
+    it("should parse expanded diagram_15 colored arrows", async () => {
         const input = `
 @startuml
 Bob -[#red]> Alice : hello
 Alice -[#0000FF]->Bob : ok
 @enduml
         `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements.length).toBe(2);
 
         const layoutManager = new LayoutManager();
         layoutManager.process(ast);
     });
 
-    it("should parse grouping blocks (alt, else, opt, loop)", () => {
+    it("should parse grouping blocks (alt, else, opt, loop)", async () => {
         const input = `
 @startuml
 alt success
@@ -82,7 +82,7 @@ loop 10 times
 end
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements.length).toBe(3);
 
         const altGroup = ast.statements[0] as IRGroup;
@@ -101,7 +101,7 @@ end
         expect(loopGroup.label).toBe("10 times");
     });
 
-    it("should parse notes", () => {
+    it("should parse notes", async () => {
         const input = `
 @startuml
 note left of Alice : hello
@@ -110,7 +110,7 @@ note over Alice, Bob : together
 note across : everyone
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements.length).toBe(4);
 
         expect((ast.statements[0] as IRNote).placement).toBe("left");
@@ -127,7 +127,7 @@ note across : everyone
         expect((ast.statements[3] as IRNote).placement).toBe("across");
     });
 
-    it("should parse activation commands", () => {
+    it("should parse activation commands", async () => {
         const input = `
 @startuml
 activate Alice
@@ -135,7 +135,7 @@ deactivate Alice
 destroy Bob
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements.length).toBe(3);
 
         expect((ast.statements[0] as IRActivation).action).toBe("activate");
@@ -145,3 +145,6 @@ destroy Bob
         expect((ast.statements[2] as IRActivation).action).toBe("destroy");
     });
 });
+
+
+

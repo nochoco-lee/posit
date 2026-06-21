@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { parsePlantUml } from '../src/parser/index';
 
-describe('Reproduction: diagram_38.puml', () => {
-    it('should parse class with generic containing ? and extends', () => {
+describe('Reproduction: diagram_38.puml', async () => {
+    it('should parse class with generic containing ? and extends', async () => {
         const puml = `
 @startuml
 class Foo<? extends Element> {
@@ -11,7 +11,10 @@ class Foo<? extends Element> {
 Foo *- Element
 @enduml
 `;
-        const ast = parsePlantUml(puml);
+        const ast = await parsePlantUml(puml);
         expect(ast.type).toBe("Diagram");
     });
 });
+
+
+

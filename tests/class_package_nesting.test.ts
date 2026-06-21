@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
 import { LayoutManager } from "../src/layout/engine";
 
-describe("Class Diagram Package Nesting", () => {
-    it("should render classes inside their defined package in a class diagram", () => {
+describe("Class Diagram Package Nesting", async () => {
+    it("should render classes inside their defined package in a class diagram", async () => {
         const puml = `
 @startuml
 package "My Package" {
@@ -13,7 +13,7 @@ package "My Package" {
 }
 @enduml
 `;
-        const ast = parsePlantUml(puml);
+        const ast = await parsePlantUml(puml);
         const layout = new LayoutManager().process(ast);
 
         expect(layout.groups.length).toBe(1);
@@ -35,7 +35,7 @@ package "My Package" {
         expect(classA.position.x + classA.size.width).toBeLessThanOrEqual(pkg.position.x + pkg.size.width);
     });
 
-    it("should render multiple classes inside their defined package", () => {
+    it("should render multiple classes inside their defined package", async () => {
         const puml = `
 @startuml
 package "My Package" {
@@ -48,7 +48,7 @@ package "My Package" {
 }
 @enduml
 `;
-        const ast = parsePlantUml(puml);
+        const ast = await parsePlantUml(puml);
         const layout = new LayoutManager().process(ast);
 
         expect(layout.groups.length).toBe(1);
@@ -68,7 +68,7 @@ package "My Package" {
         expect(classB.position.x).toBeGreaterThan(classA.position.x);
     });
 
-    it("should handle 'together' blocks in class diagrams", () => {
+    it("should handle 'together' blocks in class diagrams", async () => {
         const puml = `
 @startuml
 together {
@@ -78,7 +78,7 @@ together {
 }
 @enduml
 `;
-        const ast = parsePlantUml(puml);
+        const ast = await parsePlantUml(puml);
         const layout = new LayoutManager().process(ast);
 
         expect(layout.groups.length).toBe(1);
@@ -90,3 +90,6 @@ together {
         expect(classA.position.y + classA.size.height).toBeLessThanOrEqual(pkg.position.y + pkg.size.height);
     });
 });
+
+
+

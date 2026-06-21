@@ -3,15 +3,15 @@ import { parsePlantUml } from "../src/parser/index";
 import { Emitter } from "../src/layout/emitter";
 import { LayoutMap } from "../src/layout/types";
 
-describe("Emitter Two-Way Sync", () => {
-    it("should inject new @pos comments into unpositioned nodes", () => {
+describe("Emitter Two-Way Sync", async () => {
+    it("should inject new @pos comments into unpositioned nodes", async () => {
         const input = `
 @startuml
 participant Alice
 actor Bob
 @enduml
 `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         const layoutMap: LayoutMap = {
             diagramType: "unknown",
             nodes: {
@@ -30,13 +30,13 @@ actor Bob
         expect(output).toContain("actor Bob /' @pos(300, 200) '/");
     });
 
-    it("should update existing @pos comments", () => {
+    it("should update existing @pos comments", async () => {
         const input = `
 @startuml
 class User /' @pos(10, 20) '/
 @enduml
 `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         const layoutMap: LayoutMap = {
             diagramType: "unknown",
             nodes: {
@@ -54,7 +54,7 @@ class User /' @pos(10, 20) '/
         expect(output).not.toContain("10, 20");
     });
 
-    it("should inject and update @pos comments on connections", () => {
+    it("should inject and update @pos comments on connections", async () => {
         const input = `
 @startuml
 participant A
@@ -65,7 +65,7 @@ A -> B : message /' @pos(50, 50) '/
 C *-- D
 @enduml
 `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         const layoutMap: LayoutMap = {
             diagramType: "sequence",
             nodes: {},
@@ -84,7 +84,7 @@ C *-- D
         expect(output).toContain("C *-- D /' @pos(200, 200) '/");
     });
 
-    it("should inject @pos comments after class braces", () => {
+    it("should inject @pos comments after class braces", async () => {
         const input = `
 @startuml
 class User {
@@ -92,7 +92,7 @@ class User {
 }
 @enduml
 `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         const layoutMap: LayoutMap = {
             diagramType: "unknown",
             nodes: {
@@ -109,13 +109,13 @@ class User {
         expect(output).toContain("class User {\n    + id\n} /' @pos(50, 50) '/");
     });
 
-    it("should handle quoted labels with newlines in emitter", () => {
+    it("should handle quoted labels with newlines in emitter", async () => {
         const input = `
 @startuml
 A -> B : "Auth\\nRequest"
 @enduml
 `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         const layoutMap: LayoutMap = {
             diagramType: "unknown",
             nodes: {},
@@ -132,3 +132,6 @@ A -> B : "Auth\\nRequest"
         expect(output).toContain("A -> B : \"Auth\\nRequest\" /' @pos(100, 100) '/");
     });
 });
+
+
+

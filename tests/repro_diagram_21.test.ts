@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
 
-describe("Reproduction of diagram_21.puml", () => {
-    it("should parse diagram_21.puml content", () => {
+describe("Reproduction of diagram_21.puml", async () => {
+    it("should parse diagram_21.puml content", async () => {
         const input = `
 @startuml
 class Foo
@@ -16,7 +16,10 @@ end note
 @enduml
     `;
 
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.type).toBe("Diagram");
     });
 });
+
+
+

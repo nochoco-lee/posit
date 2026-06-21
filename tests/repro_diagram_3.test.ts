@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
 
-describe("Diagram 3 Reproduction", () => {
-    it("should parse sequence diagram_3 with HTML entities and color", () => {
+describe("Diagram 3 Reproduction", async () => {
+    it("should parse sequence diagram_3 with HTML entities and color", async () => {
         const input = `@startuml
 actor Bob #red
 ' The only difference between actor
@@ -17,11 +17,11 @@ Alice->Bob: Authentication Request
 Bob->Alice: Authentication Response
 Bob->L: Log transaction
 @enduml`;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.type).toBe("Diagram");
     });
 
-    it("should parse class diagram_3 with HTML entities and complex arrows", () => {
+    it("should parse class diagram_3 with HTML entities and complex arrows", async () => {
         const input = `@startuml
 Class11 &lt;|.. Class12
 Class13 --&gt; Class14
@@ -29,7 +29,10 @@ Class15 ..&gt; Class16
 Class17 ..|&gt; Class18
 Class19 &lt;--* Class20
 @enduml`;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.type).toBe("Diagram");
     });
 });
+
+
+

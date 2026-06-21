@@ -6,7 +6,7 @@ import Konva from 'konva';
 import { SequenceRenderer } from '../src/renderer/sequence';
 import { LayoutMap } from '../src/layout/types';
 
-describe('SequenceRenderer Arrowheads', () => {
+describe('SequenceRenderer Arrowheads', async () => {
     let stage: Konva.Stage;
     let layer: Konva.Layer;
     let renderer: SequenceRenderer;
@@ -22,7 +22,7 @@ describe('SequenceRenderer Arrowheads', () => {
         renderer = new SequenceRenderer(stage, layer);
     });
 
-    it('should render ->> as an open arrow shape', () => {
+    it('should render ->> as an open arrow shape', async () => {
         const map: LayoutMap = {
             diagramType: 'sequence',
             nodes: {
@@ -47,7 +47,7 @@ describe('SequenceRenderer Arrowheads', () => {
         expect(head.stroke()).toBe('#A80036');
     });
 
-    it('should render -> as a filled arrow shape', () => {
+    it('should render -> as a filled arrow shape', async () => {
         const map: LayoutMap = {
             diagramType: 'sequence',
             nodes: {
@@ -71,7 +71,7 @@ describe('SequenceRenderer Arrowheads', () => {
         expect(head.fill()).toBe('#A80036');
     });
 
-    it('should render ->x as a lost message (cross)', () => {
+    it('should render ->x as a lost message (cross)', async () => {
         const map: LayoutMap = {
             diagramType: 'sequence',
             nodes: {
@@ -93,7 +93,7 @@ describe('SequenceRenderer Arrowheads', () => {
         expect(head.fill()).toBeUndefined();
     });
 
-    it('should update arrowhead position when node is moved', () => {
+    it('should update arrowhead position when node is moved', async () => {
         const map: LayoutMap = {
             diagramType: 'sequence',
             nodes: {
@@ -124,3 +124,6 @@ describe('SequenceRenderer Arrowheads', () => {
         expect(head.x()).toBeGreaterThan(initialHeadX);
     });
 });
+
+
+

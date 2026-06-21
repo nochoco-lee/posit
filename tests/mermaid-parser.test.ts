@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { parseMermaid } from "../src/mermaid/index";
 
-describe("Mermaid JS Parser", () => {
-    it("should parse sequence diagrams with layout metadata", () => {
+describe("Mermaid JS Parser", async () => {
+    it("should parse sequence diagrams with layout metadata", async () => {
         const input = `
 sequenceDiagram
 participant Alice
@@ -10,7 +10,7 @@ actor Bob %% @pos(300, 200)
 Alice->>Bob: Hello %% @pos(150, 250)
         `;
 
-        const ast = parseMermaid(input);
+        const ast = await parseMermaid(input);
 
         expect(ast.type).toBe("Diagram");
         expect(ast.statements.length).toBe(3);
@@ -42,7 +42,7 @@ Alice->>Bob: Hello %% @pos(150, 250)
         });
     });
 
-    it("should parse class diagrams", () => {
+    it("should parse class diagrams", async () => {
         const input = `
 classDiagram
 class User
@@ -50,18 +50,21 @@ interface Builder
 User *-- Builder
         `;
 
-        const ast = parseMermaid(input);
+        const ast = await parseMermaid(input);
         expect(ast.type).toBe("Diagram");
         expect(ast.statements.length).toBe(3);
     });
 
-    it("should parse floating layout comments", () => {
+    it("should parse floating layout comments", async () => {
         const input = `
 sequenceDiagram
 %% @pos(10, 20)
         `;
-        const ast = parseMermaid(input);
+        const ast = await parseMermaid(input);
         expect(ast.type).toBe("Diagram");
         expect(ast.statements.length).toBe(0); // Assuming we ignore standalone comments for MVP
     });
 });
+
+
+

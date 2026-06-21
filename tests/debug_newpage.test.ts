@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { SequenceLexer } from "../src/parser/sequence/lexer";
 
-describe("Newpage Tokenization", () => {
-    it("should tokenize newpage with title", () => {
+describe("Newpage Tokenization", async () => {
+    it("should tokenize newpage with title", async () => {
         const input = `newpage A title for the\\nlast page`;
         const lexResult = SequenceLexer.tokenize(input);
         console.log(lexResult.tokens.map(t => ({ 
@@ -12,3 +12,6 @@ describe("Newpage Tokenization", () => {
         })));
     });
 });
+
+
+

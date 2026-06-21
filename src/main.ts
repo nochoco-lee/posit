@@ -30,17 +30,17 @@ function showError(message: string | null) {
     }
 }
 
-function refreshDiagram() {
+async function refreshDiagram() {
     try {
         const text = editor.value;
         currentText = text;
         currentLanguage = detectLanguage(text);
 
         if (currentLanguage === Language.Mermaid) {
-            currentAst = parseMermaid(text);
+            currentAst = await parseMermaid(text);
         } else {
             // Default to PlantUML for currently unknown formats
-            currentAst = parsePlantUml(text);
+            currentAst = await parsePlantUml(text);
         }
 
         const layoutManager = new LayoutManager();
@@ -53,16 +53,15 @@ function refreshDiagram() {
     }
 }
 
-// Initial draw
-refreshDiagram();
-
-// Dismiss the loading overlay now that the diagram engine is ready
-const loadingOverlay = document.getElementById('loading-overlay');
-if (loadingOverlay) {
-    loadingOverlay.classList.add('hidden');
-    // Remove from DOM after transition completes to free memory
-    loadingOverlay.addEventListener('transitionend', () => loadingOverlay.remove(), { once: true });
-}
+// Initial draw — dismiss the loading overlay once the first render completes
+refreshDiagram().then(() => {
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.classList.add('hidden');
+        // Remove from DOM after transition completes to free memory
+        loadingOverlay.addEventListener('transitionend', () => loadingOverlay.remove(), { once: true });
+    }
+});
 
 // Live update on type with debounce
 let debounceTimer: any = null;
@@ -70,6 +69,7 @@ editor.addEventListener('input', () => {
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
         refreshDiagram();
+        // (fire-and-forget — errors are caught inside refreshDiagram)
     }, 200);
 });
 
@@ -108,7 +108,7 @@ svgButton.addEventListener('click', () => {
  * Orchestrates the two-way sync: Layout -> Source Code.
  * This is an expensive operation as it involves re-patching the source and re-parsing.
  */
-function syncLayoutToSource() {
+async function syncLayoutToSource() {
     if (!currentAst || !currentLayoutMap) return;
     if (currentLanguage === Language.Mermaid) {
         console.warn("Two-way sync is not yet supported for Mermaid diagrams.");
@@ -123,7 +123,7 @@ function syncLayoutToSource() {
         // Update the actual text area payload
         editor.value = updatedSource;
         currentText = updatedSource;
-        currentAst = parsePlantUml(currentText);
+        currentAst = await parsePlantUml(currentText);
         showError(null);
     } catch (e: any) {
         console.error("Emitter Error on Sync:", e.message);

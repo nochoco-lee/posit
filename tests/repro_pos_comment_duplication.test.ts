@@ -3,12 +3,12 @@ import { parsePlantUml } from '../src/parser';
 import { Emitter } from '../src/layout/emitter';
 import { ClassLayoutManager } from '../src/layout/class';
 
-describe('Emitter @pos update', () => {
-    it('should replace existing @pos comment instead of appending', () => {
+describe('Emitter @pos update', async () => {
+    it('should replace existing @pos comment instead of appending', async () => {
         const puml = `@startuml
 class A /' @pos(10, 10) '/
 @enduml`;
-        const ast = parsePlantUml(puml);
+        const ast = await parsePlantUml(puml);
         const layoutManager = new ClassLayoutManager();
         const map = layoutManager.process(ast);
 
@@ -25,3 +25,6 @@ class A /' @pos(10, 10) '/
         expect(updatedPuml).not.toContain("@pos(10, 10)");
     });
 });
+
+
+

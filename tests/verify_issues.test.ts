@@ -13,7 +13,7 @@ const diagrams = [
 
 const dirs = ['test_scripts/plantuml_sequence', 'test_scripts/plantuml_class'];
 
-describe('Issue Verification', () => {
+describe('Issue Verification', async () => {
     it('should parse all listed diagrams from issues_list.md', async () => {
         for (const diag of diagrams) {
             let content = '';
@@ -34,7 +34,7 @@ describe('Issue Verification', () => {
 
             try {
 
-                parsePlantUml(content);
+                await parsePlantUml(content);
                 // console.log(`[X] ${diag}: PASSED`);
             } catch (e: any) {
                 console.error(`[ ] ${diag}: FAILED - ${e.message.split('\n')[0]}`);
@@ -43,4 +43,7 @@ describe('Issue Verification', () => {
         }
     });
 });
+
+
+
 

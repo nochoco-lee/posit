@@ -6,7 +6,7 @@ import { LayoutManager } from '../src/layout/engine';
 
 const testScriptsDir = path.join(__dirname, 'plantuml_sequence');
 
-describe('PlantUML Sequence Syntax Coverage', () => {
+describe('PlantUML Sequence Syntax Coverage', async () => {
     let files: string[] = [];
     if (fs.existsSync(testScriptsDir)) {
         files = fs.readdirSync(testScriptsDir).filter(f => f.endsWith('.puml'));
@@ -17,7 +17,7 @@ describe('PlantUML Sequence Syntax Coverage', () => {
     const failedFiles: { file: string; error: string }[] = [];
 
     files.forEach(file => {
-        it(`should parse and process ${file}`, () => {
+        it(`should parse and process ${file}`, async () => {
             let content = fs.readFileSync(path.join(testScriptsDir, file), 'utf-8');
             
             // Unescape HTML entities like &#34; to "
@@ -25,7 +25,7 @@ describe('PlantUML Sequence Syntax Coverage', () => {
             
             try {
                 // Should not throw errors during parsing
-                const ast = parsePlantUml(content);
+                const ast = await parsePlantUml(content);
                 expect(ast.type).toBe("Diagram");
                 
                 // Should not throw errors during layout generation
@@ -60,8 +60,11 @@ describe('PlantUML Sequence Syntax Coverage', () => {
     });
 
     if (totalCount === 0) {
-        it('should have files to test', () => {
+        it('should have files to test', async () => {
             expect(totalCount).toBeGreaterThan(0);
         });
     }
 });
+
+
+

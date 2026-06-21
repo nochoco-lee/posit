@@ -3,8 +3,8 @@ import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser";
 import { LayoutManager } from "../src/layout/engine";
 
-describe("Sequence Destroy Support", () => {
-    it("should handle destroy statements by ending activations and marking destroy", () => {
+describe("Sequence Destroy Support", async () => {
+    it("should handle destroy statements by ending activations and marking destroy", async () => {
         const input = `
 @startuml
 Alice -> Bob : hello
@@ -14,7 +14,7 @@ destroy Bob
 @enduml
 `;
 
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         const layoutManager = new LayoutManager();
         const map = layoutManager.process(ast);
 
@@ -25,3 +25,6 @@ destroy Bob
         expect(act.endMessageIndex).toBe(1);
     });
 });
+
+
+

@@ -3,15 +3,15 @@ import { parsePlantUml } from "../src/parser/index";
 import { LayoutManager } from "../src/layout/engine";
 import { IRDiagram } from "../src/ir/types";
 
-describe("Deployment Layout Manager", () => {
-    it("should layout basic deployment elements in a stack", () => {
+describe("Deployment Layout Manager", async () => {
+    it("should layout basic deployment elements in a stack", async () => {
         const puml = `
 @startuml
 node n1
 database d1
 @enduml
 `;
-        const ast: IRDiagram = parsePlantUml(puml);
+        const ast: IRDiagram = await parsePlantUml(puml);
         const layout = new LayoutManager().process(ast);
         
         expect(layout.diagramType).toBe('deployment');
@@ -24,7 +24,7 @@ database d1
         expect(layout.nodes['d1'].position.y).toBe(50 + 60 + 20);
     });
 
-    it("should handle nested containers", () => {
+    it("should handle nested containers", async () => {
         const puml = `
 @startuml
 node n1 {
@@ -32,7 +32,7 @@ node n1 {
 }
 @enduml
 `;
-        const ast: IRDiagram = parsePlantUml(puml);
+        const ast: IRDiagram = await parsePlantUml(puml);
         const layout = new LayoutManager().process(ast);
         
         expect(layout.groups.length).toBe(1);
@@ -49,7 +49,7 @@ node n1 {
         expect(group.size.height).toBeGreaterThan(60);
     });
 
-    it("should capture stereotypes", () => {
+    it("should capture stereotypes", async () => {
         const puml = `
 @startuml
 node n1 <<stereo1>>
@@ -58,7 +58,7 @@ cloud c1 <<stereo2>> {
 }
 @enduml
 `;
-        const ast: IRDiagram = parsePlantUml(puml);
+        const ast: IRDiagram = await parsePlantUml(puml);
         const layout = new LayoutManager().process(ast);
         
         expect(layout.nodes['n1'].stereotype).toBe('<<stereo1>>');
@@ -66,7 +66,7 @@ cloud c1 <<stereo2>> {
         expect(layout.nodes['a1'].stereotype).toBe('<<stereo3>>');
     });
 
-    it("should capture colors", () => {
+    it("should capture colors", async () => {
         const puml = `
 @startuml
 node n1 #red
@@ -75,7 +75,7 @@ cloud c1 #blue {
 }
 @enduml
 `;
-        const ast: IRDiagram = parsePlantUml(puml);
+        const ast: IRDiagram = await parsePlantUml(puml);
         const layout = new LayoutManager().process(ast);
         
         expect(layout.nodes['n1'].color).toBe('#red');
@@ -83,7 +83,7 @@ cloud c1 #blue {
         expect(layout.nodes['a1'].color).toBe('#green');
     });
 
-    it("should assign shape-specific sizes", () => {
+    it("should assign shape-specific sizes", async () => {
         const puml = `
 @startuml
 usecase UC1
@@ -92,7 +92,7 @@ database DB1
 node N1
 @enduml
 `;
-        const ast: IRDiagram = parsePlantUml(puml);
+        const ast: IRDiagram = await parsePlantUml(puml);
         const layout = new LayoutManager().process(ast);
 
         expect(layout.nodes["UC1"].size).toEqual({ width: 140, height: 70 });
@@ -101,3 +101,6 @@ node N1
         expect(layout.nodes["N1"].size).toEqual({ width: 120, height: 60 });
     });
 });
+
+
+

@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
 import { SequenceLexer } from "../src/parser/sequence/lexer";
 
-describe("Diagram 36 Reproduction", () => {
-    it("should parse diagram 36 or fail informatively", () => {
+describe("Diagram 36 Reproduction", async () => {
+    it("should parse diagram 36 or fail informatively", async () => {
         const input = `@startuml
 participant Alice
 participant "The **Famous** Bob" as Bob
@@ -20,7 +20,7 @@ Bob -> Alice : ok
         })));
         
         try {
-            const ast = parsePlantUml(input);
+            const ast = await parsePlantUml(input);
             expect(ast.type).toBe("Diagram");
         } catch (e: any) {
             console.error(e.message);
@@ -28,3 +28,6 @@ Bob -> Alice : ok
         }
     });
 });
+
+
+

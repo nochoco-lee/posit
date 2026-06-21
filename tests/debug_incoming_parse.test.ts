@@ -2,7 +2,7 @@ import { it, expect } from "vitest";
 import { SequenceLexer } from "../src/parser/sequence/lexer";
 import { parser } from "../src/parser/sequence/parser";
 
-it("should parse ?-> Alice", () => {
+it("should parse ?-> Alice", async () => {
     const input = `@startuml
 ?-> Alice
 @enduml`;
@@ -14,4 +14,7 @@ it("should parse ?-> Alice", () => {
     }
     expect(parser.errors).toHaveLength(0);
 });
+
+
+
 

@@ -3,15 +3,15 @@ import { describe, it, expect } from "vitest";
 import { ClassLayoutManager } from "../src/layout/class";
 import { parsePlantUml } from "../src/parser/index";
 
-describe("Class Diagram Note Layout", () => {
-    it("should position 'note left' next to the last defined class when no target is specified", () => {
+describe("Class Diagram Note Layout", async () => {
+    it("should position 'note left' next to the last defined class when no target is specified", async () => {
         const input = `
 @startuml
 class Foo
 note left: On last defined class
 @enduml
 `;
-        const ir = parsePlantUml(input);
+        const ir = await parsePlantUml(input);
 
         const layoutManager = new ClassLayoutManager();
         const layout = layoutManager.process(ir);
@@ -28,14 +28,14 @@ note left: On last defined class
         expect(Math.abs(note!.position.y - fooNode!.position.y)).toBeLessThan(50);
     });
 
-    it("should position 'note right' next to the last defined class", () => {
+    it("should position 'note right' next to the last defined class", async () => {
         const input = `
 @startuml
 class Foo
 note right: On last defined class
 @enduml
 `;
-        const ir = parsePlantUml(input);
+        const ir = await parsePlantUml(input);
         const layoutManager = new ClassLayoutManager();
         const layout = layoutManager.process(ir);
 
@@ -46,14 +46,14 @@ note right: On last defined class
         expect(Math.abs(note!.position.y - fooNode!.position.y)).toBeLessThan(50);
     });
 
-    it("should position 'note top' above the last defined class", () => {
+    it("should position 'note top' above the last defined class", async () => {
         const input = `
 @startuml
 class Foo
 note top: On last defined class
 @enduml
 `;
-        const ir = parsePlantUml(input);
+        const ir = await parsePlantUml(input);
         const layoutManager = new ClassLayoutManager();
         const layout = layoutManager.process(ir);
 
@@ -64,14 +64,14 @@ note top: On last defined class
         expect(Math.abs(note!.position.x - fooNode!.position.x)).toBeLessThan(50);
     });
 
-    it("should position 'note bottom' below the last defined class", () => {
+    it("should position 'note bottom' below the last defined class", async () => {
         const input = `
 @startuml
 class Foo
 note bottom: On last defined class
 @enduml
 `;
-        const ir = parsePlantUml(input);
+        const ir = await parsePlantUml(input);
         const layoutManager = new ClassLayoutManager();
         const layout = layoutManager.process(ir);
 
@@ -82,3 +82,6 @@ note bottom: On last defined class
         expect(Math.abs(note!.position.x - fooNode!.position.x)).toBeLessThan(50);
     });
 });
+
+
+

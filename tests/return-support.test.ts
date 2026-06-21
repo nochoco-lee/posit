@@ -3,8 +3,8 @@ import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser";
 import { LayoutManager } from "../src/layout/engine";
 
-describe("Sequence Return Support", () => {
-    it("should handle return statements by generating connections and ending activations", () => {
+describe("Sequence Return Support", async () => {
+    it("should handle return statements by generating connections and ending activations", async () => {
         const input = `
 @startuml
 A -> B : call
@@ -16,7 +16,7 @@ return ok
 @enduml
 `;
 
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         const layoutManager = new LayoutManager();
         const map = layoutManager.process(ast);
 
@@ -43,3 +43,6 @@ return ok
         expect(map.activations![1].endMessageIndex).toBe(2);
     });
 });
+
+
+

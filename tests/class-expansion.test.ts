@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
 import { IRNode, IREdge } from "../src/ir/types";
 
-describe("Class Diagram Expansion", () => {
-    it("should parse class members (fields and methods)", () => {
+describe("Class Diagram Expansion", async () => {
+    it("should parse class members (fields and methods)", async () => {
         const input = `
 @startuml
 class User {
@@ -16,7 +16,7 @@ class User {
 }
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements.length).toBe(1);
 
         const userClass = ast.statements[0] as IRNode;
@@ -46,7 +46,7 @@ class User {
         });
     });
 
-    it("should parse generics", () => {
+    it("should parse generics", async () => {
         const input = `
 @startuml
 class List~T~ {
@@ -54,7 +54,7 @@ class List~T~ {
 }
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements.length).toBe(1);
 
         const listClass = ast.statements[0] as IRNode;
@@ -62,13 +62,13 @@ class List~T~ {
         expect(listClass.members?.[0].name).toBe("add");
     });
 
-    it("should parse cardinality", () => {
+    it("should parse cardinality", async () => {
         const input = `
 @startuml
 User "1" *-- "many" Order
 @enduml
     `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.statements.length).toBe(1);
 
         const edge = ast.statements[0] as IREdge;
@@ -79,3 +79,6 @@ User "1" *-- "many" Order
         expect(edge.arrow).toBe("*--");
     });
 });
+
+
+

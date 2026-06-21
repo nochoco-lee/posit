@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
 
-describe("Sequence Diagram Delays and Dividers", () => {
-    it("should parse delays and dividers", () => {
+describe("Sequence Diagram Delays and Dividers", async () => {
+    it("should parse delays and dividers", async () => {
         const input = `
 @startuml
 Alice -> Bob : hello
@@ -13,7 +13,7 @@ Alice -> Bob : login
 @enduml
         `;
 
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.diagramType).toBe("sequence");
         
         const delay = ast.statements.find(s => s.type === 'delay') as any;
@@ -25,3 +25,6 @@ Alice -> Bob : login
         expect(divider.label).toBe("Authentication");
     });
 });
+
+
+

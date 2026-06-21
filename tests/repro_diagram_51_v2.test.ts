@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
 import { SequenceLexer } from "../src/parser/sequence/lexer";
 
-describe("Diagram 51 Reproduction", () => {
-    it("should parse diagram 51", () => {
+describe("Diagram 51 Reproduction", async () => {
+    it("should parse diagram 51", async () => {
         const input = `@startuml
 alice -> bob   --++ #gold: hello
 bob   -> alice --++ #gold: you too
@@ -17,7 +17,10 @@ alice -> bob   : step2
             line: t.startLine 
         })));
         
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         expect(ast.type).toBe("Diagram");
     });
 });
+
+
+

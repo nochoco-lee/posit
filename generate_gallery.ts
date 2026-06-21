@@ -42,7 +42,8 @@ if (hasLocalPlantUml) {
 
 const svgRenderer = new LayoutPumlSvgRenderer();
 
-testDirs.forEach(dirInfo => {
+(async () => {
+for (const dirInfo of testDirs) {
     const testCases: any[] = [];
     console.log(`Processing ${dirInfo.name}...`);
 
@@ -56,7 +57,7 @@ testDirs.forEach(dirInfo => {
                 return numA - numB;
             });
 
-        files.forEach(file => {
+        for (const file of files) {
             const filePath = path.join(dirInfo.path, file);
             const content = fs.readFileSync(filePath, "utf-8");
             
@@ -83,7 +84,7 @@ testDirs.forEach(dirInfo => {
             let error = "";
             let inferredType = "unknown";
             try {
-                const ast = parsePlantUml(content);
+                const ast = await parsePlantUml(content);
                 inferredType = ast.diagramType;
                 const layoutManager = new LayoutManager();
                 const map = layoutManager.process(ast);
@@ -103,7 +104,7 @@ testDirs.forEach(dirInfo => {
                 inferredType: inferredType,
                 syntax: 'PlantUML'
             });
-        });
+        }
     }
 
     // 2. Process Mermaid files
@@ -116,7 +117,7 @@ testDirs.forEach(dirInfo => {
                 return numA - numB;
             });
 
-        mfiles.forEach(file => {
+        for (const file of mfiles) {
             const filePath = path.join(dirInfo.mpath, file);
             const content = fs.readFileSync(filePath, "utf-8");
             
@@ -128,7 +129,7 @@ testDirs.forEach(dirInfo => {
             let error = "";
             let inferredType = "unknown";
             try {
-                const ast = parseMermaid(content);
+                const ast = await parseMermaid(content);
                 inferredType = ast.diagramType;
                 const layoutManager = new LayoutManager();
                 const map = layoutManager.process(ast);
@@ -148,7 +149,7 @@ testDirs.forEach(dirInfo => {
                 inferredType: inferredType,
                 syntax: 'Mermaid'
             });
-        });
+        }
     }
 
     // Generate HTML for this category
@@ -225,7 +226,8 @@ testDirs.forEach(dirInfo => {
 
     fs.writeFileSync(dirInfo.file, galleryHtml);
     console.log(`${dirInfo.file} generated with ${testCases.length} cases.`);
-});
+}
+})();
 
 // Also generate a simple index gallery.html
 const indexHtml = `<!DOCTYPE html>
@@ -246,3 +248,5 @@ const indexHtml = `<!DOCTYPE html>
 </html>`;
 fs.writeFileSync("gallery.html", indexHtml);
 console.log("All galleries generated.");
+
+

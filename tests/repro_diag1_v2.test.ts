@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
 import { LayoutManager } from "../src/layout/engine";
 
-describe("Sequence Diagram 1 Direction", () => {
-    it("should correctly identify 'from' and 'to' for diagram 1", () => {
+describe("Sequence Diagram 1 Direction", async () => {
+    it("should correctly identify 'from' and 'to' for diagram 1", async () => {
         const input = `
 @startuml
 Alice -> Bob: Authentication Request
@@ -13,7 +13,7 @@ Alice -> Bob: Another authentication Request
 Alice <-- Bob: Another authentication Response
 @enduml
 `;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         const layoutManager = new LayoutManager();
         const map = layoutManager.process(ast);
 
@@ -34,3 +34,6 @@ Alice <-- Bob: Another authentication Response
         expect(map.connections[3].to).toBe("Alice");
     });
 });
+
+
+

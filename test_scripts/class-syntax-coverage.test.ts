@@ -15,7 +15,7 @@ function unescapeHtml(text: string): string {
         .replace(/&amp;/g, '&');
 }
 
-describe('PlantUML Class Syntax Coverage', () => {
+describe('PlantUML Class Syntax Coverage', async () => {
     let files: string[] = [];
     if (fs.existsSync(testScriptsDir)) {
         files = fs.readdirSync(testScriptsDir).filter(f => f.endsWith('.puml'));
@@ -26,7 +26,7 @@ describe('PlantUML Class Syntax Coverage', () => {
     const failedFiles: { file: string; error: string }[] = [];
 
     files.forEach(file => {
-        it(`should parse and process ${file}`, () => {
+        it(`should parse and process ${file}`, async () => {
             let content = fs.readFileSync(path.join(testScriptsDir, file), 'utf-8');
             
             // Clean up HTML entities
@@ -34,7 +34,7 @@ describe('PlantUML Class Syntax Coverage', () => {
             
             try {
                 // Should not throw errors during parsing
-                const ast = parsePlantUml(content);
+                const ast = await parsePlantUml(content);
                 expect(ast.type).toBe("Diagram");
                 
                 // Should not throw errors during layout generation
@@ -70,8 +70,11 @@ describe('PlantUML Class Syntax Coverage', () => {
     });
 
     if (totalCount === 0) {
-        it('should have files to test', () => {
+        it('should have files to test', async () => {
             expect(totalCount).toBeGreaterThan(0);
         });
     }
 });
+
+
+

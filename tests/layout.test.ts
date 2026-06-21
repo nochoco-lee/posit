@@ -4,9 +4,9 @@ import { LayoutManager } from "../src/layout/engine";
 import { DEFAULTS } from "../src/layout/types";
 import { IRDiagram } from "../src/ir/types";
 
-describe("Layout Manager", () => {
-    it("should assign default horizontal layout to unpositioned sequence actors", () => {
-        const ast: IRDiagram = parsePlantUml(`
+describe("Layout Manager", async () => {
+    it("should assign default horizontal layout to unpositioned sequence actors", async () => {
+        const ast: IRDiagram = await parsePlantUml(`
 @startuml
 participant A
 participant B
@@ -20,8 +20,8 @@ participant B
         expect(nodes["B"].position).toEqual({ x: DEFAULTS.SEQUENCE_START_X + DEFAULTS.ACTOR_PADDING_X, y: DEFAULTS.SEQUENCE_START_Y });
     });
 
-    it("should respect manually locked positions via @pos metadata", () => {
-        const ast = parsePlantUml(`
+    it("should respect manually locked positions via @pos metadata", async () => {
+        const ast = await parsePlantUml(`
 @startuml
 participant LockedObject /' @pos(500, 600) '/
 @enduml
@@ -31,8 +31,8 @@ participant LockedObject /' @pos(500, 600) '/
         expect(layout.nodes["LockedObject"].position).toEqual({ x: 500, y: 600 });
     });
 
-    it("should process default class layouts horizontally for independent classes", () => {
-        const ast = parsePlantUml(`
+    it("should process default class layouts horizontally for independent classes", async () => {
+        const ast = await parsePlantUml(`
 @startuml
 class Database
 class Server
@@ -47,8 +47,8 @@ class Server
         expect(nodes["Server"].position).toEqual({ x: DEFAULTS.CLASS_START_X + DEFAULTS.CLASS_WIDTH + 100, y: DEFAULTS.CLASS_START_Y });
     });
 
-    it("should assign dynamic height to classes with members", () => {
-        const ast = parsePlantUml(`
+    it("should assign dynamic height to classes with members", async () => {
+        const ast = await parsePlantUml(`
 @startuml
 class User {
     + name
@@ -65,8 +65,8 @@ class User {
         expect(userNode.members?.length).toBe(2);
     });
 
-    it("should capture cardinality in connections", () => {
-        const ast = parsePlantUml(`
+    it("should capture cardinality in connections", async () => {
+        const ast = await parsePlantUml(`
 @startuml
 User "1" *-- "many" Order
 @enduml
@@ -79,8 +79,8 @@ User "1" *-- "many" Order
         expect(conn.toLabel).toBe("many");
     });
 
-    it("should assign initial Y distance to the first sequence message", () => {
-        const ast = parsePlantUml(`
+    it("should assign initial Y distance to the first sequence message", async () => {
+        const ast = await parsePlantUml(`
 @startuml
 A -> B : Hello
 @enduml
@@ -93,7 +93,7 @@ A -> B : Hello
         expect(conn.calculatedY).toBe(250);
     });
 
-    it("should center a single top-level class over multiple bottom-level classes", () => {
+    it("should center a single top-level class over multiple bottom-level classes", async () => {
         const puml = `
 @startuml
 class Aaa
@@ -105,7 +105,7 @@ Aaa --> Entry
 Aaa --> Parent
 @enduml
 `;
-        const ast = parsePlantUml(puml);
+        const ast = await parsePlantUml(puml);
         const layout = new LayoutManager().process(ast);
         const nodes = layout.nodes;
 
@@ -128,3 +128,6 @@ Aaa --> Parent
         expect(aaaMidX).toBeCloseTo(row1MidX, 1);
     });
 });
+
+
+

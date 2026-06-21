@@ -1,14 +1,5 @@
 import { IRDiagram } from "../ir/types";
 import { PlantUmlScanner } from "./scanner";
-import { SequenceLexer } from "./sequence/lexer";
-import { parser as sequenceParser } from "./sequence/parser";
-import { visitor as sequenceVisitor } from "./sequence/visitor";
-import { ClassLexer } from "./class/lexer";
-import { parser as classParser } from "./class/parser";
-import { visitor as classVisitor } from "./class/visitor";
-import { DeploymentLexer } from "./deployment/lexer";
-import { parser as deploymentParser } from "./deployment/parser";
-import { visitor as deploymentVisitor } from "./deployment/visitor";
 
 function unescapeHtml(text: string): string {
     return text
@@ -20,7 +11,51 @@ function unescapeHtml(text: string): string {
         .replace(/&#39;/g, "'");
 }
 
-export function parsePlantUml(text: string): IRDiagram {
+// ── Lazy singletons — parsers are expensive to construct (Chevrotain
+// runs performSelfAnalysis() in the constructor). We only build each
+// one the first time it is actually needed, and we skip loading the
+// modules for diagram types that are never used in a session. ────────
+
+let _sequenceBundle: { lexer: any; parser: any; visitor: any } | null = null;
+async function getSequenceBundle() {
+    if (!_sequenceBundle) {
+        const [{ SequenceLexer }, { parser }, { visitor }] = await Promise.all([
+            import("./sequence/lexer"),
+            import("./sequence/parser"),
+            import("./sequence/visitor"),
+        ]);
+        _sequenceBundle = { lexer: SequenceLexer, parser, visitor };
+    }
+    return _sequenceBundle;
+}
+
+let _classBundle: { lexer: any; parser: any; visitor: any } | null = null;
+async function getClassBundle() {
+    if (!_classBundle) {
+        const [{ ClassLexer }, { parser }, { visitor }] = await Promise.all([
+            import("./class/lexer"),
+            import("./class/parser"),
+            import("./class/visitor"),
+        ]);
+        _classBundle = { lexer: ClassLexer, parser, visitor };
+    }
+    return _classBundle;
+}
+
+let _deploymentBundle: { lexer: any; parser: any; visitor: any } | null = null;
+async function getDeploymentBundle() {
+    if (!_deploymentBundle) {
+        const [{ DeploymentLexer }, { parser }, { visitor }] = await Promise.all([
+            import("./deployment/lexer"),
+            import("./deployment/parser"),
+            import("./deployment/visitor"),
+        ]);
+        _deploymentBundle = { lexer: DeploymentLexer, parser, visitor };
+    }
+    return _deploymentBundle;
+}
+
+export async function parsePlantUml(text: string): Promise<IRDiagram> {
     const unescapedText = unescapeHtml(text);
     const scanner = new PlantUmlScanner();
     const diagramType = scanner.scan(unescapedText);
@@ -29,29 +64,23 @@ export function parsePlantUml(text: string): IRDiagram {
         throw new Error("Could not determine PlantUML diagram type. Please ensure your script starts with @startuml and contains valid diagram elements.");
     }
 
-    let lexer: any;
-    let parser: any;
-    let visitor: any;
+    let bundle: { lexer: any; parser: any; visitor: any };
 
     switch (diagramType) {
         case 'sequence':
-            lexer = SequenceLexer;
-            parser = sequenceParser;
-            visitor = sequenceVisitor;
+            bundle = await getSequenceBundle();
             break;
         case 'class':
-            lexer = ClassLexer;
-            parser = classParser;
-            visitor = classVisitor;
+            bundle = await getClassBundle();
             break;
         case 'deployment':
-            lexer = DeploymentLexer;
-            parser = deploymentParser;
-            visitor = deploymentVisitor;
+            bundle = await getDeploymentBundle();
             break;
         default:
             throw new Error(`Unsupported diagram type: ${diagramType}`);
     }
+
+    const { lexer, parser, visitor } = bundle;
 
     const lexResult = lexer.tokenize(unescapedText);
     if (lexResult.errors.length > 0) {

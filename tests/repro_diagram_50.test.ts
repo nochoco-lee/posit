@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser";
 
-describe("Diagram 50 Reproduction", () => {
-  it("should parse diagram_50 contents", () => {
+describe("Diagram 50 Reproduction", async () => {
+  it("should parse diagram_50 contents", async () => {
     const puml = `@startuml
 class Student {
   Name
@@ -15,6 +15,9 @@ class Enrollment {
   cancel()
 }
 @enduml`;
-    parsePlantUml(puml);
+    await parsePlantUml(puml);
   });
 });
+
+
+

@@ -9,7 +9,7 @@ const diagramTypes = ['sequence', 'class', 'flowchart'];
 diagramTypes.forEach(type => {
     const testScriptsDir = path.join(__dirname, '..', 'test_scripts', `mermaid_${type}`);
     
-    describe(`Mermaid ${type} Syntax Coverage`, () => {
+    describe(`Mermaid ${type} Syntax Coverage`, async () => {
         let files: string[] = [];
         if (fs.existsSync(testScriptsDir)) {
             files = fs.readdirSync(testScriptsDir).filter(f => f.endsWith('.mmd'));
@@ -20,12 +20,12 @@ diagramTypes.forEach(type => {
         const failedFiles: string[] = [];
 
         files.forEach(file => {
-            it(`should parse and process ${file}`, () => {
+            it(`should parse and process ${file}`, async () => {
                 let content = fs.readFileSync(path.join(testScriptsDir, file), 'utf-8');
                 
                 try {
                     // Should not throw errors during parsing
-                    const ast = parseMermaid(content);
+                    const ast = await parseMermaid(content);
                     expect(ast.type).toBe("Diagram");
                     
                     // Should not throw errors during layout generation
@@ -58,3 +58,6 @@ diagramTypes.forEach(type => {
         });
     });
 });
+
+
+

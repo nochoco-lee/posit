@@ -3,14 +3,14 @@ import { parsePlantUml } from '../src/parser';
 import { Emitter } from '../src/layout/emitter';
 import { ClassLayoutManager } from '../src/layout/class';
 
-describe('Emitter @pos update for classes with body', () => {
-    it('should NOT duplicate @pos comments when dragging multiple times', () => {
+describe('Emitter @pos update for classes with body', async () => {
+    it('should NOT duplicate @pos comments when dragging multiple times', async () => {
         const puml = `@startuml
 class A {
     -id: int
 }
 @enduml`;
-        const ast1 = parsePlantUml(puml);
+        const ast1 = await parsePlantUml(puml);
         const layoutManager = new ClassLayoutManager();
         const map1 = layoutManager.process(ast1);
         
@@ -22,7 +22,7 @@ class A {
         console.log('After 1st drag:', puml2);
         
         // Second drag
-        const ast2 = parsePlantUml(puml2);
+        const ast2 = await parsePlantUml(puml2);
         const map2 = layoutManager.process(ast2);
         map2.nodes['A'].position = { x: 200, y: 200 };
         const puml3 = emitter.emitPlantUml(puml2, ast2, map2);
@@ -35,3 +35,6 @@ class A {
         expect(puml3).not.toContain("@pos(100, 100)");
     });
 });
+
+
+

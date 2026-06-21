@@ -3,8 +3,8 @@ import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser";
 import { LayoutManager } from "../src/layout/engine";
 
-describe("Sequence Autoactivate Support", () => {
-    it("should automatically start activations when autoactivate is on", () => {
+describe("Sequence Autoactivate Support", async () => {
+    it("should automatically start activations when autoactivate is on", async () => {
         const input = `
 @startuml
 autoactivate on
@@ -13,7 +13,7 @@ return ok
 @enduml
 `;
 
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         const layoutManager = new LayoutManager();
         const map = layoutManager.process(ast);
 
@@ -22,7 +22,7 @@ return ok
         expect(map.activations![0].nodeId).toBe("B");
     });
 
-    it("should handle the actual 'B' identifier", () => {
+    it("should handle the actual 'B' identifier", async () => {
         const input = `
 @startuml
 autoactivate on
@@ -31,7 +31,7 @@ return ok
 @enduml
 `;
 
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         const layoutManager = new LayoutManager();
         const map = layoutManager.process(ast);
 
@@ -40,3 +40,6 @@ return ok
         expect(map.activations![0].endMessageIndex).toBe(1);
     });
 });
+
+
+

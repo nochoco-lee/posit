@@ -1,25 +1,35 @@
-import { MermaidLexer } from "./lexer";
-import { parser } from "./parser";
-import { visitor } from "./visitor";
 import { IRDiagram } from "../ir/types";
 
-export function parseMermaid(text: string): IRDiagram {
-    // 1. Lexing
-    const lexingResult = MermaidLexer.tokenize(text);
-    if (lexingResult.errors.length > 0) {
-        console.error("Lexing tokens:", lexingResult.tokens.map(t => ({ type: t.tokenType.name, image: t.image })));
-        throw new Error(`Lexing errors:\n${lexingResult.errors.map(e => e.message).join("\n")}`);
+// Lazy singleton — MermaidParser.performSelfAnalysis() is expensive;
+// only load & instantiate the bundle when a Mermaid diagram is first parsed.
+let _mermaidBundle: { lexer: any; parser: any; visitor: any } | null = null;
+async function getMermaidBundle() {
+    if (!_mermaidBundle) {
+        const [{ MermaidLexer }, { parser }, { visitor }] = await Promise.all([
+            import("./lexer"),
+            import("./parser"),
+            import("./visitor"),
+        ]);
+        _mermaidBundle = { lexer: MermaidLexer, parser, visitor };
     }
+    return _mermaidBundle;
+}
 
-    console.log("Lexing tokens:", lexingResult.tokens.map(t => ({ type: t.tokenType.name, image: t.image })));
+export async function parseMermaid(text: string): Promise<IRDiagram> {
+    const { lexer, parser, visitor } = await getMermaidBundle();
 
+    // 1. Lexing
+    const lexingResult = lexer.tokenize(text);
+    if (lexingResult.errors.length > 0) {
+        throw new Error(`Lexing errors:\n${lexingResult.errors.map((e: any) => e.message).join("\n")}`);
+    }
 
     // 2. Parsing
     parser.input = lexingResult.tokens;
     const cst = parser.diagram();
 
     if (parser.errors.length > 0) {
-        throw new Error(`Parsing errors:\n${parser.errors.map(e => e.message).join("\n")}`);
+        throw new Error(`Parsing errors:\n${parser.errors.map((e: any) => e.message).join("\n")}`);
     }
 
     // 3. Visiting to create AST

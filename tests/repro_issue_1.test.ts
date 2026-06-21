@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { parsePlantUml } from "../src/parser/index";
 import { SequenceLayoutManager } from "../src/layout/sequence";
 
-describe("Issue 1: Arrow Direction", () => {
-    it("should have correct direction in IR for Alice <-- Bob", () => {
+describe("Issue 1: Arrow Direction", async () => {
+    it("should have correct direction in IR for Alice <-- Bob", async () => {
         const input = `@startuml
 Alice <-- Bob: Another authentication Response
 @enduml`;
-        const ast = parsePlantUml(input);
+        const ast = await parsePlantUml(input);
         const edge = ast.statements[0] as any;
         
         // Visitor swaps them, so 'from' should be Bob
@@ -16,3 +16,6 @@ Alice <-- Bob: Another authentication Response
         expect(edge.arrow).toBe("-->");
     });
 });
+
+
+

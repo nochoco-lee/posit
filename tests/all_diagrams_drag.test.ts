@@ -7,7 +7,7 @@ import { ClassLayoutManager } from '../src/layout/class';
 
 const classDiagramsDir = path.join(__dirname, '../test_scripts/plantuml_class');
 
-describe('Pos comment persistence across all class diagrams', () => {
+describe('Pos comment persistence across all class diagrams', async () => {
     let files: string[] = [];
     if (fs.existsSync(classDiagramsDir)) {
         files = fs.readdirSync(classDiagramsDir).filter(f => f.endsWith('.puml'));
@@ -15,7 +15,7 @@ describe('Pos comment persistence across all class diagrams', () => {
 
     // Limit to first 20 diagrams for performance
     files.slice(0, 20).forEach(file => {
-        it(`should NOT duplicate @pos comments in ${file} when dragged twice`, () => {
+        it(`should NOT duplicate @pos comments in ${file} when dragged twice`, async () => {
             const filePath = path.join(classDiagramsDir, file);
             let puml = fs.readFileSync(filePath, 'utf-8').replace(/&#34;/g, '"');
             
@@ -23,7 +23,7 @@ describe('Pos comment persistence across all class diagrams', () => {
             const emitter = new Emitter();
 
             // 1st Drag
-            const ast1 = parsePlantUml(puml);
+            const ast1 = await parsePlantUml(puml);
             const map1 = layoutManager.process(ast1);
             
             // Move all nodes by some offset
@@ -34,7 +34,7 @@ describe('Pos comment persistence across all class diagrams', () => {
             const puml2 = emitter.emitPlantUml(puml, ast1, map1);
             
             // 2nd Drag
-            const ast2 = parsePlantUml(puml2);
+            const ast2 = await parsePlantUml(puml2);
             const map2 = layoutManager.process(ast2);
             
             // Move all nodes again
@@ -45,7 +45,7 @@ describe('Pos comment persistence across all class diagrams', () => {
             const puml3 = emitter.emitPlantUml(puml2, ast2, map2);
             
             // Verification
-            const ast3 = parsePlantUml(puml3);
+            const ast3 = await parsePlantUml(puml3);
             
             // Number of @pos should be exactly total number of things we moved
             const matches = puml3.match(/@pos/g);
@@ -70,3 +70,6 @@ describe('Pos comment persistence across all class diagrams', () => {
         });
     });
 });
+
+
+
