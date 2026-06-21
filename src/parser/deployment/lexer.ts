@@ -66,6 +66,8 @@ export const StyleBlock = createToken({
     group: Lexer.SKIPPED
 });
 
+export const EmptyParens = createToken({ name: "EmptyParens", pattern: /\(\)/ });
+
 export const Arrow = createToken({
     name: "Arrow",
     pattern: /[-=.~]+(?:\[[^\]]+\])[-=.~]*(?:\|>|>>|[>x\/\\o*?^+#])*|[<>*+#o()0\-=\.~\\/|x]{1,4}(?:left|right|up|down|le|ri|do|ur|dl|ld|rd|[lrud])?[<>*+#o()0\-=\.~\\/|x]{1,6}|[<>*+#o()0\-=\.~\\/|x]{2,12}/
@@ -81,6 +83,7 @@ export const allDeploymentTokens = [
     common.MultiLineComment,
     common.LineComment,
     StyleBlock,
+    EmptyParens,
     Stereotype,
     Arrow,
     common.Plus,
