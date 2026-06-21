@@ -12,7 +12,7 @@ const fastErrorProvider = {
 export class ClassParser extends CstParser {
     constructor() {
         super(lexer.allClassTokens, { 
-            skipValidations: false,
+            skipValidations: true,
             errorMessageProvider: fastErrorProvider,
             nodeLocationTracking: "full"
         });
@@ -128,6 +128,33 @@ export class ClassParser extends CstParser {
     });
     public namePart = this.RULE("namePart", () => { this.OR([{ ALT: () => this.SUBRULE(this.nodeIdentifier) }, { ALT: () => this.CONSUME(common.StringLiteral) }, { ALT: () => this.CONSUME(common.NumberToken) }]); });
 
+    public connectionName = this.RULE("connectionName", () => {
+        this.AT_LEAST_ONE({
+            GATE: () => {
+                const next = this.LA(1).tokenType;
+                if (next === common.Colon) return this.LA(2).tokenType === common.Colon;
+                return next === common.Identifier || next === common.NumberToken || next === common.StringLiteral || next === lexer.Class || next === lexer.ObjectKeyword || next === lexer.Interface || next === lexer.Enum || next === lexer.Annotation || next === lexer.Abstract || next === lexer.Entity || next === lexer.Struct || next === lexer.Protocol || next === lexer.RecordKeyword || next === lexer.Metaclass || next === lexer.StereotypeKeyword || next === lexer.Dataclass || next === lexer.Exception || next === lexer.Circle || next === lexer.Diamond || next === lexer.Left || next === lexer.Right || next === lexer.Top || next === lexer.Bottom || next === lexer.Extends || next === lexer.Implements || next === common.Tilde || next === common.LAngle || next === common.RAngle || next === common.QuestionMark || next === common.Comma || next === common.LParen || next === common.RParen || next === common.Slash;
+            },
+            DEF: () => {
+                this.OR([
+                    { ALT: () => this.SUBRULE(this.namePart, { LABEL: "parts" }) },
+                    { ALT: () => this.CONSUME(common.Tilde, { LABEL: "seps" }) },
+                    { ALT: () => this.CONSUME(common.LAngle, { LABEL: "seps" }) },
+                    { ALT: () => this.CONSUME(common.RAngle, { LABEL: "seps" }) },
+                    { ALT: () => this.CONSUME(common.QuestionMark, { LABEL: "seps" }) },
+                    { ALT: () => this.CONSUME(common.Comma, { LABEL: "seps" }) },
+                    { ALT: () => this.CONSUME(common.LParen, { LABEL: "seps" }) },
+                    { ALT: () => this.CONSUME(common.RParen, { LABEL: "seps" }) },
+                    { ALT: () => {
+                        this.CONSUME(common.Colon);
+                        this.CONSUME1(common.Colon);
+                    }},
+                    { ALT: () => this.CONSUME(common.Slash, { LABEL: "seps" }) }
+                ]);
+            }
+        });
+    });
+
     public name = this.RULE("name", () => {
         this.AT_LEAST_ONE({
             GATE: () => {
@@ -207,11 +234,11 @@ export class ClassParser extends CstParser {
             { ALT: () => { this.CONSUME(common.LAngle); this.CONSUME(common.RAngle); } }
         ]);
         this.SUBRULE(this.name, { LABEL: "name" });
-        this.OPTION5(() => {
+        this.OPTION2(() => {
             this.CONSUME(lexer.As);
             this.SUBRULE2(this.name, { LABEL: "alias" });
         });
-        this.OPTION2(() => this.CONSUME(lexer.Stereotype));
+        this.OPTION3(() => this.CONSUME(lexer.Stereotype));
         this.MANY(() => {
             this.OR3([
                 { ALT: () => {
@@ -225,7 +252,7 @@ export class ClassParser extends CstParser {
             ]);
         });
         this.MANY1(() => this.CONSUME(common.Newline));
-        this.OPTION3(() => {
+        this.OPTION4(() => {
             this.CONSUME(lexer.LBrace);
             this.MANY2(() => {
                 this.OR5([
@@ -239,7 +266,7 @@ export class ClassParser extends CstParser {
             });
             this.CONSUME(lexer.RBrace);
         });
-        this.OPTION4(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
+        this.OPTION5(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
     });
 
     public memberDeclaration = this.RULE("memberDeclaration", () => {
@@ -272,8 +299,16 @@ export class ClassParser extends CstParser {
                 { ALT: () => this.CONSUME(common.Tilde) }
             ]);
         });
-        this.SUBRULE(this.name, { LABEL: "from" });
+        this.SUBRULE(this.connectionName, { LABEL: "from" });
         this.OPTION1(() => {
+            this.CONSUME(common.LBracket);
+            this.MANY({
+                GATE: () => this.LA(1).tokenType !== common.RBracket && this.LA(1).tokenType !== common.EndUml && this.LA(1).tokenType !== EOF,
+                DEF: () => this.SUBRULE(this.anyToken)
+            });
+            this.CONSUME(common.RBracket);
+        });
+        this.OPTION2(() => {
             this.CONSUME(common.StringLiteral, { LABEL: "fromMultiplicity" });
         });
         this.OR1([
@@ -283,7 +318,7 @@ export class ClassParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.DividerDot, { LABEL: "arrow" }) },
             { ALT: () => this.CONSUME(lexer.DividerMinus, { LABEL: "arrow" }) }
         ]);
-        this.OPTION2(() => {
+        this.OPTION3(() => {
             if (this.LA(1).tokenType === common.StringLiteral) {
                 const after = this.LA(2).tokenType;
                 if (after !== common.Colon && after !== common.Newline && after !== common.EndUml && after !== EOF && after !== common.PosComment && after !== lexer.Stereotype) {
@@ -291,13 +326,22 @@ export class ClassParser extends CstParser {
                 }
             }
         });
-        this.SUBRULE1(this.name, { LABEL: "to" });
-        this.OPTION3(() => this.CONSUME(lexer.Stereotype));
+        this.SUBRULE1(this.connectionName, { LABEL: "to" });
         this.OPTION4(() => {
+            this.CONSUME1(common.LBracket);
+            this.MANY1({
+                GATE: () => this.LA(1).tokenType !== common.RBracket && this.LA(1).tokenType !== common.EndUml && this.LA(1).tokenType !== EOF,
+                DEF: () => this.SUBRULE1(this.anyToken)
+            });
+            this.CONSUME1(common.RBracket);
+        });
+        this.OPTION5(() => this.CONSUME(lexer.Stereotype));
+        this.OPTION6(() => this.CONSUME(common.Color));
+        this.OPTION7(() => {
             this.CONSUME(common.Colon);
             this.SUBRULE(this.label, { LABEL: "payload" });
         });
-        this.OPTION5(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
+        this.OPTION8(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
     });
 
     public noteDeclaration = this.RULE("noteDeclaration", () => {
@@ -481,6 +525,19 @@ export class ClassParser extends CstParser {
         if (t.tokenType === common.Plus || t.tokenType === common.Minus || t.tokenType === common.Hash || t.tokenType === common.Tilde) { la++; t = this.LA(la); }
         while (t.tokenType === common.StringLiteral) { la++; t = this.LA(la); }
         if (t.tokenType === common.Dot) { la++; t = this.LA(la); }
+        if (t.tokenType === common.LParen) {
+            let depth = 1;
+            la++; t = this.LA(la);
+            while (depth > 0 && t.tokenType !== common.Newline && t.tokenType !== common.EndUml && t.tokenType !== EOF) {
+                if (t.tokenType === common.LParen) depth++;
+                if (t.tokenType === common.RParen) depth--;
+                if (depth > 0) { la++; t = this.LA(la); }
+            }
+            if (t.tokenType === common.RParen) { la++; t = this.LA(la); }
+            if (t.tokenType === lexer.Arrow || t.tokenType === common.Minus || t.tokenType === common.Dot || t.tokenType === lexer.DividerDot || t.tokenType === lexer.DividerMinus) {
+                return true;
+            }
+        }
         if (!this.isNameStart(t) && t.tokenType !== common.NumberToken) return false;
         while (true) {
             la++; t = this.LA(la);
@@ -493,12 +550,28 @@ export class ClassParser extends CstParser {
                 let la2 = la + 1;
                 let t2 = this.LA(la2);
                 if (this.isNameStart(t2) || t2.tokenType === common.StringLiteral || t2.tokenType === common.NumberToken) {
-                    la++; t = this.LA(la);
-                    if (!this.isNameStart(t) && t.tokenType !== common.NumberToken && t.tokenType !== common.StringLiteral) break;
+                    let la3 = la2 + 1;
+                    let t3 = this.LA(la3);
+                    if (t3.tokenType === common.Newline || t3.tokenType === common.EndUml || t3.tokenType === EOF) {
+                        break;
+                    } else {
+                        la++; t = this.LA(la);
+                        if (!this.isNameStart(t) && t.tokenType !== common.NumberToken && t.tokenType !== common.StringLiteral) break;
+                    }
                 } else break;
             } else if (t.tokenType === common.Tilde || t.tokenType === common.QuestionMark || t.tokenType === common.LAngle || t.tokenType === common.RAngle || t.tokenType === common.Comma || t.tokenType === common.LParen || t.tokenType === common.RParen || t.tokenType === common.Slash) {
                 la++; t = this.LA(la);
                 if (!this.isNameStart(t) && t.tokenType !== common.NumberToken && t.tokenType !== common.StringLiteral) break;
+            } else if (t.tokenType === common.LBracket) {
+                let depth = 1;
+                la++; t = this.LA(la);
+                while (depth > 0 && t.tokenType !== common.Newline && t.tokenType !== common.EndUml && t.tokenType !== EOF) {
+                    if (t.tokenType === common.LBracket) depth++;
+                    if (t.tokenType === common.RBracket) depth--;
+                    if (depth > 0) { la++; t = this.LA(la); }
+                }
+                if (t.tokenType === common.RBracket) { la++; t = this.LA(la); }
+                if (t.tokenType === lexer.Arrow || t.tokenType === common.Minus || t.tokenType === common.Dot || t.tokenType === lexer.DividerDot || t.tokenType === lexer.DividerMinus) break;
             } else if (this.isNameStart(t) || t.tokenType === common.NumberToken || t.tokenType === common.StringLiteral) {} else break;
         }
         while (t.tokenType === common.StringLiteral) { la++; t = this.LA(la); }

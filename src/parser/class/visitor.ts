@@ -197,6 +197,15 @@ export class ClassAstVisitor extends BaseVisitor {
         }).join("");
     }
 
+    connectionName(ctx: any): string {
+        const allChildren = this.getTokensFromCst(ctx);
+        allChildren.sort((a, b) => a.startOffset - b.startOffset);
+        return allChildren.map(c => {
+             if (c.tokenType && (c.tokenType.name === "StringLiteral" || c.tokenType.name === "NamePartStringLiteral")) return c.image.slice(1, -1);
+             return c.image;
+        }).join("");
+    }
+
     namePart(ctx: any): string {
         if (ctx.nodeIdentifier) return this.visit(ctx.nodeIdentifier[0]);
         if (ctx.StringLiteral) return ctx.StringLiteral[0].image.slice(1, -1);
