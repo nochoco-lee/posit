@@ -260,6 +260,14 @@ export class DeploymentLayoutManager {
                 const container = s as any;
                 const groupY = currentY;
 
+                // Save rowOccupancy so container contents get their own local layout
+                const savedRowOccupancy = new Map(this.rowOccupancy);
+                const savedNodesByRow = new Map(this.nodesByRow);
+                const savedRowInfo = new Map(this.rowInfo);
+                this.rowOccupancy.clear();
+                this.nodesByRow.clear();
+                this.rowInfo.clear();
+
                 const stmts = s.type === 'container' ? container.statements : container.sections[0].statements;
                 const contentSize = this.layoutStatementsPass1(
                     stmts,
@@ -268,7 +276,19 @@ export class DeploymentLayoutManager {
                     currentY + this.padding + 20
                 );
 
-                const groupWidth = Math.max(this.minNodeWidth + 20, contentSize.width + 2 * this.padding);
+                // Compute actual content width from local rowOccupancy before restoring
+                let maxRowWidth = 0;
+                this.rowOccupancy.forEach((endX, _targetY) => {
+                    const rowWidth = endX - (x + this.padding);
+                    if (rowWidth > maxRowWidth) maxRowWidth = rowWidth;
+                });
+
+                // Restore outer scope tracking
+                this.rowOccupancy = savedRowOccupancy;
+                this.nodesByRow = savedNodesByRow;
+                this.rowInfo = savedRowInfo;
+
+                const groupWidth = Math.max(this.minNodeWidth + 20, maxRowWidth + this.padding);
                 const groupHeight = Math.max(this.minNodeHeight + 20, contentSize.height + 2 * this.padding + 20);
 
                 let position = { x, y: groupY };
