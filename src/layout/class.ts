@@ -200,10 +200,32 @@ export class ClassLayoutManager {
         if (!container.layout) {
             this.currentClassY += 40; // Header padding
         }
+
+        // Save rowOccupancy so container contents get their own local layout
+        const savedRowOccupancy = new Map(this.rowOccupancy);
+        const savedNodesByRow = new Map(this.nodesByRow);
+        const savedRowInfo = new Map(this.rowInfo);
+        this.rowOccupancy.clear();
+        this.nodesByRow.clear();
+        this.rowInfo.clear();
+
         this.processStatementsPass1(container.statements, position.x + 20);
+
+        // Compute actual content width from local rowOccupancy
+        let maxRowWidth = 0;
+        this.rowOccupancy.forEach((endX, _targetY) => {
+            const rowWidth = endX - (position.x + 20);
+            if (rowWidth > maxRowWidth) maxRowWidth = rowWidth;
+        });
+
+        // Restore outer scope tracking
+        this.rowOccupancy = savedRowOccupancy;
+        this.nodesByRow = savedNodesByRow;
+        this.rowInfo = savedRowInfo;
         
         const endY = this.currentClassY;
         this.map.groups[groupIndex].size.height = Math.max(100, endY - (container.layout ? container.layout.y : startY));
+        this.map.groups[groupIndex].size.width = Math.max(450, maxRowWidth + 40);
         if (!container.layout) {
             this.currentClassY += 20;
         }
@@ -228,12 +250,34 @@ export class ClassLayoutManager {
         if (!group.layout) {
             this.currentClassY += 40;
         }
+
+        // Save rowOccupancy so group contents get their own local layout
+        const savedRowOccupancy = new Map(this.rowOccupancy);
+        const savedNodesByRow = new Map(this.nodesByRow);
+        const savedRowInfo = new Map(this.rowInfo);
+        this.rowOccupancy.clear();
+        this.nodesByRow.clear();
+        this.rowInfo.clear();
+
         group.sections.forEach(section => {
             this.processStatementsPass1(section.statements, position.x + 20);
         });
 
+        // Compute actual content width from local rowOccupancy
+        let maxRowWidth = 0;
+        this.rowOccupancy.forEach((endX, _targetY) => {
+            const rowWidth = endX - (position.x + 20);
+            if (rowWidth > maxRowWidth) maxRowWidth = rowWidth;
+        });
+
+        // Restore outer scope tracking
+        this.rowOccupancy = savedRowOccupancy;
+        this.nodesByRow = savedNodesByRow;
+        this.rowInfo = savedRowInfo;
+
         const endY = this.currentClassY;
         this.map.groups[groupIndex].size.height = Math.max(100, endY - (group.layout ? group.layout.y : startY));
+        this.map.groups[groupIndex].size.width = Math.max(450, maxRowWidth + 40);
         if (!group.layout) {
             this.currentClassY += 20;
         }
