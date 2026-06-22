@@ -292,8 +292,6 @@ export class MermaidAstVisitor extends BaseVisitor {
                 else if (shapeImage === "([") shape = "stadium";
                 else if (shapeImage === "[/") shape = "parallelogram";
                 else if (shapeImage === "[\\") shape = "parallelogram_inv";
-                else if (shapeImage === "/]") shape = "parallelogram";
-                else if (shapeImage === "\\]") shape = "parallelogram_inv";
                 else shape = "node";
             }
         }

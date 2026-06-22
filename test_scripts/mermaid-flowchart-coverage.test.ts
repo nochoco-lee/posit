@@ -34,7 +34,7 @@ describe(`Mermaid ${type} Syntax Coverage`, async () => {
                 successCount++;
             } catch (e: any) {
                 failedFiles.push(file);
-                console.error(`Failed ${file}:`, e.message);
+                console.error(`Failed ${file}: ${e.message?.substring(0, 500)}`);
             }
         });
     });

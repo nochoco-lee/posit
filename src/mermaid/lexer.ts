@@ -89,8 +89,8 @@ export const RAngle = createToken({ name: "RAngle", pattern: />/, categories: [S
 export const Equal = createToken({ name: "Equal", pattern: /=/, categories: [Symbol] });
 
 // Node Shapes (Flowchart) - multi-char only; single [ ] ( ) are LBracket/RBracket/LParen/RParen
-export const LShape = createToken({ name: "LShape", pattern: /\[\[|\[\(|\[\/|\[\\|\(\(|\(\{|\{\{|\{\|/, categories: [Symbol] });
-export const RShape = createToken({ name: "RShape", pattern: /\]\]|\)\]|\/\]|\\\]|\)\)|\}\)|\}\}|\|\}/, categories: [Symbol] });
+export const LShape = createToken({ name: "LShape", pattern: /\[\[|\[\(|\[\/|\[\\|\(\(\(|\(\(|\(\{|\{\{|\{\|/, categories: [Symbol] });
+export const RShape = createToken({ name: "RShape", pattern: /\]\]|\)\)\)|\)\)|\)\]|\/\]|\\\]|\}\)|\}\}|\|\}/, categories: [Symbol] });
 
 // String Literals
 export const StringLiteral = createToken({ name: "StringLiteral", pattern: /"(?:[^\\"]|\\.)*"/ });
@@ -128,7 +128,7 @@ export const allMeTokens = [
     StringLiteral,
     BacktickIdentifier,
     
-    Colon, Comma, LBrace, RBrace, LParen, RParen, LBracket, RBracket, LShape, RShape, VerticalBar, Ampersand, Plus, Minus, Hash, Tilde, Star, Slash, Backslash, Percent, At, Exclamation, QuestionMark, Semicolon, LAngle, RAngle, Quote, Equal,
+    Colon, Comma, LShape, RShape, LBrace, RBrace, LParen, RParen, LBracket, RBracket, VerticalBar, Ampersand, Plus, Minus, Hash, Tilde, Star, Slash, Backslash, Percent, At, Exclamation, QuestionMark, Semicolon, LAngle, RAngle, Quote, Equal,
     
     Identifier
 ];
