@@ -168,6 +168,11 @@ class MermaidParser extends CstParser {
         return (t1 === Identifier || t1 === StringLiteral || t1 === Keyword) && t1 !== End;
     }
 
+    private isInsideBlockBody(): boolean {
+        const t1 = this.LA(1).tokenType;
+        return t1 !== End && t1 !== Else && t1 !== And && t1 !== Option;
+    }
+
     public ignoredStatement = this.RULE("ignoredStatement", () => {
         this.OR([
             { ALT: () => this.CONSUME(At) },
@@ -300,11 +305,11 @@ class MermaidParser extends CstParser {
             { ALT: () => this.CONSUME(Break) }
         ]);
         this.OPTION(() => this.SUBRULE(this.payload, { LABEL: "label" }));
-        this.MANY1(() => this.SUBRULE(this.sequenceStatement));
+        this.MANY1({ GATE: this.isInsideBlockBody, DEF: () => this.SUBRULE(this.sequenceStatement) });
         this.MANY2(() => {
             this.OR1([ { ALT: () => this.CONSUME(Else) }, { ALT: () => this.CONSUME(Option) }, { ALT: () => this.CONSUME(And) } ]);
             this.OPTION1(() => this.SUBRULE1(this.genericName, { LABEL: "elseLabel" }));
-            this.MANY3(() => this.SUBRULE1(this.sequenceStatement));
+            this.MANY3({ GATE: this.isInsideBlockBody, DEF: () => this.SUBRULE1(this.sequenceStatement) });
         });
         this.CONSUME(End);
     });

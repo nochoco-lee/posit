@@ -134,16 +134,20 @@ export class MermaidAstVisitor extends BaseVisitor {
         const keyword = keywordToken.image.toLowerCase();
         const label = ctx.label ? this.visit(ctx.label[0]) : "";
         
-        let statements: any[] = [];
+        const sections: { label?: string; statements: any[] }[] = [];
+        
+        const firstStatements: any[] = [];
         if (ctx.sequenceStatement) {
-            statements = ctx.sequenceStatement.map((s: any) => this.visit(s)).filter((s: any) => s).flat();
+            const allStmts = ctx.sequenceStatement.map((s: any) => this.visit(s)).filter((s: any) => s).flat();
+            firstStatements.push(...allStmts);
         }
+        sections.push({ label, statements: firstStatements });
         
         return {
             type: "group",
             keyword,
             label,
-            statements
+            sections
         } as any;
     }
 
