@@ -179,7 +179,6 @@ class MermaidParser extends CstParser {
             { ALT: () => this.CONSUME(Slash) },
             { ALT: () => this.CONSUME(Backslash) },
             { ALT: () => this.CONSUME(Ampersand) },
-            { ALT: () => this.CONSUME(And) },
             { ALT: () => this.CONSUME(Click) },
             { ALT: () => this.CONSUME(Link) },
             { ALT: () => this.CONSUME(Links) }
@@ -202,7 +201,7 @@ class MermaidParser extends CstParser {
         this.AT_LEAST_ONE({
             GATE: () => {
                 const t = this.LA(1).tokenType;
-                return t !== Newline && t !== Colon && t !== VerticalBar && t !== Arrow && t !== EOF && t !== At;
+                return t !== Newline && t !== Colon && t !== VerticalBar && t !== Arrow && t !== EOF && t !== At && t !== As;
             },
             DEF: () => this.SUBRULE(this.anyToken)
         });
@@ -250,7 +249,7 @@ class MermaidParser extends CstParser {
         this.MANY({
             GATE: () => {
                 const t = this.LA(1).tokenType;
-                return t !== RBrace && t !== Newline && t !== VerticalBar && t !== RParen && t !== RShape && t !== EOF;
+                return t !== RBrace && t !== Newline && t !== VerticalBar && t !== RShape && t !== EOF;
             },
             DEF: () => this.SUBRULE(this.anyToken)
         });
@@ -259,9 +258,9 @@ class MermaidParser extends CstParser {
     public noteDeclaration = this.RULE("noteDeclaration", () => {
         this.CONSUME(Note);
         this.OR([
-            { ALT: () => this.CONSUME(RightOf) },
-            { ALT: () => this.CONSUME(LeftOf) },
-            { ALT: () => this.CONSUME(Over) },
+            { ALT: () => { this.CONSUME(RightOf); this.SUBRULE(this.genericName, { LABEL: "target" }); } },
+            { ALT: () => { this.CONSUME(LeftOf); this.SUBRULE1(this.genericName, { LABEL: "target" }); } },
+            { ALT: () => { this.CONSUME(Over); this.SUBRULE2(this.genericName, { LABEL: "target" }); } },
             { 
                 GATE: () => {
                     const t = this.LA(1).tokenType;
@@ -269,13 +268,13 @@ class MermaidParser extends CstParser {
                 },
                 ALT: () => {
                     this.OPTION(() => this.CONSUME(Identifier, { LABEL: "forKeyword" }));
-                    this.SUBRULE(this.genericName, { LABEL: "target" });
+                    this.SUBRULE3(this.genericName, { LABEL: "target" });
                 }
             }
         ]);
         this.MANY(() => {
             this.CONSUME(Comma);
-            this.SUBRULE1(this.genericName, { LABEL: "targets" });
+            this.SUBRULE4(this.genericName, { LABEL: "targets" });
         });
         this.OR1([
             { ALT: () => {
@@ -284,7 +283,7 @@ class MermaidParser extends CstParser {
             }},
             { 
                 GATE: () => this.LA(1).tokenType !== Colon,
-                ALT: () => this.SUBRULE2(this.payload, { LABEL: "textName" }) 
+                ALT: () => this.SUBRULE5(this.payload, { LABEL: "textName" }) 
             }
         ]);
     });
@@ -363,18 +362,29 @@ class MermaidParser extends CstParser {
 
     public connectionDeclaration = this.RULE("connectionDeclaration", () => {
         this.SUBRULE(this.genericName, { LABEL: "from" });
-        this.MANY(() => {
-            this.OPTION(() => this.OR([ { ALT: () => this.CONSUME(Plus) }, { ALT: () => this.CONSUME(Minus) }, { ALT: () => this.CONSUME(Star) }, { ALT: () => this.CONSUME(Hash) }, { ALT: () => this.CONSUME(LAngle) }, { ALT: () => this.CONSUME1(VerticalBar) } ]));
-            this.OPTION1(() => this.CONSUME(StringLiteral, { LABEL: "multiplicity1" }));
-            this.CONSUME(Arrow, { LABEL: "arrow" });
-            this.OPTION2(() => this.CONSUME1(StringLiteral, { LABEL: "multiplicity2" }));
-            this.MANY1(() => {
-                this.OR1([
-                    { ALT: () => { this.CONSUME2(VerticalBar); this.SUBRULE(this.payload, { LABEL: "edgeLabel" }); this.CONSUME3(VerticalBar); } },
-                    { ALT: () => this.OR2([{ ALT: () => this.CONSUME1(Plus) }, { ALT: () => this.CONSUME1(Minus) }]) }
-                ]);
-            });
-            this.SUBRULE1(this.genericName, { LABEL: "to" });
+        this.MANY({
+            GATE: () => {
+                let la = 1;
+                let t = this.LA(la);
+                while (t.tokenType === Plus || t.tokenType === Minus || t.tokenType === Star || t.tokenType === Hash || t.tokenType === LAngle || t.tokenType === VerticalBar) {
+                    la++; t = this.LA(la);
+                }
+                if (t.tokenType === StringLiteral) { la++; t = this.LA(la); }
+                return t.tokenType === Arrow;
+            },
+            DEF: () => {
+                this.OPTION(() => this.OR([ { ALT: () => this.CONSUME(Plus) }, { ALT: () => this.CONSUME(Minus) }, { ALT: () => this.CONSUME(Star) }, { ALT: () => this.CONSUME(Hash) }, { ALT: () => this.CONSUME(LAngle) }, { ALT: () => this.CONSUME1(VerticalBar) } ]));
+                this.OPTION1(() => this.CONSUME(StringLiteral, { LABEL: "multiplicity1" }));
+                this.CONSUME(Arrow, { LABEL: "arrow" });
+                this.OPTION2(() => this.CONSUME1(StringLiteral, { LABEL: "multiplicity2" }));
+                this.MANY1(() => {
+                    this.OR1([
+                        { ALT: () => { this.CONSUME2(VerticalBar); this.SUBRULE(this.payload, { LABEL: "edgeLabel" }); this.CONSUME3(VerticalBar); } },
+                        { ALT: () => this.OR2([{ ALT: () => this.CONSUME1(Plus) }, { ALT: () => this.CONSUME1(Minus) }]) }
+                    ]);
+                });
+                this.SUBRULE1(this.genericName, { LABEL: "to" });
+            }
         });
         this.OPTION3(() => {
             this.OR3([
