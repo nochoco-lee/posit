@@ -71,7 +71,11 @@ import {
     Click,
     Link,
     Links,
-    Direction
+    Direction,
+    Namespace,
+    Callback,
+    Style,
+    ClassDef
 } from "./lexer";
 
 class MermaidParser extends CstParser {
@@ -82,7 +86,8 @@ class MermaidParser extends CstParser {
                 buildNoViableAltMessage: (options: any) => `Expecting one of the possible Token sequences, but found: '${options.actual[0].image}'`,
                 buildEarlyExitMessage: (options: any) => `Expecting at least one iteration which starts with one of these tokens: [${options.expectedIterationPaths.map((p: any) => p[0].name).join(", ")}], but found: '${options.actual[0].image}'`,
                 buildNotAllInputParsedMessage: (options: any) => `Redundant input, expecting EOF but found: ${options.firstRedundant.image}`
-            }
+            },
+            skipValidations: true
         });
         this.performSelfAnalysis();
     }
@@ -129,6 +134,13 @@ class MermaidParser extends CstParser {
             { GATE: this.isMemberDecl, ALT: () => this.SUBRULE(this.memberDeclaration) },
             { GATE: this.isConnection, ALT: () => this.SUBRULE(this.connectionDeclaration) },
             { ALT: () => this.SUBRULE(this.noteDeclaration) },
+            { ALT: () => this.SUBRULE(this.namespaceDeclaration) },
+            { ALT: () => this.CONSUME(Direction) },
+            { ALT: () => this.CONSUME(DirType) },
+            { ALT: () => this.SUBRULE(this.styleDeclaration) },
+            { ALT: () => this.SUBRULE(this.callbackDeclaration) },
+            { ALT: () => this.SUBRULE(this.classDefDeclaration) },
+            { GATE: () => this.LA(1).tokenType === LAngle, ALT: () => this.SUBRULE(this.stereotypeDeclaration) },
             { ALT: () => this.CONSUME(PosComment) },
             { ALT: () => this.SUBRULE(this.ignoredStatement) }
         ]);
@@ -150,10 +162,10 @@ class MermaidParser extends CstParser {
     private isConnection(): boolean {
         let la = 1;
         let t = this.LA(la);
-        while (t.tokenType === Quote || t.tokenType === StringLiteral) { la++; t = this.LA(la); }
-        if (t.tokenType !== Identifier && t.tokenType !== Keyword) return false;
+        while (t.tokenType === Quote || t.tokenType === StringLiteral || t.tokenType === LParen || t.tokenType === RParen) { la++; t = this.LA(la); }
+        if (t.tokenType !== Identifier && t.tokenType !== Keyword && t.tokenType !== BacktickIdentifier) return false;
         la++; t = this.LA(la);
-        while (t.tokenType === Symbol || t.tokenType === Star || t.tokenType === Hash || t.tokenType === LAngle || t.tokenType === VerticalBar || t.tokenType === LParen || t.tokenType === RParen) { la++; t = this.LA(la); }
+        while (t.tokenType === Symbol || t.tokenType === Star || t.tokenType === Hash || t.tokenType === LAngle || t.tokenType === VerticalBar || t.tokenType === LParen || t.tokenType === RParen || t.tokenType === StringLiteral) { la++; t = this.LA(la); }
         return t.tokenType === Arrow;
     }
 
@@ -198,7 +210,12 @@ class MermaidParser extends CstParser {
             { ALT: () => this.CONSUME(Symbol) },
             { ALT: () => this.CONSUME(StringLiteral) },
             { ALT: () => this.CONSUME(BacktickIdentifier) },
-            { ALT: () => this.CONSUME(Arrow) }
+            { ALT: () => this.CONSUME(Arrow) },
+            { ALT: () => this.CONSUME(LParen) },
+            { ALT: () => this.CONSUME(RParen) },
+            { ALT: () => this.CONSUME(LAngle) },
+            { ALT: () => this.CONSUME(RAngle) },
+            { ALT: () => this.CONSUME(Comma) }
         ]);
     });
 
@@ -206,7 +223,7 @@ class MermaidParser extends CstParser {
         this.AT_LEAST_ONE({
             GATE: () => {
                 const t = this.LA(1).tokenType;
-                return t !== Newline && t !== Colon && t !== VerticalBar && t !== Arrow && t !== EOF && t !== At && t !== As;
+                return t !== Newline && t !== Colon && t !== VerticalBar && t !== Arrow && t !== EOF && t !== At && t !== As && t !== LBrace && t !== RBrace && t !== LParen && t !== RParen && t !== LAngle && t !== RAngle && t !== Comma;
             },
             DEF: () => this.SUBRULE(this.anyToken)
         });
@@ -321,26 +338,35 @@ class MermaidParser extends CstParser {
         ]);
         this.SUBRULE(this.genericName, { LABEL: "name" });
         this.OPTION(() => {
+            this.CONSUME(Colon);
+            this.CONSUME1(Colon);
+            this.CONSUME2(Colon);
+            this.SUBRULE1(this.genericName, { LABEL: "styleClass" });
+        });
+        this.OPTION1(() => {
             this.OR1([
                 { ALT: () => this.SUBRULE(this.metadata) },
                 { ALT: () => {
                     this.CONSUME(LBrace);
-                    this.MANY(() => {
-                        this.OR2([
-                            { GATE: this.isClassMember, ALT: () => this.SUBRULE(this.classMemberLine) },
-                            { ALT: () => this.SUBRULE(this.classStatement) }
-                        ]);
+                    this.MANY({
+                        GATE: () => this.LA(1).tokenType !== RBrace,
+                        DEF: () => {
+                            this.OR2([
+                                { GATE: this.isClassMember, ALT: () => this.SUBRULE(this.classMemberLine) },
+                                { ALT: () => this.SUBRULE(this.classStatement) }
+                            ]);
+                        }
                     });
                     this.CONSUME(RBrace);
                 }}
             ]);
         });
-        this.OPTION1(() => this.CONSUME(PosComment, { LABEL: "layout" }));
+        this.OPTION2(() => this.CONSUME(PosComment, { LABEL: "layout" }));
     });
 
     private isClassMember(): boolean {
         const t1 = this.LA(1).tokenType;
-        return t1 === Plus || t1 === Minus || t1 === Hash || t1 === Tilde || t1 === Identifier || t1 === Keyword;
+        return t1 === Plus || t1 === Minus || t1 === Hash || t1 === Tilde || t1 === Identifier || t1 === Keyword || t1 === LAngle;
     }
 
     public classMemberLine = this.RULE("classMemberLine", () => {
@@ -365,39 +391,98 @@ class MermaidParser extends CstParser {
         this.SUBRULE(this.classMemberLine);
     });
 
+    public namespaceDeclaration = this.RULE("namespaceDeclaration", () => {
+        this.CONSUME(Namespace);
+        this.SUBRULE(this.genericName, { LABEL: "name" });
+        this.OPTION(() => this.SUBRULE(this.metadata));
+        this.CONSUME(LBrace);
+        this.MANY({
+            GATE: () => this.LA(1).tokenType !== RBrace,
+            DEF: () => this.SUBRULE(this.classStatement)
+        });
+        this.CONSUME(RBrace);
+    });
+
+    public styleDeclaration = this.RULE("styleDeclaration", () => {
+        this.CONSUME(Style);
+        this.SUBRULE(this.genericName, { LABEL: "name" });
+        this.MANY(() => this.SUBRULE(this.anyToken));
+    });
+
+    public callbackDeclaration = this.RULE("callbackDeclaration", () => {
+        this.OR([
+            { ALT: () => this.CONSUME(Callback) },
+            { ALT: () => this.CONSUME(Click) },
+            { ALT: () => this.CONSUME(Link) }
+        ]);
+        this.SUBRULE(this.genericName, { LABEL: "name" });
+        this.MANY(() => this.SUBRULE(this.anyToken));
+    });
+
+    public classDefDeclaration = this.RULE("classDefDeclaration", () => {
+        this.CONSUME(ClassDef);
+        this.SUBRULE(this.genericName, { LABEL: "name" });
+        this.MANY(() => this.SUBRULE(this.anyToken));
+    });
+
+    public stereotypeDeclaration = this.RULE("stereotypeDeclaration", () => {
+        this.CONSUME(LAngle);
+        this.CONSUME1(LAngle);
+        this.SUBRULE(this.genericName, { LABEL: "name" });
+        this.CONSUME(RAngle);
+        this.CONSUME1(RAngle);
+        this.OPTION(() => this.SUBRULE1(this.genericName, { LABEL: "target" }));
+    });
+
     public connectionDeclaration = this.RULE("connectionDeclaration", () => {
         this.SUBRULE(this.genericName, { LABEL: "from" });
         this.MANY({
             GATE: () => {
                 let la = 1;
                 let t = this.LA(la);
-                while (t.tokenType === Plus || t.tokenType === Minus || t.tokenType === Star || t.tokenType === Hash || t.tokenType === LAngle || t.tokenType === VerticalBar) {
+                while (t.tokenType === Plus || t.tokenType === Minus || t.tokenType === Star || t.tokenType === Hash || t.tokenType === LAngle || t.tokenType === VerticalBar || t.tokenType === LParen || t.tokenType === RParen) {
                     la++; t = this.LA(la);
                 }
                 if (t.tokenType === StringLiteral) { la++; t = this.LA(la); }
                 return t.tokenType === Arrow;
             },
             DEF: () => {
-                this.OPTION(() => this.OR([ { ALT: () => this.CONSUME(Plus) }, { ALT: () => this.CONSUME(Minus) }, { ALT: () => this.CONSUME(Star) }, { ALT: () => this.CONSUME(Hash) }, { ALT: () => this.CONSUME(LAngle) }, { ALT: () => this.CONSUME1(VerticalBar) } ]));
+                this.OPTION(() => {
+                    this.OR([
+                        { ALT: () => { this.CONSUME(LParen); this.CONSUME(RParen); } },
+                        { ALT: () => this.CONSUME1(Plus) },
+                        { ALT: () => this.CONSUME(Minus) },
+                        { ALT: () => this.CONSUME(Star) },
+                        { ALT: () => this.CONSUME(Hash) },
+                        { ALT: () => this.CONSUME(LAngle) },
+                        { ALT: () => this.CONSUME2(VerticalBar) }
+                    ]);
+                });
                 this.OPTION1(() => this.CONSUME(StringLiteral, { LABEL: "multiplicity1" }));
                 this.CONSUME(Arrow, { LABEL: "arrow" });
-                this.OPTION2(() => this.CONSUME1(StringLiteral, { LABEL: "multiplicity2" }));
+                this.OPTION2(() => {
+                    this.OR3([
+                        { ALT: () => { this.CONSUME3(LParen); this.CONSUME4(RParen); } },
+                        { ALT: () => this.CONSUME5(VerticalBar) }
+                    ]);
+                });
+                this.OPTION3(() => this.CONSUME(StringLiteral, { LABEL: "multiplicity2" }));
                 this.MANY1(() => {
                     this.OR1([
-                        { ALT: () => { this.CONSUME2(VerticalBar); this.SUBRULE(this.payload, { LABEL: "edgeLabel" }); this.CONSUME3(VerticalBar); } },
+                        { ALT: () => { this.CONSUME6(VerticalBar); this.SUBRULE(this.payload, { LABEL: "edgeLabel" }); this.CONSUME7(VerticalBar); } },
                         { ALT: () => this.OR2([{ ALT: () => this.CONSUME1(Plus) }, { ALT: () => this.CONSUME1(Minus) }]) }
                     ]);
                 });
                 this.SUBRULE1(this.genericName, { LABEL: "to" });
             }
         });
-        this.OPTION3(() => {
-            this.OR3([
+        this.OPTION4(() => {
+            this.OR4([
                 { ALT: () => { this.CONSUME(Colon); this.SUBRULE1(this.payload, { LABEL: "payload" }); } },
-                { ALT: () => { this.CONSUME4(VerticalBar); this.SUBRULE2(this.payload, { LABEL: "edgeLabel2" }); this.CONSUME5(VerticalBar); } }
+                { ALT: () => { this.CONSUME(VerticalBar); this.SUBRULE2(this.payload, { LABEL: "edgeLabel2" }); this.CONSUME1(VerticalBar); } }
             ]);
         });
-        this.OPTION4(() => this.CONSUME(PosComment, { LABEL: "layout" }));
+        this.OPTION5(() => this.CONSUME(PosComment, { LABEL: "layout" }));
     });
 
     public flowchartNodeDeclaration = this.RULE("flowchartNodeDeclaration", () => {

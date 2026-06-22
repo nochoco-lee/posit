@@ -49,11 +49,15 @@ export const Link = createToken({ name: "Link", pattern: /link\b/i, categories: 
 export const Links = createToken({ name: "Links", pattern: /links\b/i, categories: [Keyword] });
 export const Direction = createToken({ name: "Direction", pattern: /direction\b/i, categories: [Keyword] });
 export const DirType = createToken({ name: "DirType", pattern: /(?:LR|RL|TB|BT|TD)\b/i, categories: [Keyword] });
+export const Namespace = createToken({ name: "Namespace", pattern: /namespace\b/i, categories: [Keyword] });
+export const Callback = createToken({ name: "Callback", pattern: /callback\b/i, categories: [Keyword] });
+export const Style = createToken({ name: "Style", pattern: /style\b/i, categories: [Keyword] });
+export const ClassDef = createToken({ name: "ClassDef", pattern: /classDef\b/i, categories: [Keyword] });
 
 // Arrows
 export const Arrow = createToken({
     name: "Arrow",
-    pattern: /(?:<\||[o*<x])[-=.]+(?:>>|>|x|[)])?|[-=.]+(?:>>|>|x|[)])|[-=.]{2,}|==+>|==+|--/
+    pattern: /(?:<\||[o*<x])[-=.]+(?:>>|\|?>|x|[)])?|[-=.]+(?:>>|\|?>|x|[)])|[-=.]{2,}|==+>|==+|--/
 });
 
 // Delimiters / Symbols
@@ -119,7 +123,7 @@ export const allMeTokens = [
     
     Arrow,
     
-    As, End, Participant, Actor, Activate, Deactivate, Note, RightOf, LeftOf, Over, Loop, Alt, Else, Opt, Par, Critical, Option, And, Rect, Autonumber, Box, Create, Destroy, Break, Class, Interface, Subgraph, Click, Links, Link, Direction, DirType,
+    As, End, Participant, Actor, Activate, Deactivate, Note, RightOf, LeftOf, Over, Loop, Alt, Else, Opt, Par, Critical, Option, And, Rect, Autonumber, Box, Create, Destroy, Break, Class, Interface, Subgraph, Click, Links, Link, Direction, DirType, Namespace, Callback, Style, ClassDef,
     
     StringLiteral,
     BacktickIdentifier,

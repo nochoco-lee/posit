@@ -57,6 +57,11 @@ export class MermaidAstVisitor extends BaseVisitor {
         if (ctx.flowchartNodeDeclaration) return this.visit(ctx.flowchartNodeDeclaration[0]);
         if (ctx.subgraphDeclaration) return this.visit(ctx.subgraphDeclaration[0]);
         if (ctx.memberDeclaration) return this.visit(ctx.memberDeclaration[0]);
+        if (ctx.namespaceDeclaration) return this.visit(ctx.namespaceDeclaration[0]);
+        if (ctx.styleDeclaration) return this.visit(ctx.styleDeclaration[0]);
+        if (ctx.callbackDeclaration) return this.visit(ctx.callbackDeclaration[0]);
+        if (ctx.classDefDeclaration) return this.visit(ctx.classDefDeclaration[0]);
+        if (ctx.stereotypeDeclaration) return this.visit(ctx.stereotypeDeclaration[0]);
         if (ctx.Autonumber) return { type: "autonumber" } as any;
         if (ctx.PosComment) return null; 
         return null;
@@ -300,6 +305,40 @@ export class MermaidAstVisitor extends BaseVisitor {
             label,
             statements
         } as any;
+    }
+
+    namespaceDeclaration(ctx: any): IRStatement {
+        const name = this.visit(ctx.name[0]);
+        
+        let statements: any[] = [];
+        if (ctx.classStatement) {
+            statements = ctx.classStatement.map((s: any) => this.visit(s)).filter((s: any) => s).flat();
+        }
+
+        const sections = [{ label: name, statements }];
+
+        return {
+            type: "group",
+            keyword: "namespace",
+            label: name,
+            sections
+        } as any;
+    }
+
+    styleDeclaration(ctx: any): null {
+        return null;
+    }
+
+    callbackDeclaration(ctx: any): null {
+        return null;
+    }
+
+    classDefDeclaration(ctx: any): null {
+        return null;
+    }
+
+    stereotypeDeclaration(ctx: any): null {
+        return null;
     }
 
     ignoredStatement(ctx: any): null {
