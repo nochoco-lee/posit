@@ -45,6 +45,7 @@ export const Mainframe = createToken({ name: "Mainframe", pattern: /mainframe\b/
 export const Order = createToken({ name: "Order", pattern: /order\b/i });
 
 export const As = createToken({ name: "As", pattern: /as\b/i });
+export const At = createToken({ name: "At", pattern: /@/ });
 export const Stereotype = createToken({ name: "Stereotype", pattern: /<<[^>]+>>/ });
 export const Left = createToken({ name: "Left", pattern: /left\b/i });
 export const Right = createToken({ name: "Right", pattern: /right\b/i });
@@ -126,6 +127,7 @@ export const allSequenceTokens = [
     Mainframe,
     Order,
     As,
+    At,
     Left,
     Right,
     Top,

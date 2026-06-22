@@ -186,6 +186,11 @@ export class SequenceAstVisitor extends BaseVisitor {
         };
     }
 
+    jsonAttribute(ctx: any): string {
+        if (!ctx.anyToken) return "";
+        return ctx.anyToken.map((t: any) => this.visit(t)).join(" ");
+    }
+
     participantDeclaration(ctx: any): IRNode {
         const name = this.visit(ctx.name[0]);
         const alias = ctx.alias ? this.visit(ctx.alias[0]) : name;
@@ -204,6 +209,19 @@ export class SequenceAstVisitor extends BaseVisitor {
         else if (ctx.Queue) shape = "queue";
         else if (ctx.Class) shape = "class";
         else if (ctx.ObjectKeyword) shape = "object";
+
+        // Check if jsonAttribute has a "type" field to override shape
+        if (ctx.jsonAttr) {
+            const jsonContent = this.visit(ctx.jsonAttr[0]);
+            try {
+                const parsed = JSON.parse(`{${jsonContent}}`);
+                if (parsed.type) {
+                    shape = parsed.type;
+                }
+            } catch {
+                // If JSON parsing fails, keep the keyword-based shape
+            }
+        }
 
         let stereotype = ctx.stereo ? ctx.stereo[0].image : undefined;
 

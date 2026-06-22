@@ -44,6 +44,9 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(common.Backslash) },
             { ALT: () => this.CONSUME(common.Exclamation) },
             { ALT: () => this.CONSUME(common.QuestionMark) },
+            { ALT: () => this.CONSUME(common.Tilde) },
+            { ALT: () => this.CONSUME(common.Hash) },
+            { ALT: () => this.CONSUME(lexer.At) },
             { ALT: () => this.CONSUME(common.Skinparam) },
             { ALT: () => this.CONSUME(common.Hide) },
             { ALT: () => this.CONSUME(common.Show) },
@@ -102,8 +105,6 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Resume) },
             { ALT: () => this.CONSUME(lexer.Inc) },
             { ALT: () => this.CONSUME(lexer.Ignore) },
-            { ALT: () => this.CONSUME(common.Tilde) },
-            { ALT: () => this.CONSUME(common.Hash) },
             { ALT: () => this.CONSUME(lexer.SpaceSeparator) }
         ]);
     });
@@ -180,6 +181,19 @@ export class SequenceParser extends CstParser {
         });
     });
 
+    public jsonAttribute = this.RULE("jsonAttribute", () => {
+        this.CONSUME(lexer.At);
+        this.CONSUME(common.LBrace);
+        this.MANY({
+            GATE: () => {
+                const t = this.LA(1).tokenType;
+                return t !== common.RBrace && t !== common.Newline && t !== common.EndUml && t !== EOF;
+            },
+            DEF: () => this.SUBRULE(this.anyToken)
+        });
+        this.CONSUME(common.RBrace);
+    });
+
     public participantDeclaration = this.RULE("participantDeclaration", () => {
         this.OR([
             { ALT: () => this.CONSUME(lexer.Participant) },
@@ -194,6 +208,7 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.ObjectKeyword) }
         ]);
         this.SUBRULE(this.name, { LABEL: "name" });
+        this.OPTION(() => this.SUBRULE(this.jsonAttribute, { LABEL: "jsonAttr" }));
         this.MANY(() => {
             this.OR1([
                 { ALT: () => { this.CONSUME(lexer.As); this.SUBRULE1(this.name, { LABEL: "alias" }); }},
@@ -204,7 +219,7 @@ export class SequenceParser extends CstParser {
                 { ALT: () => { this.CONSUME(common.LBracket); this.SUBRULE(this.participantLabel, { LABEL: "multilineLabel" }); this.CONSUME(common.RBracket); } }
             ]);
         });
-        this.OPTION(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
+        this.OPTION1(() => this.CONSUME(common.PosComment, { LABEL: "layout" }));
     });
 
     public connectionDeclaration = this.RULE("connectionDeclaration", () => {
