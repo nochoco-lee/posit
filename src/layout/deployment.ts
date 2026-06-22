@@ -2,11 +2,15 @@ import { IRDiagram, IRNode, IREdge, IRContainer, IRStatement, IRGroup } from "..
 import { LayoutMap, LayoutNode, LayoutConnection, LayoutGroup, LayoutNote, DEFAULTS } from "./types";
 
 export class DeploymentLayoutManager {
-    private currentX = 50;
-    private currentY = 50;
     private padding = 20;
     private minNodeWidth = 120;
     private minNodeHeight = 60;
+
+    private edges: IREdge[] = [];
+    private nodeRanks = new Map<string, number>();
+    private rowOccupancy = new Map<number, number>();
+    private nodesByRow = new Map<number, string[]>();
+    private rowInfo = new Map<number, { startX: number, baseY: number }>();
 
     public process(ir: IRDiagram): LayoutMap {
         const map: LayoutMap = {
@@ -16,6 +20,12 @@ export class DeploymentLayoutManager {
             groups: [],
             notes: []
         };
+
+        this.edges = [];
+        this.nodeRanks.clear();
+        this.rowOccupancy.clear();
+        this.nodesByRow.clear();
+        this.rowInfo.clear();
 
         const collectImplicitNodes = (statements: IRStatement[]) => {
             statements.forEach(s => {
@@ -35,7 +45,13 @@ export class DeploymentLayoutManager {
         };
 
         collectImplicitNodes(ir.statements);
-        this.layoutStatements(ir.statements, map, 50, 50);
+
+        this.collectEdges(ir.statements);
+        this.calculateRanks(ir.statements);
+
+        this.layoutStatementsPass1(ir.statements, map, 50, 50);
+        this.applyCentering(map);
+        this.layoutStatementsPass2(ir.statements, map);
 
         return map;
     }
@@ -95,9 +111,93 @@ export class DeploymentLayoutManager {
         }
     }
 
-    private layoutStatements(statements: IRStatement[], map: LayoutMap, startX: number, startY: number): { width: number, height: number } {
+    private collectEdges(statements: IRStatement[]) {
+        statements.forEach((s: any) => {
+            if (!s) return;
+            if (s.type === 'edge') {
+                this.edges.push(s as IREdge);
+            } else if (s.type === 'container') {
+                this.collectEdges((s as IRContainer).statements);
+            } else if (s.type === 'group') {
+                (s as IRGroup).sections.forEach(sec => this.collectEdges(sec.statements));
+            }
+        });
+    }
+
+    private calculateRanks(statements: IRStatement[]) {
+        const allNodes = new Set<string>();
+        const collectNodes = (stmts: IRStatement[]) => {
+            stmts.forEach((s: any) => {
+                if (!s) return;
+                if (s.type === 'node') allNodes.add(s.name);
+                else if (s.type === 'edge') { allNodes.add(s.from); allNodes.add(s.to); }
+                else if (s.type === 'container') collectNodes(s.statements);
+                else if (s.type === 'group') s.sections.forEach((sec: any) => collectNodes(sec.statements));
+            });
+        };
+        collectNodes(statements);
+
+        allNodes.forEach(n => this.nodeRanks.set(n, 0));
+
+        const maxIter = Math.max(allNodes.size, 100);
+        for (let i = 0; i < maxIter; i++) {
+            let changed = false;
+            this.edges.forEach(edge => {
+                const rFrom = this.nodeRanks.get(edge.from);
+                const rTo = this.nodeRanks.get(edge.to);
+                if (rFrom === undefined || rTo === undefined) return;
+
+                if (this.isHorizontal(edge.arrow)) {
+                    if (rFrom !== rTo) {
+                        const m = Math.max(rFrom, rTo);
+                        this.nodeRanks.set(edge.from, m);
+                        this.nodeRanks.set(edge.to, m);
+                        changed = true;
+                    }
+                } else {
+                    let head = edge.from;
+                    let tail = edge.to;
+
+                    if (edge.arrow.includes('|>')) {
+                        head = edge.to;
+                        tail = edge.from;
+                    } else if (edge.arrow.startsWith('<|')) {
+                        head = edge.from;
+                        tail = edge.to;
+                    } else if (edge.arrow.endsWith('>') || edge.arrow.endsWith(')')) {
+                        head = edge.from;
+                        tail = edge.to;
+                    } else if (edge.arrow.startsWith('<') || edge.arrow.startsWith('(')) {
+                        head = edge.to;
+                        tail = edge.from;
+                    }
+
+                    const rh = this.nodeRanks.get(head)!;
+                    const rt = this.nodeRanks.get(tail)!;
+                    if (rt < rh + 1) {
+                        this.nodeRanks.set(tail, rh + 1);
+                        changed = true;
+                    }
+                }
+            });
+            if (!changed) break;
+        }
+    }
+
+    private isHorizontal(arrow: string): boolean {
+        if (arrow.includes('left') || arrow.includes('right') || arrow.includes('horizontal')) return true;
+        if (arrow.includes('up') || arrow.includes('down') || arrow.includes('vertical')) return false;
+
+        const match = arrow.match(/([-=.~]{1,4})/);
+        if (match) {
+            return match[1].length === 1;
+        }
+        return false;
+    }
+
+    private layoutStatementsPass1(statements: IRStatement[], map: LayoutMap, startX: number, startY: number): { width: number, height: number } {
         let x = startX;
-        let y = startY;
+        let currentY = startY;
         let maxWidth = 0;
         let totalHeight = 0;
 
@@ -108,46 +208,64 @@ export class DeploymentLayoutManager {
                 const node = s as IRNode;
                 const id = node.name;
                 const size = this.getNodeSize(node.shape);
-                let position = { x, y };
-                if (node.layout) {
-                    position = { x: node.layout.x, y: node.layout.y };
-                }
 
-                map.nodes[id] = {
-                    id,
-                    type: node.shape,
-                    origName: node.origName || node.name,
-                    stereotype: node.stereotype,
-                    color: node.color,
-                    position,
-                    size
-                };
+                if (node.layout) {
+                    const position = { x: node.layout.x, y: node.layout.y };
+                    map.nodes[id] = {
+                        ...map.nodes[id],
+                        id,
+                        type: node.shape,
+                        origName: node.origName || node.name,
+                        stereotype: node.stereotype,
+                        color: node.color,
+                        position,
+                        size
+                    };
+                } else if (!map.nodes[id] || (map.nodes[id].position.x === 0 && map.nodes[id].position.y === 0)) {
+                    const rank = this.nodeRanks.get(id) || 0;
+                    const baseY = startY;
+                    const targetY = baseY + (rank * 200);
+
+                    const currentX = this.rowOccupancy.get(targetY) || startX;
+                    const position = { x: currentX, y: targetY };
+                    this.rowOccupancy.set(targetY, currentX + size.width + 100);
+
+                    if (!this.nodesByRow.has(targetY)) {
+                        this.nodesByRow.set(targetY, []);
+                        this.rowInfo.set(targetY, { startX, baseY });
+                    }
+                    this.nodesByRow.get(targetY)!.push(id);
+
+                    map.nodes[id] = {
+                        ...map.nodes[id],
+                        id,
+                        type: node.shape,
+                        origName: node.origName || node.name,
+                        stereotype: node.stereotype,
+                        color: node.color,
+                        position,
+                        size
+                    };
+                }
 
                 if (!node.layout) {
+                    const rank = this.nodeRanks.get(id) || 0;
+                    const targetY = startY + (rank * 200);
+                    currentY = Math.max(currentY, targetY + size.height + this.padding);
                     maxWidth = Math.max(maxWidth, size.width);
-                    y += size.height + this.padding;
-                    totalHeight += size.height + this.padding;
+                    totalHeight = Math.max(totalHeight, currentY - startY);
                 }
 
-            } else if (s.type === 'edge') {
-                const edge = s as IREdge;
-                map.connections.push({
-                    from: edge.from,
-                    to: edge.to,
-                    type: edge.arrow,
-                    label: edge.label,
-                    position: edge.layout ? { x: edge.layout.x, y: edge.layout.y } : null
-                });
             } else if (s.type === 'container' || s.type === 'group') {
                 const container = s as any;
-                const groupY = y;
-                
-                const statements = s.type === 'container' ? container.statements : container.sections[0].statements;
-                const contentSize = this.layoutStatements(
-                    statements, 
-                    map, 
-                    x + this.padding, 
-                    y + this.padding + 20 
+                const groupY = currentY;
+
+                const stmts = s.type === 'container' ? container.statements : container.sections[0].statements;
+                const contentSize = this.layoutStatementsPass1(
+                    stmts,
+                    map,
+                    x + this.padding,
+                    currentY + this.padding + 20
                 );
 
                 const groupWidth = Math.max(this.minNodeWidth + 20, contentSize.width + 2 * this.padding);
@@ -167,20 +285,86 @@ export class DeploymentLayoutManager {
                     color: container.color,
                     position,
                     size: { width: groupWidth, height: groupHeight },
-                    sections: s.type === 'container' ? [{ statements }] : container.sections,
+                    sections: s.type === 'container' ? [{ statements: stmts }] : container.sections,
                     dividerYs: []
                 };
                 map.groups.push(group);
 
                 if (!container.layout) {
                     maxWidth = Math.max(maxWidth, groupWidth);
-                    y += groupHeight + this.padding;
-                    totalHeight += groupHeight + this.padding;
+                    currentY += groupHeight + this.padding;
+                    totalHeight = Math.max(totalHeight, currentY - startY);
                 }
             }
         }
 
         return { width: maxWidth, height: totalHeight };
     }
-}
 
+    private applyCentering(map: LayoutMap) {
+        const levels = new Map<string, number[]>();
+        this.rowInfo.forEach((info, targetY) => {
+            const key = `${info.startX},${info.baseY}`;
+            if (!levels.has(key)) levels.set(key, []);
+            levels.get(key)!.push(targetY);
+        });
+
+        levels.forEach((targetYs, key) => {
+            const [startXStr] = key.split(',');
+            const startX = parseInt(startXStr);
+
+            let maxWidth = 0;
+            const rowWidths = new Map<number, number>();
+
+            targetYs.forEach(targetY => {
+                const nodeIds = this.nodesByRow.get(targetY) || [];
+                let width = 0;
+                nodeIds.forEach((id, index) => {
+                    const node = map.nodes[id];
+                    if (node) {
+                        width += node.size.width;
+                        if (index < nodeIds.length - 1) width += 100;
+                    }
+                });
+                rowWidths.set(targetY, width);
+                if (width > maxWidth) maxWidth = width;
+            });
+
+            targetYs.forEach(targetY => {
+                const nodeIds = this.nodesByRow.get(targetY) || [];
+                const rowWidth = rowWidths.get(targetY)!;
+                const offset = (maxWidth - rowWidth) / 2;
+
+                let currentX = startX + offset;
+                nodeIds.forEach(id => {
+                    const node = map.nodes[id];
+                    if (node) {
+                        node.position.x = currentX;
+                        currentX += node.size.width + 100;
+                    }
+                });
+            });
+        });
+    }
+
+    private layoutStatementsPass2(statements: IRStatement[], map: LayoutMap) {
+        for (const s of statements) {
+            if (!s) continue;
+
+            if (s.type === 'edge') {
+                const edge = s as IREdge;
+                map.connections.push({
+                    from: edge.from,
+                    to: edge.to,
+                    type: edge.arrow,
+                    label: edge.label,
+                    position: edge.layout ? { x: edge.layout.x, y: edge.layout.y } : null
+                });
+            } else if (s.type === 'container' || s.type === 'group') {
+                const container = s as any;
+                const stmts = s.type === 'container' ? container.statements : container.sections[0].statements;
+                this.layoutStatementsPass2(stmts, map);
+            }
+        }
+    }
+}
