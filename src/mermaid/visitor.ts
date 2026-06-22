@@ -61,6 +61,7 @@ export class MermaidAstVisitor extends BaseVisitor {
         if (ctx.styleDeclaration) return this.visit(ctx.styleDeclaration[0]);
         if (ctx.callbackDeclaration) return this.visit(ctx.callbackDeclaration[0]);
         if (ctx.classDefDeclaration) return this.visit(ctx.classDefDeclaration[0]);
+        if (ctx.flowchartClassDeclaration) return this.visit(ctx.flowchartClassDeclaration[0]);
         if (ctx.stereotypeDeclaration) return this.visit(ctx.stereotypeDeclaration[0]);
         if (ctx.Autonumber) return { type: "autonumber" } as any;
         if (ctx.PosComment) return null; 
@@ -222,6 +223,11 @@ export class MermaidAstVisitor extends BaseVisitor {
         } as any;
     }
 
+    nodeShapeSuffix(ctx: any): string {
+        if (ctx.payload) return this.visit(ctx.payload[0]);
+        return "";
+    }
+
     connectionDeclaration(ctx: any): IREdge[] {
         const edges: IREdge[] = [];
         let currentFrom = this.visit(ctx.from[0]);
@@ -249,9 +255,6 @@ export class MermaidAstVisitor extends BaseVisitor {
                 if (ctx.layout) {
                     const pos = this.parsePosComment(ctx.layout[0].image);
                     if (pos) {
-                        // Mermaid sequence diagram test expects { x, y } directly on edge layout
-                        // while PlantUML expects { points: [...] }. 
-                        // We follow the test expectation here.
                         edge.layout = pos as any;
                     }
                 }
@@ -268,10 +271,30 @@ export class MermaidAstVisitor extends BaseVisitor {
         const id = this.visit(ctx.id[0]);
         let label = id;
         let shape = "box";
+        if (ctx.styleClass) {
+            const styleClass = this.visit(ctx.styleClass[0]);
+            label = `${id}:::${styleClass}`;
+        }
         if (ctx.label) {
             label = this.visit(ctx.label[0]);
-            if (ctx.LBrace || ctx.LBrace1) {
+            if (ctx.LBrace) {
                 shape = "diamond";
+            } else if (ctx.LBracket) {
+                shape = "square";
+            } else if (ctx.LParen) {
+                shape = "rounded";
+            } else if (ctx.LShape) {
+                const shapeImage = ctx.LShape[0].image;
+                if (shapeImage === "[[") shape = "subroutine";
+                else if (shapeImage === "((") shape = "circle";
+                else if (shapeImage === "(((") shape = "double-circle";
+                else if (shapeImage === "{{") shape = "hexagon";
+                else if (shapeImage === "([") shape = "stadium";
+                else if (shapeImage === "[/") shape = "parallelogram";
+                else if (shapeImage === "[\\") shape = "parallelogram_inv";
+                else if (shapeImage === "/]") shape = "parallelogram";
+                else if (shapeImage === "\\]") shape = "parallelogram_inv";
+                else shape = "node";
             }
         }
         const node: IRNode = {
@@ -303,7 +326,7 @@ export class MermaidAstVisitor extends BaseVisitor {
             type: "group",
             keyword: "subgraph",
             label,
-            statements
+            sections: [{ label, statements }]
         } as any;
     }
 
@@ -334,6 +357,10 @@ export class MermaidAstVisitor extends BaseVisitor {
     }
 
     classDefDeclaration(ctx: any): null {
+        return null;
+    }
+
+    flowchartClassDeclaration(ctx: any): null {
         return null;
     }
 

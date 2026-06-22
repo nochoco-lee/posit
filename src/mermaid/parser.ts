@@ -154,6 +154,9 @@ class MermaidParser extends CstParser {
             { GATE: this.isFlowchartNode, ALT: () => this.SUBRULE(this.flowchartNodeDeclaration) },
             { ALT: () => this.CONSUME(Direction) },
             { ALT: () => this.CONSUME(DirType) },
+            { ALT: () => this.SUBRULE(this.styleDeclaration) },
+            { ALT: () => this.SUBRULE(this.classDefDeclaration) },
+            { ALT: () => this.SUBRULE(this.flowchartClassDeclaration) },
             { ALT: () => this.CONSUME(PosComment) },
             { ALT: () => this.SUBRULE(this.ignoredStatement) }
         ]);
@@ -162,10 +165,12 @@ class MermaidParser extends CstParser {
     private isConnection(): boolean {
         let la = 1;
         let t = this.LA(la);
-        while (t.tokenType === Quote || t.tokenType === StringLiteral || t.tokenType === LParen || t.tokenType === RParen) { la++; t = this.LA(la); }
+        while (t.tokenType === Quote || t.tokenType === StringLiteral || t.tokenType === LShape || t.tokenType === RShape || t.tokenType === LParen || t.tokenType === RParen || t.tokenType === LBracket || t.tokenType === RBracket) { la++; t = this.LA(la); }
         if (t.tokenType !== Identifier && t.tokenType !== Keyword && t.tokenType !== BacktickIdentifier) return false;
         la++; t = this.LA(la);
-        while (t.tokenType === Symbol || t.tokenType === Star || t.tokenType === Hash || t.tokenType === LAngle || t.tokenType === VerticalBar || t.tokenType === LParen || t.tokenType === RParen || t.tokenType === StringLiteral) { la++; t = this.LA(la); }
+        while (t.tokenType !== Arrow && t.tokenType !== Newline && t.tokenType !== EOF && la < 50) {
+            la++; t = this.LA(la);
+        }
         return t.tokenType === Arrow;
     }
 
@@ -211,11 +216,20 @@ class MermaidParser extends CstParser {
             { ALT: () => this.CONSUME(StringLiteral) },
             { ALT: () => this.CONSUME(BacktickIdentifier) },
             { ALT: () => this.CONSUME(Arrow) },
+            { ALT: () => this.CONSUME(LShape) },
+            { ALT: () => this.CONSUME(RShape) },
+            { ALT: () => this.CONSUME(LBracket) },
+            { ALT: () => this.CONSUME(RBracket) },
             { ALT: () => this.CONSUME(LParen) },
             { ALT: () => this.CONSUME(RParen) },
+            { ALT: () => this.CONSUME(LBrace) },
+            { ALT: () => this.CONSUME(RBrace) },
             { ALT: () => this.CONSUME(LAngle) },
             { ALT: () => this.CONSUME(RAngle) },
-            { ALT: () => this.CONSUME(Comma) }
+            { ALT: () => this.CONSUME(Comma) },
+            { ALT: () => this.CONSUME(VerticalBar) },
+            { ALT: () => this.CONSUME(Colon) },
+            { ALT: () => this.CONSUME(Equal) }
         ]);
     });
 
@@ -223,7 +237,7 @@ class MermaidParser extends CstParser {
         this.AT_LEAST_ONE({
             GATE: () => {
                 const t = this.LA(1).tokenType;
-                return t !== Newline && t !== Colon && t !== VerticalBar && t !== Arrow && t !== EOF && t !== At && t !== As && t !== LBrace && t !== RBrace && t !== LParen && t !== RParen && t !== LAngle && t !== RAngle && t !== Comma;
+                return t !== Newline && t !== Colon && t !== VerticalBar && t !== Arrow && t !== EOF && t !== At && t !== As && t !== LBrace && t !== RBrace && t !== LShape && t !== RShape && t !== LBracket && t !== RBracket && t !== LParen && t !== RParen && t !== LAngle && t !== RAngle && t !== Comma;
             },
             DEF: () => this.SUBRULE(this.anyToken)
         });
@@ -271,7 +285,7 @@ class MermaidParser extends CstParser {
         this.MANY({
             GATE: () => {
                 const t = this.LA(1).tokenType;
-                return t !== RBrace && t !== Newline && t !== VerticalBar && t !== RShape && t !== EOF;
+                return t !== RBrace && t !== Newline && t !== VerticalBar && t !== RShape && t !== RBracket && t !== EOF;
             },
             DEF: () => this.SUBRULE(this.anyToken)
         });
@@ -338,12 +352,17 @@ class MermaidParser extends CstParser {
         ]);
         this.SUBRULE(this.genericName, { LABEL: "name" });
         this.OPTION(() => {
+            this.CONSUME(LBracket);
+            this.SUBRULE1(this.payload, { LABEL: "displayName" });
+            this.CONSUME(RBracket);
+        });
+        this.OPTION1(() => {
             this.CONSUME(Colon);
             this.CONSUME1(Colon);
             this.CONSUME2(Colon);
-            this.SUBRULE1(this.genericName, { LABEL: "styleClass" });
+            this.SUBRULE2(this.genericName, { LABEL: "styleClass" });
         });
-        this.OPTION1(() => {
+        this.OPTION2(() => {
             this.OR1([
                 { ALT: () => this.SUBRULE(this.metadata) },
                 { ALT: () => {
@@ -361,7 +380,7 @@ class MermaidParser extends CstParser {
                 }}
             ]);
         });
-        this.OPTION2(() => this.CONSUME(PosComment, { LABEL: "layout" }));
+        this.OPTION3(() => this.CONSUME(PosComment, { LABEL: "layout" }));
     });
 
     private isClassMember(): boolean {
@@ -379,7 +398,7 @@ class MermaidParser extends CstParser {
             ]);
         });
         this.AT_LEAST_ONE({
-            GATE: () => this.LA(1).tokenType !== Newline && this.LA(1).tokenType !== RBrace,
+            GATE: () => this.LA(1).tokenType !== Newline && this.LA(1).tokenType !== RBrace && this.LA(1).tokenType !== RShape,
             DEF: () => this.SUBRULE(this.anyToken)
         });
         this.MANY(() => this.CONSUME(Newline));
@@ -394,7 +413,12 @@ class MermaidParser extends CstParser {
     public namespaceDeclaration = this.RULE("namespaceDeclaration", () => {
         this.CONSUME(Namespace);
         this.SUBRULE(this.genericName, { LABEL: "name" });
-        this.OPTION(() => this.SUBRULE(this.metadata));
+        this.OPTION(() => {
+            this.CONSUME(LBracket);
+            this.SUBRULE1(this.payload, { LABEL: "displayName" });
+            this.CONSUME(RBracket);
+        });
+        this.OPTION1(() => this.SUBRULE(this.metadata));
         this.CONSUME(LBrace);
         this.MANY({
             GATE: () => this.LA(1).tokenType !== RBrace,
@@ -425,6 +449,12 @@ class MermaidParser extends CstParser {
         this.MANY(() => this.SUBRULE(this.anyToken));
     });
 
+    public flowchartClassDeclaration = this.RULE("flowchartClassDeclaration", () => {
+        this.CONSUME(Class);
+        this.SUBRULE(this.genericName, { LABEL: "name" });
+        this.MANY(() => this.SUBRULE1(this.genericName, { LABEL: "classNames" }));
+    });
+
     public stereotypeDeclaration = this.RULE("stereotypeDeclaration", () => {
         this.CONSUME(LAngle);
         this.CONSUME1(LAngle);
@@ -436,69 +466,78 @@ class MermaidParser extends CstParser {
 
     public connectionDeclaration = this.RULE("connectionDeclaration", () => {
         this.SUBRULE(this.genericName, { LABEL: "from" });
+        this.OPTION(() => this.SUBRULE(this.nodeShapeSuffix));
         this.MANY({
             GATE: () => {
                 let la = 1;
                 let t = this.LA(la);
-                while (t.tokenType === Plus || t.tokenType === Minus || t.tokenType === Star || t.tokenType === Hash || t.tokenType === LAngle || t.tokenType === VerticalBar || t.tokenType === LParen || t.tokenType === RParen) {
+                while (t.tokenType !== Arrow && t.tokenType !== Newline && t.tokenType !== EOF && la < 50) {
                     la++; t = this.LA(la);
                 }
-                if (t.tokenType === StringLiteral) { la++; t = this.LA(la); }
                 return t.tokenType === Arrow;
             },
             DEF: () => {
-                this.OPTION(() => {
-                    this.OR([
-                        { ALT: () => { this.CONSUME(LParen); this.CONSUME(RParen); } },
+                this.OPTION1(() => {
+                    this.OR1([
                         { ALT: () => this.CONSUME1(Plus) },
                         { ALT: () => this.CONSUME(Minus) },
                         { ALT: () => this.CONSUME(Star) },
                         { ALT: () => this.CONSUME(Hash) },
-                        { ALT: () => this.CONSUME(LAngle) },
-                        { ALT: () => this.CONSUME2(VerticalBar) }
+                        { ALT: () => this.CONSUME(LAngle) }
                     ]);
                 });
-                this.OPTION1(() => this.CONSUME(StringLiteral, { LABEL: "multiplicity1" }));
+                this.OPTION2(() => this.CONSUME(StringLiteral, { LABEL: "multiplicity1" }));
                 this.CONSUME(Arrow, { LABEL: "arrow" });
-                this.OPTION2(() => {
-                    this.OR3([
-                        { ALT: () => { this.CONSUME3(LParen); this.CONSUME4(RParen); } },
-                        { ALT: () => this.CONSUME5(VerticalBar) }
-                    ]);
-                });
-                this.OPTION3(() => this.CONSUME(StringLiteral, { LABEL: "multiplicity2" }));
                 this.MANY1(() => {
-                    this.OR1([
-                        { ALT: () => { this.CONSUME6(VerticalBar); this.SUBRULE(this.payload, { LABEL: "edgeLabel" }); this.CONSUME7(VerticalBar); } },
-                        { ALT: () => this.OR2([{ ALT: () => this.CONSUME1(Plus) }, { ALT: () => this.CONSUME1(Minus) }]) }
+                    this.OR2([
+                        { ALT: () => { this.CONSUME(VerticalBar); this.SUBRULE1(this.payload, { LABEL: "edgeLabel" }); this.CONSUME1(VerticalBar); } },
+                        { ALT: () => this.OR3([{ ALT: () => this.CONSUME2(Plus) }, { ALT: () => this.CONSUME1(Minus) }]) }
                     ]);
                 });
-                this.SUBRULE1(this.genericName, { LABEL: "to" });
+                this.SUBRULE2(this.genericName, { LABEL: "to" });
+                this.OPTION3(() => this.SUBRULE3(this.nodeShapeSuffix));
             }
         });
         this.OPTION4(() => {
             this.OR4([
-                { ALT: () => { this.CONSUME(Colon); this.SUBRULE1(this.payload, { LABEL: "payload" }); } },
-                { ALT: () => { this.CONSUME(VerticalBar); this.SUBRULE2(this.payload, { LABEL: "edgeLabel2" }); this.CONSUME1(VerticalBar); } }
+                { ALT: () => { this.CONSUME(Colon); this.SUBRULE4(this.payload, { LABEL: "payload" }); } },
+                { ALT: () => { this.CONSUME2(VerticalBar); this.SUBRULE5(this.payload, { LABEL: "edgeLabel2" }); this.CONSUME3(VerticalBar); } }
             ]);
         });
         this.OPTION5(() => this.CONSUME(PosComment, { LABEL: "layout" }));
     });
 
+    public nodeShapeSuffix = this.RULE("nodeShapeSuffix", () => {
+        this.OR([
+            { ALT: () => { this.CONSUME(LShape); this.SUBRULE(this.payload); this.CONSUME(RShape); } },
+            { ALT: () => { this.CONSUME(LBracket); this.SUBRULE1(this.payload); this.CONSUME(RBracket); } },
+            { ALT: () => { this.CONSUME(LParen); this.SUBRULE2(this.payload); this.CONSUME(RParen); } },
+            { ALT: () => { this.CONSUME(LBrace); this.SUBRULE3(this.payload); this.CONSUME(RBrace); } }
+        ]);
+    });
+
     public flowchartNodeDeclaration = this.RULE("flowchartNodeDeclaration", () => {
         this.SUBRULE(this.genericName, { LABEL: "id" });
         this.OPTION(() => {
+            this.CONSUME(Colon);
+            this.CONSUME1(Colon);
+            this.CONSUME2(Colon);
+            this.SUBRULE1(this.genericName, { LABEL: "styleClass" });
+        });
+        this.OPTION1(() => {
             this.OR([
-                { ALT: () => { this.CONSUME(LShape); this.SUBRULE(this.payload, { LABEL: "label" }); this.CONSUME(RShape); } },
+                { ALT: () => { this.CONSUME(LShape); this.SUBRULE2(this.payload, { LABEL: "label" }); this.CONSUME(RShape); } },
+                { ALT: () => { this.CONSUME(LBracket); this.MANY({ GATE: () => { const t = this.LA(1).tokenType; return t !== RBracket && t !== Newline && t !== EOF; }, DEF: () => this.SUBRULE3(this.anyToken) }); this.CONSUME(RBracket); } },
+                { ALT: () => { this.CONSUME(LParen); this.MANY1({ GATE: () => { const t = this.LA(1).tokenType; return t !== RParen && t !== Newline && t !== EOF; }, DEF: () => this.SUBRULE4(this.anyToken) }); this.CONSUME(RParen); } },
                 { ALT: () => { 
-                    this.OPTION1(() => this.CONSUME(At));
+                    this.OPTION2(() => this.CONSUME(At));
                     this.CONSUME(LBrace); 
-                    this.SUBRULE1(this.payload, { LABEL: "label" }); 
+                    this.SUBRULE5(this.payload, { LABEL: "label" }); 
                     this.CONSUME(RBrace); 
                 } }
             ]);
         });
-        this.OPTION2(() => this.CONSUME(PosComment, { LABEL: "layout" }));
+        this.OPTION3(() => this.CONSUME(PosComment, { LABEL: "layout" }));
     });
 
     public subgraphDeclaration = this.RULE("subgraphDeclaration", () => {
