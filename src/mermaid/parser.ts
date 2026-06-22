@@ -202,7 +202,7 @@ class MermaidParser extends CstParser {
         this.AT_LEAST_ONE({
             GATE: () => {
                 const t = this.LA(1).tokenType;
-                return t !== Newline && t !== Colon && t !== VerticalBar && t !== Arrow && t !== EOF;
+                return t !== Newline && t !== Colon && t !== VerticalBar && t !== Arrow && t !== EOF && t !== At;
             },
             DEF: () => this.SUBRULE(this.anyToken)
         });

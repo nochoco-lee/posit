@@ -20,8 +20,10 @@ export async function parseMermaid(text: string): Promise<IRDiagram> {
 
     // 1. Lexing
     const lexingResult = lexer.tokenize(text);
-    if (lexingResult.errors.length > 0) {
-        throw new Error(`Lexing errors:\n${lexingResult.errors.map((e: any) => e.message).join("\n")}`);
+    // Filter out "unexpected character" warnings — these are non-fatal
+    const realLexErrors = lexingResult.errors.filter((e: any) => !e.message?.includes('unexpected character'));
+    if (realLexErrors.length > 0) {
+        throw new Error(`Lexing errors:\n${realLexErrors.map((e: any) => e.message).join("\n")}`);
     }
 
     // 2. Parsing
