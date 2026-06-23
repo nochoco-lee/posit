@@ -449,10 +449,10 @@ export class LayoutPumlSvgRenderer {
             const markerEnd = isPlain ? '' : ` marker-end="url(#arrowhead)"`;
             
             if (c.from === c.to && isSequence) {
-                const loopW = c.selfMessageWidth ? c.selfMessageWidth / 2 : 30;
+                const loopW = c.selfMessageWidth ? Math.min(40, c.selfMessageWidth / 2) : 30;
                 const path = `M ${ox} ${oy} L ${ox + loopW} ${oy} L ${ox + loopW} ${oy + 20} L ${ox + 7} ${oy + 20}`;
                 svg += `<path d="${path}" fill="none" stroke="#A80036" ${strokeWidth} ${strokeDash} />\n`;
-                if (!isPlain) svg += `<path d="M ${ox + loopW - 18} ${oy + 16} L ${ox + loopW - 25} ${oy + 20} L ${ox + loopW - 18} ${oy + 24} Z" fill="#A80036" />\n`;
+                if (!isPlain) svg += `<path d="M ${ox + 17} ${oy + 15} L ${ox + 7} ${oy + 20} L ${ox + 17} ${oy + 25} Z" fill="#A80036" />\n`;
                 if (c.label) {
                     svg += this.renderText(ox + loopW + 5, oy + 10, c.label, 12, "start");
                 }

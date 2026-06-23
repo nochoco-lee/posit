@@ -328,7 +328,7 @@ export class SequenceRenderer {
         let startHeadObj: Konva.Shape | undefined;
 
         if (isSelfMessage) {
-            const loopWidth = (conn as any).selfMessageWidth ? (conn as any).selfMessageWidth / 2 : 30;
+            const loopWidth = (conn as any).selfMessageWidth ? Math.min(40, (conn as any).selfMessageWidth / 2) : 30;
             const actShift = getAdjustedX(conn.from, true, originX) - originX;
             const points = [originX + actShift, 0, originX + loopWidth + actShift, 0, originX + loopWidth + actShift, 20, originX + 7 + actShift, 20];
             visualArrow = new Konva.Arrow({ points, stroke: color, strokeWidth: 2, hitStrokeWidth: 10, dash: arrowInfo.isDashed ? [5, 5] : undefined, pointerLength: 0 });
@@ -456,7 +456,7 @@ export class SequenceRenderer {
                 const isSelfMessage = conn.originId === conn.targetId;
                 const yPos = conn.group.y();
                 if (isSelfMessage) {
-                    const loopW = conn.selfMessageWidth ? conn.selfMessageWidth / 2 : 30;
+                    const loopW = conn.selfMessageWidth ? Math.min(40, conn.selfMessageWidth / 2) : 30;
                     const adjX = getAdjustedX(nodeId, draggedCenterX, yPos, true);
                     const points = [adjX, 0, adjX + loopW, 0, adjX + loopW, 20, adjX + 7, 20];
                     conn.konvaObj.points(points);
