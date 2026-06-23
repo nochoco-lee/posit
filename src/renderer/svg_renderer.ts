@@ -434,7 +434,7 @@ export class LayoutPumlSvgRenderer {
             // Parse bracket styles
             const bracketMatch = c.type.match(/\[([^\]]+)\]/);
             const bracketStyle = bracketMatch ? bracketMatch[1].toLowerCase() : '';
-            if (bracketStyle === 'hidden') continue; // Skip hidden connections
+            if (bracketStyle === 'hidden') return; // Skip hidden connections
 
             const isDotted = c.type.includes("..") || bracketStyle === 'dotted';
             const isDashed = c.type.includes("--") || bracketStyle === 'dashed';

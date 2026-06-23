@@ -442,10 +442,11 @@ export class SequenceLayoutManager {
                 if (index < group.sections.length - 1) { 
                     this.currentSequenceY += 30; // More space for else labels
                     dividerYs.push(this.currentSequenceY - 15); 
-                } else this.currentSequenceY += 20; 
+                }
             }
         });
         let endY = this.currentSequenceY;
+        if (!isBox) this.currentSequenceY += 20; // Trailing space after group content
 
         // Compute pad.x from participant bounds
         let padX = isBox ? 20 : Math.max(10, 40 - (this.groupDepth * 10));
