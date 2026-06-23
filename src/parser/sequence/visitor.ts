@@ -16,6 +16,7 @@ export class SequenceAstVisitor extends BaseVisitor {
     }
 
     diagram(ctx: any): IRDiagram {
+        this.aliasMap.clear();
         const statements: IRStatement[] = [];
         if (ctx.statement) {
             ctx.statement.forEach((stmt: any) => {
