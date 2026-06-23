@@ -87,12 +87,37 @@ export class SequenceLayoutManager {
         this.currentSequenceY += 50; // Trailing space for lifelines
         (this.map as any).totalHeight = this.currentSequenceY;
 
-        // Post-process: Extend only outermost box heights to bottom of diagram
-        // Inner/nested boxes should keep their calculated height from their content
-        const outermostBoxes = this.map.groups.filter(g => g.keyword === 'box' && !this.map.groups.some(other => other.keyword === 'box' && other !== g && other.position.x <= g.position.x && other.position.x + other.size.width >= g.position.x + g.size.width && other.position.y <= g.position.y && other.position.y + other.size.height >= g.position.y + g.size.height));
-        outermostBoxes.forEach(g => {
+        // Post-process: Extend all box heights to cover full lifeline length
+        this.map.groups.filter(g => g.keyword === 'box').forEach(g => {
             g.size.height = Math.max(g.size.height, this.currentSequenceY - g.position.y + g.pad.y);
         });
+
+        // Post-process: For nested boxes, outer box gets extra padding around inner box
+        const boxes = this.map.groups.filter(g => g.keyword === 'box');
+        for (const outer of boxes) {
+            const innerBoxes = boxes.filter(other => other !== outer &&
+                other.position.x >= outer.position.x &&
+                other.position.x + other.size.width <= outer.position.x + outer.size.width &&
+                other.position.y >= outer.position.y &&
+                other.position.y + other.size.height <= outer.position.y + outer.size.height
+            );
+            if (innerBoxes.length > 0) {
+                const NESTED_PADDING = 20;
+                // Expand outer box to wrap inner box with extra padding
+                const innerMinX = Math.min(...innerBoxes.map(b => b.position.x));
+                const innerMaxRight = Math.max(...innerBoxes.map(b => b.position.x + b.size.width));
+                const innerMinY = Math.min(...innerBoxes.map(b => b.position.y));
+                const innerMaxY = Math.max(...innerBoxes.map(b => b.position.y + b.size.height));
+
+                const newLeft = Math.min(outer.position.x, innerMinX - NESTED_PADDING);
+                const newRight = Math.max(outer.position.x + outer.size.width, innerMaxRight + NESTED_PADDING);
+                const newBottom = Math.max(outer.position.y + outer.size.height, innerMaxY + NESTED_PADDING);
+
+                outer.position.x = newLeft;
+                outer.size.width = newRight - newLeft;
+                outer.size.height = newBottom - outer.position.y;
+            }
+        }
 
         return this.map;
     }
