@@ -196,7 +196,7 @@ export class SequenceAstVisitor extends BaseVisitor {
     participantDeclaration(ctx: any): IRNode {
         const name = this.visit(ctx.name[0]);
         const alias = ctx.alias ? this.visit(ctx.alias[0]) : name;
-        let label = alias;
+        let label = name;
         if (ctx.multilineLabel) {
              label = this.visit(ctx.multilineLabel[0]);
         }
