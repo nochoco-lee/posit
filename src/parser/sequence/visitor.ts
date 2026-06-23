@@ -8,6 +8,8 @@ import { IToken } from "chevrotain";
 const BaseVisitor = parser.parser.getBaseCstVisitorConstructor();
 
 export class SequenceAstVisitor extends BaseVisitor {
+    private aliasMap: Map<string, string> = new Map();
+
     constructor() {
         super();
         this.validateVisitor();
@@ -225,6 +227,10 @@ export class SequenceAstVisitor extends BaseVisitor {
 
         let stereotype = ctx.stereo ? ctx.stereo[0].image : undefined;
 
+        if (name !== alias) {
+            this.aliasMap.set(name, alias);
+        }
+
         const node: IRNode = {
             type: "node",
             name: alias,
@@ -264,8 +270,20 @@ export class SequenceAstVisitor extends BaseVisitor {
 
         arrow = prefix + arrow + suffix;
 
-        let from = ctx.from ? this.visit(ctx.from[0]) : "[";
-        let to = ctx.to ? this.visit(ctx.to[0]) : "]";
+        let fromRaw = ctx.from ? this.visit(ctx.from[0]) : "[";
+        let toRaw = ctx.to ? this.visit(ctx.to[0]) : "]";
+
+        // Handle inline "as" alias in connections: "Bob()" -> "This is very\nlong" as Long
+        let connectionAlias: string | undefined;
+        if (ctx.alias) {
+            connectionAlias = this.visit(ctx.alias[0]);
+            if (toRaw && connectionAlias) {
+                this.aliasMap.set(toRaw, connectionAlias);
+            }
+        }
+
+        let from = this.aliasMap.get(fromRaw) || fromRaw;
+        let to = this.aliasMap.get(toRaw) || toRaw;
         let label = "";
         
         if (ctx.payload) {
