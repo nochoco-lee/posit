@@ -189,7 +189,9 @@ export class DeploymentLayoutManager {
         if (arrow.includes('left') || arrow.includes('right') || arrow.includes('horizontal')) return true;
         if (arrow.includes('up') || arrow.includes('down') || arrow.includes('vertical')) return false;
 
-        const match = arrow.match(/([-=.~]{1,4})/);
+        // Strip bracket content (e.g. -[bold]-> -> -->) before checking direction
+        const stripped = arrow.replace(/\[[^\]]*\]/g, '');
+        const match = stripped.match(/([-=.~]{1,4})/);
         if (match) {
             return match[1].length === 1;
         }

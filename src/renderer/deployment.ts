@@ -130,6 +130,7 @@ export class DeploymentRenderer {
                 return cloud;
 
             case 'node':
+            case 'box':
                 // 3D Box look
                 const boxFace = new Konva.Rect({
                     x: 0, y: 10, width: width - 10, height: height - 10,
@@ -448,20 +449,35 @@ export class DeploymentRenderer {
         const targetNode = this.map.nodes[conn.to];
         if (!originNode || !targetNode) return;
 
+        // Parse bracket styles from arrow type
+        const bracketMatch = conn.type.match(/\[([^\]]+)\]/);
+        const bracketStyle = bracketMatch ? bracketMatch[1].toLowerCase() : '';
+        if (bracketStyle === 'hidden') return; // Don't draw hidden connections
+
         const originCenterX = originNode.position.x + (originNode.size.width / 2);
         const originCenterY = originNode.position.y + (originNode.size.height / 2);
 
         const targetCenterX = targetNode.position.x + (targetNode.size.width / 2);
         const targetCenterY = targetNode.position.y + (targetNode.size.height / 2);
 
+        // Determine visual properties from bracket style
+        const isDashed = bracketStyle === 'dashed' || conn.type.includes('..');
+        const isDotted = bracketStyle === 'dotted' || conn.type.includes('..');
+        const isBold = bracketStyle === 'bold';
+        const isPlain = bracketStyle === 'plain';
+        const strokeWidth = isBold ? 4 : 2;
+        const dashPattern = isDashed ? [10, 5] : isDotted ? [2, 4] : undefined;
+        const pointerLength = isPlain ? 0 : 10;
+        const pointerWidth = isPlain ? 0 : 10;
+
         const arrow = new Konva.Arrow({
             points: [originCenterX, originCenterY, targetCenterX, targetCenterY],
-            pointerLength: 10,
-            pointerWidth: 10,
+            pointerLength,
+            pointerWidth,
             fill: THEME.stroke,
             stroke: THEME.stroke,
-            strokeWidth: 2,
-            dash: conn.type.includes('..') ? [10, 5] : undefined
+            strokeWidth,
+            dash: dashPattern
         });
 
         this.layer.add(arrow);

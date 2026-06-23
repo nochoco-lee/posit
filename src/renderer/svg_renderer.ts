@@ -193,7 +193,7 @@ export class LayoutPumlSvgRenderer {
                 svg += `<line x1="${centerX + 10}" y1="${headY + headRadius + 35}" x2="${centerX}" y2="${headY + headRadius + 20}" stroke="${stroke}" stroke-width="2" />\n`;
                 const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
                 svg += this.renderText(centerX, headY + headRadius + 50, text, 14);
-            } else if (n.type === 'node') {
+            } else if (n.type === 'node' || n.type === 'box') {
                 // 3D Cube for Node
                 const offset = 10;
                 const bw = w - offset;
@@ -431,19 +431,28 @@ export class LayoutPumlSvgRenderer {
                 tx = endPt.x; ty = endPt.y;
             }
             
-            const isDotted = c.type.includes("..");
-            const isDashed = c.type.includes("--");
+            // Parse bracket styles
+            const bracketMatch = c.type.match(/\[([^\]]+)\]/);
+            const bracketStyle = bracketMatch ? bracketMatch[1].toLowerCase() : '';
+            if (bracketStyle === 'hidden') continue; // Skip hidden connections
+
+            const isDotted = c.type.includes("..") || bracketStyle === 'dotted';
+            const isDashed = c.type.includes("--") || bracketStyle === 'dashed';
+            const isBold = bracketStyle === 'bold';
+            const isPlain = bracketStyle === 'plain';
             const strokeDash = isDotted ? 'stroke-dasharray="2,2"' : isDashed ? 'stroke-dasharray="8,4"' : "";
+            const strokeWidth = isBold ? 'stroke-width="4"' : 'stroke-width="2"';
+            const markerEnd = isPlain ? '' : ` marker-end="url(#arrowhead)"`;
             
             if (c.from === c.to && isSequence) {
                 const path = `M ${ox} ${oy} L ${ox + 30} ${oy} L ${ox + 30} ${oy + 20} L ${ox + 7} ${oy + 20}`;
-                svg += `<path d="${path}" fill="none" stroke="#A80036" stroke-width="2" ${strokeDash} />\n`;
-                svg += `<path d="M ${ox + 12} ${oy + 16} L ${ox + 5} ${oy + 20} L ${ox + 12} ${oy + 24} Z" fill="#A80036" />\n`;
+                svg += `<path d="${path}" fill="none" stroke="#A80036" ${strokeWidth} ${strokeDash} />\n`;
+                if (!isPlain) svg += `<path d="M ${ox + 12} ${oy + 16} L ${ox + 5} ${oy + 20} L ${ox + 12} ${oy + 24} Z" fill="#A80036" />\n`;
                 if (c.label) {
                     svg += this.renderText(ox + 35, oy + 10, c.label, 12, "start");
                 }
             } else {
-                svg += `<line x1="${ox}" y1="${oy}" x2="${tx}" y2="${ty}" stroke="#A80036" stroke-width="2" ${strokeDash} />\n`;
+                svg += `<line x1="${ox}" y1="${oy}" x2="${tx}" y2="${ty}" stroke="#A80036" ${strokeWidth} ${strokeDash} />\n`;
                 
                 const drawHead = (x: number, y: number, fromX: number, fromY: number, direction: number, type: string, isStart: boolean) => {
                     const angle = Math.atan2(y - fromY, x - fromX);
