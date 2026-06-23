@@ -5,12 +5,15 @@ import { parser } from "./parser";
 const BaseVisitor = parser.getBaseCstVisitorConstructor();
 
 export class MermaidAstVisitor extends BaseVisitor {
+    private aliasMap: Map<string, string> = new Map();
+
     constructor() {
         super();
         this.validateVisitor();
     }
 
     diagram(ctx: any): IRDiagram {
+        this.aliasMap.clear();
         let statements: any[] = [];
         if (ctx.sequenceStatement) {
             statements = ctx.sequenceStatement.map((s: any) => this.visit(s));
@@ -85,6 +88,10 @@ export class MermaidAstVisitor extends BaseVisitor {
 
         const isCreate = !!ctx.Create;
         const isDestroy = !!ctx.Destroy;
+
+        if (name !== alias) {
+            this.aliasMap.set(name, alias);
+        }
         
         const node: IRNode = {
             type: "node",
@@ -230,11 +237,13 @@ export class MermaidAstVisitor extends BaseVisitor {
 
     connectionDeclaration(ctx: any): IREdge[] {
         const edges: IREdge[] = [];
-        let currentFrom = this.visit(ctx.from[0]);
+        let currentFromRaw = this.visit(ctx.from[0]);
+        let currentFrom = this.aliasMap.get(currentFromRaw) || currentFromRaw;
 
         if (ctx.to) {
             ctx.to.forEach((t: any, i: number) => {
-                const to = this.visit(t);
+                const toRaw = this.visit(t);
+                const to = this.aliasMap.get(toRaw) || toRaw;
                 const arrow = ctx.arrow[i].image;
                 
                 let label: string | undefined = undefined;
