@@ -103,6 +103,10 @@ export class SequenceLayoutManager {
             );
             if (innerBoxes.length > 0) {
                 const NESTED_PADDING = 20;
+                // Apply y padding to inner boxes - push them down from outer box top
+                for (const inner of innerBoxes) {
+                    inner.position.y = Math.max(inner.position.y, outer.position.y + NESTED_PADDING);
+                }
                 // Expand outer box to wrap inner box with extra padding
                 const innerMinX = Math.min(...innerBoxes.map(b => b.position.x));
                 const innerMaxRight = Math.max(...innerBoxes.map(b => b.position.x + b.size.width));
