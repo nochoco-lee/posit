@@ -151,7 +151,7 @@ export class LayoutPumlSvgRenderer {
         if (map.diagramType === 'sequence' || map.diagramType === 'unknown') {
             Object.values(map.nodes).forEach(n => {
                 if (n.lifelineX && n.lifelineY) {
-                    let endY = maxY - 40;
+                    let endY = maxY;
                     if (map.activations) {
                         const destroyAct = map.activations.find(act => act.nodeId === n.id && act.isDestroy);
                         if (destroyAct) endY = destroyAct.startPosition.y + destroyAct.size.height;

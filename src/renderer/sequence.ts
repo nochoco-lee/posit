@@ -99,6 +99,7 @@ export class SequenceRenderer {
     private drawLifeline(nodeDef: LayoutNode) {
         if (!nodeDef.lifelineX || !nodeDef.lifelineY) return;
         let maxY = (this.map as any).totalHeight || 2000;
+        maxY += 30;
         if (this.map?.activations) {
             const destroyAct = this.map.activations.find(act => act.nodeId === nodeDef.id && act.isDestroy);
             if (destroyAct) maxY = destroyAct.startPosition.y + destroyAct.size.height;
