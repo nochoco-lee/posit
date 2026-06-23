@@ -87,8 +87,10 @@ export class SequenceLayoutManager {
         this.currentSequenceY += 50; // Trailing space for lifelines
         (this.map as any).totalHeight = this.currentSequenceY;
 
-        // Post-process: Set box heights and adjust nested groups
-        this.map.groups.filter(g => g.keyword === 'box').forEach(g => {
+        // Post-process: Extend only outermost box heights to bottom of diagram
+        // Inner/nested boxes should keep their calculated height from their content
+        const outermostBoxes = this.map.groups.filter(g => g.keyword === 'box' && !this.map.groups.some(other => other.keyword === 'box' && other !== g && other.position.x <= g.position.x && other.position.x + other.size.width >= g.position.x + g.size.width && other.position.y <= g.position.y && other.position.y + other.size.height >= g.position.y + g.size.height));
+        outermostBoxes.forEach(g => {
             g.size.height = Math.max(g.size.height, this.currentSequenceY - g.position.y + g.pad.y);
         });
 
