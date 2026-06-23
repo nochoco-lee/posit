@@ -450,13 +450,13 @@ export class SequenceLayoutManager {
             section.statements.forEach(s => this.processStatement(s));
             if (!isBox) { 
                 if (index < group.sections.length - 1) { 
-                    this.currentSequenceY += 30; // More space for else labels
-                    dividerYs.push(this.currentSequenceY - 15); 
+                    this.currentSequenceY += 50;
+                    dividerYs.push(this.currentSequenceY - 30); 
                 }
             }
         });
         let endY = this.currentSequenceY;
-        if (!isBox) this.currentSequenceY += 20; // Trailing space after group content
+        this.currentSequenceY += 20; // Trailing space after group content
 
         // Compute pad.x from participant bounds
         let padX = isBox ? 20 : Math.max(10, 40 - (this.groupDepth * 10));
@@ -498,10 +498,10 @@ export class SequenceLayoutManager {
         let height: number;
         if (isBox) {
             y = contentStartY;
-            height = Math.max(50, (endY - contentStartY) + padY);
+            height = Math.max(50, (endY - contentStartY));
         } else {
             y = contentStartYActual - padY;
-            height = Math.max(50, contentHeight + 2 * padY);
+            height = Math.max(50, contentHeight + padY);
         }
 
         const layoutGroup: LayoutGroup = { 
