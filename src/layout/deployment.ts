@@ -1,5 +1,6 @@
 import { IRDiagram, IRNode, IREdge, IRContainer, IRStatement, IRGroup } from "../ir/types";
 import { LayoutMap, LayoutNode, LayoutConnection, LayoutGroup, LayoutNote, DEFAULTS } from "./types";
+import { measureText } from "../utils/text";
 
 export class DeploymentLayoutManager {
     private padding = 20;
@@ -288,7 +289,8 @@ export class DeploymentLayoutManager {
                 this.nodesByRow = savedNodesByRow;
                 this.rowInfo = savedRowInfo;
 
-                const groupWidth = Math.max(this.minNodeWidth + 20, maxRowWidth + this.padding);
+                const labelWidth = measureText(container.name || container.label || '', 14, 'sans-serif').width + 40;
+                const groupWidth = Math.max(this.minNodeWidth + 20, maxRowWidth + this.padding, labelWidth);
                 const groupHeight = Math.max(this.minNodeHeight + 20, contentSize.height + 2 * this.padding + 20);
 
                 let position = { x, y: groupY };

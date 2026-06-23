@@ -118,7 +118,9 @@ export class LayoutPumlSvgRenderer {
                 }
             } else if (g.keyword === 'package' || g.keyword === 'namespace' || g.keyword === 'folder') {
                 // Classic package shape with a tab
-                const tabWidth = Math.min(g.size.width * 0.4, 100);
+                const labelText = g.label || "";
+                const labelWidth = labelText.length * 6.5 + 20;
+                const tabWidth = Math.min(Math.max(labelWidth, 60), g.size.width);
                 const tabHeight = 20;
                 svg += `<path d="M ${g.position.x} ${g.position.y} 
                            L ${g.position.x + tabWidth} ${g.position.y} 

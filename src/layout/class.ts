@@ -1,5 +1,6 @@
 import { DEFAULTS, LayoutConnection, LayoutMap, LayoutNode, LayoutNote, LayoutGroup } from "./types";
 import { IRDiagram, IRNode, IREdge, IRStatement, IRNote, IRGroup, IRContainer } from "../ir/types";
+import { measureText } from "../utils/text";
 
 export class ClassLayoutManager {
     private map: LayoutMap;
@@ -224,8 +225,9 @@ export class ClassLayoutManager {
         this.rowInfo = savedRowInfo;
         
         const endY = this.currentClassY;
+        const labelWidth = measureText(container.name || '', 14, 'sans-serif').width + 40;
         this.map.groups[groupIndex].size.height = Math.max(100, endY - (container.layout ? container.layout.y : startY));
-        this.map.groups[groupIndex].size.width = Math.max(450, maxRowWidth + 40);
+        this.map.groups[groupIndex].size.width = Math.max(450, maxRowWidth + 40, labelWidth);
         if (!container.layout) {
             this.currentClassY += 20;
         }
@@ -276,8 +278,9 @@ export class ClassLayoutManager {
         this.rowInfo = savedRowInfo;
 
         const endY = this.currentClassY;
+        const labelWidth = measureText(group.label || '', 14, 'sans-serif').width + 40;
         this.map.groups[groupIndex].size.height = Math.max(100, endY - (group.layout ? group.layout.y : startY));
-        this.map.groups[groupIndex].size.width = Math.max(450, maxRowWidth + 40);
+        this.map.groups[groupIndex].size.width = Math.max(450, maxRowWidth + 40, labelWidth);
         if (!group.layout) {
             this.currentClassY += 20;
         }
