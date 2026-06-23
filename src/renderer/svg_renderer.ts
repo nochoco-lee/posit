@@ -142,8 +142,12 @@ export class LayoutPumlSvgRenderer {
                     svg += `<text x="${g.position.x + keywordWidth + 5}" y="${g.position.y + 13}" font-family="sans-serif" font-size="11" font-weight="bold" fill="${g.color || '#A80036'}">[${g.label}]</text>\n`;
                 }
             }
-            g.dividerYs?.forEach(dy => {
+            g.dividerYs?.forEach((dy, index) => {
                 svg += `<line x1="${g.position.x}" y1="${dy}" x2="${g.position.x + g.size.width}" y2="${dy}" stroke="${g.color || '#A80036'}" stroke-width="1" stroke-dasharray="5,5" />\n`;
+                const nextSection = g.sections?.[index + 1];
+                if (nextSection && nextSection.label) {
+                    svg += `<text x="${g.position.x + 5}" y="${dy + 14}" font-family="sans-serif" font-size="11" font-style="italic" fill="${g.color || '#A80036'}">[${nextSection.label}]</text>\n`;
+                }
             });
         });
 
