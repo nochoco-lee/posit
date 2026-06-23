@@ -449,11 +449,12 @@ export class LayoutPumlSvgRenderer {
             const markerEnd = isPlain ? '' : ` marker-end="url(#arrowhead)"`;
             
             if (c.from === c.to && isSequence) {
-                const path = `M ${ox} ${oy} L ${ox + 30} ${oy} L ${ox + 30} ${oy + 20} L ${ox + 7} ${oy + 20}`;
+                const loopW = c.selfMessageWidth ? c.selfMessageWidth / 2 : 30;
+                const path = `M ${ox} ${oy} L ${ox + loopW} ${oy} L ${ox + loopW} ${oy + 20} L ${ox + 7} ${oy + 20}`;
                 svg += `<path d="${path}" fill="none" stroke="#A80036" ${strokeWidth} ${strokeDash} />\n`;
-                if (!isPlain) svg += `<path d="M ${ox + 12} ${oy + 16} L ${ox + 5} ${oy + 20} L ${ox + 12} ${oy + 24} Z" fill="#A80036" />\n`;
+                if (!isPlain) svg += `<path d="M ${ox + loopW - 18} ${oy + 16} L ${ox + loopW - 25} ${oy + 20} L ${ox + loopW - 18} ${oy + 24} Z" fill="#A80036" />\n`;
                 if (c.label) {
-                    svg += this.renderText(ox + 35, oy + 10, c.label, 12, "start");
+                    svg += this.renderText(ox + loopW + 5, oy + 10, c.label, 12, "start");
                 }
             } else {
                 svg += `<line x1="${ox}" y1="${oy}" x2="${tx}" y2="${ty}" stroke="#A80036" ${strokeWidth} ${strokeDash} />\n`;

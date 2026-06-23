@@ -279,13 +279,23 @@ export class SequenceLayoutManager {
         
         let labelHeight = 0;
         let finalLabel = conn.label ?? null;
+        let selfMessageWidth: number | undefined;
         if ((originNode || fromExternal) && (targetNode || toExternal) && conn.label) {
             const isSelfMessage = conn.from === conn.to;
             const originX = fromExternal ? (targetNode?.position.x || 0) : (originNode!.position.x + originNode!.size.width / 2);
             const targetX = toExternal ? (originNode?.position.x || 0) : (targetNode!.position.x + targetNode!.size.width / 2);
             const availableWidth = isSelfMessage ? 150 : Math.max(100, Math.abs(targetX - originX) - 20);
             const textSize = measureText(conn.label, 12, 'sans-serif');
-            if (textSize.width > availableWidth) {
+            if (isSelfMessage) {
+                selfMessageWidth = Math.max(80, textSize.width + 40);
+                if (textSize.width > selfMessageWidth) {
+                    finalLabel = wrapText(conn.label, selfMessageWidth - 20, 12, 'sans-serif');
+                    const wrappedSize = measureText(finalLabel!, 12, 'sans-serif');
+                    labelHeight = wrappedSize.height;
+                } else {
+                    labelHeight = textSize.height;
+                }
+            } else if (textSize.width > availableWidth) {
                 finalLabel = wrapText(conn.label, availableWidth, 12, 'sans-serif');
                 const wrappedSize = measureText(finalLabel!, 12, 'sans-serif');
                 labelHeight = wrappedSize.height;
@@ -303,7 +313,7 @@ export class SequenceLayoutManager {
         }
         let autonumberStr: string | undefined = undefined;
         if (this.autonumberActive) { autonumberStr = this.autonumberValue.toString(); this.autonumberValue += this.autonumberStep; }
-        const layoutConn: LayoutConnection = { from: conn.from, fromLabel: conn.fromLabel, to: conn.to, toLabel: conn.toLabel, type: conn.arrow, label: finalLabel, number: autonumberStr, position, calculatedY };
+        const layoutConn: LayoutConnection = { from: conn.from, fromLabel: conn.fromLabel, to: conn.to, toLabel: conn.toLabel, type: conn.arrow, label: finalLabel, number: autonumberStr, position, calculatedY, selfMessageWidth };
         this.lastConnectionY = calculatedY;
         this.lastConnectionParticipants = [conn.from, conn.to];
         const connIndex = this.map.connections.length;

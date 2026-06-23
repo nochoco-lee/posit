@@ -34,6 +34,7 @@ export interface LayoutConnection {
     number?: string; // Autonumber
     position: Position | null; // Optional waypoint /pos metadata
     calculatedY?: number; // Internal calculated Y for sequence diagrams
+    selfMessageWidth?: number; // Computed width for self-message loops
 }
 
 export interface LayoutActivation {

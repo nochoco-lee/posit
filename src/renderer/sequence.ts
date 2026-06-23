@@ -15,7 +15,8 @@ export class SequenceRenderer {
         labelObj?: Konva.Text,
         group: Konva.Group,
         headObj?: Konva.Shape,
-        startHeadObj?: Konva.Shape
+        startHeadObj?: Konva.Shape,
+        selfMessageWidth?: number
     }[] = [];
     protected lifelines: Record<string, Konva.Line> = {};
     protected activationRects: Record<string, { rect: Konva.Rect, def: LayoutActivation, destroyX1?: Konva.Line, destroyX2?: Konva.Line }[]> = {};
@@ -327,8 +328,9 @@ export class SequenceRenderer {
         let startHeadObj: Konva.Shape | undefined;
 
         if (isSelfMessage) {
+            const loopWidth = (conn as any).selfMessageWidth ? (conn as any).selfMessageWidth / 2 : 30;
             const actShift = getAdjustedX(conn.from, true, originX) - originX;
-            const points = [originX + actShift, 0, originX + 30 + actShift, 0, originX + 30 + actShift, 20, originX + 7 + actShift, 20];
+            const points = [originX + actShift, 0, originX + loopWidth + actShift, 0, originX + loopWidth + actShift, 20, originX + 7 + actShift, 20];
             visualArrow = new Konva.Arrow({ points, stroke: color, strokeWidth: 2, hitStrokeWidth: 10, dash: arrowInfo.isDashed ? [5, 5] : undefined, pointerLength: 0 });
             headObj = this.createArrowHead(arrowInfo.endHead, color);
             if (headObj) {
@@ -355,15 +357,16 @@ export class SequenceRenderer {
         connGroup.add(visualArrow);
         let labelTextObj: Konva.Text | undefined;
         if (conn.label || conn.number) {
-            const midX = isSelfMessage ? originX + 15 : ((originX + targetX) / 2);
+            const selfMsgW = (conn as any).selfMessageWidth || 150;
+            const midX = isSelfMessage ? originX + selfMsgW / 4 : ((originX + targetX) / 2);
             const displayText = (conn.number ? `(${conn.number}) ` : "") + (conn.label || "");
-            const textWidth = isSelfMessage ? 150 : Math.max(50, Math.abs(targetX - originX) - 10);
+            const textWidth = isSelfMessage ? selfMsgW / 2 : Math.max(50, Math.abs(targetX - originX) - 10);
             labelTextObj = new Konva.Text({ x: midX, text: displayText, fontSize: 12, fill: '#000', fontFamily: 'sans-serif', align: 'center', width: textWidth });
             labelTextObj.y(-labelTextObj.height() - 5); labelTextObj.offsetX(labelTextObj.width() / 2);
             connGroup.add(labelTextObj);
         }
         this.layer.add(connGroup);
-        this.connectionArrows.push({ originId: conn.from, targetId: conn.to, konvaObj: visualArrow, labelObj: labelTextObj, group: connGroup, headObj, startHeadObj });
+        this.connectionArrows.push({ originId: conn.from, targetId: conn.to, konvaObj: visualArrow, labelObj: labelTextObj, group: connGroup, headObj, startHeadObj, selfMessageWidth: (conn as any).selfMessageWidth });
     }
 
     private drawDivider(div: LayoutDivider) {
@@ -453,11 +456,12 @@ export class SequenceRenderer {
                 const isSelfMessage = conn.originId === conn.targetId;
                 const yPos = conn.group.y();
                 if (isSelfMessage) {
+                    const loopW = conn.selfMessageWidth ? conn.selfMessageWidth / 2 : 30;
                     const adjX = getAdjustedX(nodeId, draggedCenterX, yPos, true);
-                    const points = [adjX, 0, adjX + 30, 0, adjX + 30, 20, adjX + 7, 20];
+                    const points = [adjX, 0, adjX + loopW, 0, adjX + loopW, 20, adjX + 7, 20];
                     conn.konvaObj.points(points);
                     if (conn.headObj) this.updateArrowHead(conn.headObj, { x: points[4], y: points[5] }, { x: points[6], y: points[7] });
-                    if (conn.labelObj) { conn.labelObj.width(150); conn.labelObj.offsetX(conn.labelObj.width() / 2); conn.labelObj.position({ x: adjX + 15, y: -conn.labelObj.height() - 5 }); }
+                    if (conn.labelObj) { const tw = conn.selfMessageWidth ? conn.selfMessageWidth / 2 : 150; conn.labelObj.width(tw); conn.labelObj.offsetX(conn.labelObj.width() / 2); conn.labelObj.position({ x: adjX + loopW / 2, y: -conn.labelObj.height() - 5 }); }
                 } else {
                     const originBase = this.map!.nodes[conn.originId]; const originGroup = this.nodeGroups[conn.originId];
                     const targetBase = this.map!.nodes[conn.targetId]; const targetGroup = this.nodeGroups[conn.targetId];
