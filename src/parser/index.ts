@@ -87,6 +87,7 @@ export async function parsePlantUml(text: string): Promise<IRDiagram> {
         // console.warn("Lexing errors:", lexResult.errors);
     }
 
+    parser.reset();
     parser.input = lexResult.tokens;
     const cst = parser.diagram();
 
