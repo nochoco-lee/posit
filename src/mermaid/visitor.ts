@@ -76,7 +76,7 @@ export class MermaidAstVisitor extends BaseVisitor {
         return children.map(c => {
             if (c.image) return c.image;
             return this.visit(c);
-        }).join("");
+        }).join(" ");
     }
 
     participantDeclaration(ctx: any): IRNode {
@@ -149,12 +149,94 @@ export class MermaidAstVisitor extends BaseVisitor {
         
         const sections: { label?: string; statements: any[] }[] = [];
         
-        const firstStatements: any[] = [];
-        if (ctx.sequenceStatement) {
-            const allStmts = ctx.sequenceStatement.map((s: any) => this.visit(s)).filter((s: any) => s).flat();
-            firstStatements.push(...allStmts);
+        // Helper to find first token offset in a CST node
+        const findFirstOffset = (node: any): number => {
+            if (!node) return Infinity;
+            if (node.startOffset !== undefined) return node.startOffset;
+            if (node.children) {
+                for (const val of Object.values(node.children)) {
+                    if (Array.isArray(val)) {
+                        for (const v of val) {
+                            if (v && typeof v === 'object') {
+                                const off = findFirstOffset(v);
+                                if (off < Infinity) return off;
+                            }
+                        }
+                    } else if (val && typeof val === 'object') {
+                        const off = findFirstOffset(val);
+                        if (off < Infinity) return off;
+                    }
+                }
+            }
+            return Infinity;
+        };
+        
+        // Collect separator tokens and their offsets
+        const separators: { offset: number; label: string }[] = [];
+        const allSeps: any[] = [
+            ...(ctx.Else || []),
+            ...(ctx.And || []),
+            ...(ctx.Option || [])
+        ];
+        allSeps.sort((a: any, b: any) => a.startOffset - b.startOffset);
+        
+        // elseLabel corresponds 1:1 with separator tokens
+        const labels: string[] = [];
+        if (ctx.elseLabel) {
+            ctx.elseLabel.forEach((el: any) => labels.push(this.visit(el)));
         }
-        sections.push({ label, statements: firstStatements });
+        
+        for (let i = 0; i < allSeps.length; i++) {
+            separators.push({ offset: allSeps[i].startOffset, label: labels[i] || "" });
+        }
+        
+        if (separators.length === 0) {
+            // No separators - all statements in one section
+            if (ctx.sequenceStatement) {
+                const stmts = ctx.sequenceStatement.map((s: any) => this.visit(s)).filter((s: any) => s).flat();
+                sections.push({ label, statements: stmts });
+            } else {
+                sections.push({ label, statements: [] });
+            }
+        } else {
+            // Split statements by separator offsets
+            if (ctx.sequenceStatement) {
+                const stmtOffsets: { cst: any; offset: number }[] = ctx.sequenceStatement.map((s: any) => ({
+                    cst: s,
+                    offset: findFirstOffset(s)
+                }));
+                
+                // Initialize section arrays
+                const sectionStmts: any[][] = [[]];
+                for (let i = 0; i < separators.length; i++) sectionStmts.push([]);
+                
+                for (const { cst, offset } of stmtOffsets) {
+                    let sectionIdx = 0;
+                    for (let i = 0; i < separators.length; i++) {
+                        if (offset > separators[i].offset) {
+                            sectionIdx = i + 1;
+                        } else {
+                            break;
+                        }
+                    }
+                    const visited = this.visit(cst);
+                    if (visited) {
+                        if (Array.isArray(visited)) {
+                            sectionStmts[sectionIdx].push(...visited);
+                        } else {
+                            sectionStmts[sectionIdx].push(visited);
+                        }
+                    }
+                }
+                
+                sections.push({ label, statements: sectionStmts[0] });
+                for (let i = 0; i < separators.length; i++) {
+                    sections.push({ label: separators[i].label, statements: sectionStmts[i + 1] });
+                }
+            } else {
+                sections.push({ label, statements: [] });
+            }
+        }
         
         return {
             type: "group",
