@@ -68,6 +68,8 @@ export interface LayoutGroup {
     }[];
     position: Position;
     size: Size;
+    pad: { x: number; y: number }; // Padding from outermost participant/message edges
+    contentStartY?: number; // Y where group content starts (for pad.y reference)
     dividerYs: number[]; // Y-offsets relative to group position or absolute
     color?: string;
     participants?: string[];

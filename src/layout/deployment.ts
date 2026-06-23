@@ -307,6 +307,7 @@ export class DeploymentLayoutManager {
                     color: container.color,
                     position,
                     size: { width: groupWidth, height: groupHeight },
+                    pad: { x: 10, y: 10 },
                     sections: s.type === 'container' ? [{ statements: stmts }] : container.sections,
                     dividerYs: []
                 };

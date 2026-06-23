@@ -89,7 +89,7 @@ export class SequenceLayoutManager {
 
         // Post-process: Set box heights and adjust nested groups
         this.map.groups.filter(g => g.keyword === 'box').forEach(g => {
-            g.size.height = Math.max(g.size.height, this.currentSequenceY - g.position.y - 20);
+            g.size.height = Math.max(g.size.height, this.currentSequenceY - g.position.y + g.pad.y);
         });
 
         return this.map;
@@ -209,7 +209,7 @@ export class SequenceLayoutManager {
         const height = Math.max(60, textSize.height + 40);
         const layoutGroup: LayoutGroup = {
             type: "group", id: `ref-${Math.random()}`, keyword: "ref", label: ref.text, sections: [],
-            position: { x, y: this.currentSequenceY }, size: { width, height }, dividerYs: []
+            position: { x, y: this.currentSequenceY }, size: { width, height }, pad: { x: 5, y: 10 }, dividerYs: []
         };
         this.map.groups.push(layoutGroup);
         this.currentSequenceY += height + 20;
@@ -411,7 +411,8 @@ export class SequenceLayoutManager {
     private processGroup(group: IRGroup) {
         this.groupDepth++;
         const isBox = group.keyword === 'box';
-        const startY = isBox ? DEFAULTS.SEQUENCE_START_Y - 20 : this.currentSequenceY;
+        const contentStartY = isBox ? DEFAULTS.SEQUENCE_START_Y - 20 : this.currentSequenceY;
+        const startY = contentStartY;
         const dividerYs: number[] = [];
         if (!isBox) this.currentSequenceY += 40;
         
@@ -432,6 +433,9 @@ export class SequenceLayoutManager {
             });
         };
         group.sections.forEach(section => collectParticipants(section.statements));
+
+        const contentStartYActual = this.currentSequenceY;
+
         group.sections.forEach((section, index) => {
             section.statements.forEach(s => this.processStatement(s));
             if (!isBox) { 
@@ -442,24 +446,51 @@ export class SequenceLayoutManager {
             }
         });
         let endY = this.currentSequenceY;
-        let minX = 50; let maxX = 550;
+
+        // Compute pad.x from participant bounds
+        let padX = isBox ? 20 : Math.max(10, 40 - (this.groupDepth * 10));
+        let minParticipantX = Infinity;
+        let maxParticipantRight = -Infinity;
         if (participantsInGroup.size > 0) {
             const nodes = Array.from(participantsInGroup).map(id => this.map.nodes[id]).filter(Boolean);
             if (nodes.length > 0) { 
-                const padding = isBox ? 20 : Math.max(10, 40 - (this.groupDepth * 10));
-                minX = Math.min(...nodes.map(n => n.position.x)) - padding; 
-                maxX = Math.max(...nodes.map(n => n.position.x + n.size.width)) + padding; 
+                minParticipantX = Math.min(...nodes.map(n => n.position.x));
+                maxParticipantRight = Math.max(...nodes.map(n => n.position.x + n.size.width));
             }
         }
 
-        // Include notes in group boundaries
+        // Include notes in horizontal bounds
         const groupNotes = this.map.notes.slice(noteCountBefore);
         if (groupNotes.length > 0) {
-            const padding = isBox ? 20 : 10;
-            const noteMinX = Math.min(...groupNotes.map(n => n.position.x)) - padding;
-            const noteMaxX = Math.max(...groupNotes.map(n => n.position.x + n.size.width)) + padding;
-            minX = Math.min(minX, noteMinX);
-            maxX = Math.max(maxX, noteMaxX);
+            const notePadding = isBox ? 20 : 10;
+            const noteMinX = Math.min(...groupNotes.map(n => n.position.x)) - notePadding;
+            const noteMaxX = Math.max(...groupNotes.map(n => n.position.x + n.size.width)) + notePadding;
+            if (noteMinX < minParticipantX) minParticipantX = noteMinX;
+            if (noteMaxX > maxParticipantRight) maxParticipantRight = noteMaxX;
+        }
+
+        // Compute pad.y from message content bounds
+        const contentHeight = Math.max(0, endY - contentStartYActual);
+        let padY: number;
+        if (isBox) {
+            // Box: top is fixed, pad.y is bottom gap only
+            padY = 20;
+        } else {
+            // Non-box: pad.y is gap above first message
+            padY = 40;
+        }
+
+        // Derive position and size from pad + content bounds
+        const x = minParticipantX !== Infinity ? minParticipantX - padX : 50;
+        const width = minParticipantX !== Infinity ? Math.max(100, (maxParticipantRight - minParticipantX) + 2 * padX) : 500;
+        let y: number;
+        let height: number;
+        if (isBox) {
+            y = contentStartY;
+            height = Math.max(50, (endY - contentStartY) + padY);
+        } else {
+            y = contentStartYActual - padY;
+            height = Math.max(50, contentHeight + 2 * padY);
         }
 
         const layoutGroup: LayoutGroup = { 
@@ -468,8 +499,10 @@ export class SequenceLayoutManager {
             keyword: group.keyword, 
             label: group.label || "", 
             sections: group.sections, 
-            position: { x: minX, y: startY }, 
-            size: { width: Math.max(100, maxX - minX), height: Math.max(50, endY - startY) }, 
+            position: { x, y }, 
+            size: { width, height },
+            pad: { x: padX, y: padY },
+            contentStartY: contentStartYActual,
             dividerYs, 
             color: group.color,
             participants: Array.from(participantsInGroup)

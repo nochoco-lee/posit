@@ -8,6 +8,7 @@ export class ClassRenderer {
     protected map: LayoutMap | null = null;
     protected onNodeMove?: (id: string, newX: number, newY: number) => void;
     protected nodeGroups: Record<string, Konva.Group> = {};
+    protected groupVisuals: { group: Konva.Group, rect: Konva.Rect, def: LayoutGroup }[] = [];
     protected connectionArrows: { 
         originId: string, 
         targetId: string, 
@@ -53,6 +54,7 @@ export class ClassRenderer {
         this.map = map;
         this.layer.destroyChildren();
         this.nodeGroups = {};
+        this.groupVisuals = [];
         this.connectionArrows = [];
 
         // 1. Draw Connections First (So they sit behind nodes)
@@ -367,10 +369,40 @@ export class ClassRenderer {
                 conn.toLabelObj.position({ x: cardX + offsetX, y: cardY + offsetY });
             }
         });
+
+        // Resize groups that contain the dragged node
+        this.groupVisuals.forEach(visual => {
+            const { group, rect, def } = visual;
+            if (!def.participants || def.participants.indexOf(nodeId) === -1) return;
+            const nodes = def.participants.map(pId => ({ group: this.nodeGroups[pId], base: this.map!.nodes[pId] })).filter(n => n.group && n.base);
+            if (nodes.length === 0) return;
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            for (const n of nodes) {
+                const x = n.group.x(), y = n.group.y();
+                if (x < minX) minX = x; if (x + n.base.size.width > maxX) maxX = x + n.base.size.width;
+                if (y < minY) minY = y; if (y + n.base.size.height > maxY) maxY = y + n.base.size.height;
+            }
+            const newX = minX - def.pad.x;
+            const newY = minY - def.pad.y;
+            const newW = Math.max(100, (maxX - minX) + 2 * def.pad.x);
+            const newH = Math.max(50, (maxY - minY) + 2 * def.pad.y);
+            def.position.x = newX; def.position.y = newY;
+            def.size.width = newW; def.size.height = newH;
+            group.position({ x: newX, y: newY });
+            rect.width(newW); rect.height(newH);
+            const children = group.getChildren();
+            for (let i = 0; i < children.length; i++) {
+                const child = children[i];
+                if (child instanceof Konva.Text && child.align() === 'center') child.width(newW);
+            }
+        });
+        // Cascade resize to parent groups
+        for (const v of this.groupVisuals) this.cascadeGroupResize(v.def);
     }
 
     private drawGroup(groupDef: LayoutGroup) {
-        const group = new Konva.Group({ x: groupDef.position.x, y: groupDef.position.y });
+        const BORDER_THRESHOLD = 8;
+        const group = new Konva.Group({ x: groupDef.position.x, y: groupDef.position.y, draggable: true, id: groupDef.id });
         const rect = new Konva.Rect({
             width: groupDef.size.width, height: groupDef.size.height,
             stroke: THEME.stroke, strokeWidth: 2, dash: [5, 5]
@@ -379,7 +411,92 @@ export class ClassRenderer {
             text: `${groupDef.keyword} [${groupDef.label}]`,
             fontSize: 12, fontStyle: 'bold', padding: 5, fill: THEME.stroke
         });
-        group.add(rect); group.add(label); this.layer.add(group);
+        group.add(rect); group.add(label);
+
+        // Border drag to adjust pad
+        let dragStartX = 0, dragStartY = 0;
+        let dragEdge: { left: boolean; right: boolean; top: boolean; bottom: boolean } | null = null;
+        let origPadX = 0, origPadY = 0, origW = 0, origH = 0, origGX = 0, origGY = 0;
+
+        group.on('dragstart', () => {
+            const pos = this.stage.getPointerPosition() || { x: 0, y: 0 };
+            const box = group.getClientRect();
+            dragStartX = pos.x; dragStartY = pos.y;
+            origPadX = groupDef.pad.x; origPadY = groupDef.pad.y;
+            origW = groupDef.size.width; origH = groupDef.size.height;
+            origGX = group.x(); origGY = group.y();
+            const relX = pos.x - box.x, relY = pos.y - box.y;
+            const nearLeft = relX < BORDER_THRESHOLD, nearRight = relX > box.width - BORDER_THRESHOLD;
+            const nearTop = relY < BORDER_THRESHOLD, nearBottom = relY > box.height - BORDER_THRESHOLD;
+            if (nearLeft || nearRight || nearTop || nearBottom) {
+                dragEdge = { left: nearLeft, right: nearRight, top: nearTop, bottom: nearBottom };
+                this.stage.container().style.cursor = 'nwse-resize';
+            } else { dragEdge = null; }
+        });
+
+        group.on('dragmove', () => {
+            if (!dragEdge) return;
+            const pos = this.stage.getPointerPosition() || { x: 0, y: 0 };
+            const dx = pos.x - dragStartX, dy = pos.y - dragStartY;
+            if (dragEdge.right || dragEdge.left) groupDef.pad.x = Math.max(0, origPadX + (dragEdge.right ? dx : -dx));
+            if (dragEdge.bottom || dragEdge.top) groupDef.pad.y = Math.max(0, origPadY + (dragEdge.bottom ? dy : -dy));
+            // Recompute size from pad
+            groupDef.size.width = Math.max(100, origW + (dragEdge.right ? dx : dragEdge.left ? -dx : 0));
+            groupDef.size.height = Math.max(50, origH + (dragEdge.bottom ? dy : dragEdge.top ? -dy : 0));
+            groupDef.position.x = origGX + (dragEdge.left ? dx : 0);
+            groupDef.position.y = origGY + (dragEdge.top ? dy : 0);
+            group.position({ x: groupDef.position.x, y: groupDef.position.y });
+            rect.width(groupDef.size.width); rect.height(groupDef.size.height);
+            const children = group.getChildren();
+            for (let i = 0; i < children.length; i++) {
+                const child = children[i];
+                if (child instanceof Konva.Text && child.align() === 'center') child.width(groupDef.size.width);
+            }
+            this.cascadeGroupResize(groupDef);
+        });
+
+        group.on('dragend', (e: any) => {
+            dragEdge = null;
+            this.stage.container().style.cursor = 'default';
+        });
+        group.on('mouseenter', () => { this.stage.container().style.cursor = 'default'; });
+        group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; dragEdge = null; });
+
+        this.groupVisuals.push({ group, rect, def: groupDef });
+        this.layer.add(group);
+    }
+
+    private cascadeGroupResize(changedDef: LayoutGroup) {
+        if (!this.map) return;
+        let current = changedDef;
+        let iterations = 0;
+        while (iterations < 10) {
+            let expanded = false;
+            for (const visual of this.groupVisuals) {
+                const outer = visual.def;
+                if (outer === current) continue;
+                const cR = current.position.x + current.size.width;
+                const cB = current.position.y + current.size.height;
+                const oR = outer.position.x + outer.size.width;
+                const oB = outer.position.y + outer.size.height;
+                if (current.position.x < outer.position.x - 2 || cR > oR + 2 || current.position.y < outer.position.y - 2 || cB > oB + 2) continue;
+                let needsResize = false;
+                if (cR > oR + 1) { outer.size.width = cR - outer.position.x + outer.pad.x; needsResize = true; }
+                if (cB > oB + 1) { outer.size.height = cB - outer.position.y + outer.pad.y; needsResize = true; }
+                if (needsResize) {
+                    visual.group.position({ x: outer.position.x, y: outer.position.y });
+                    visual.rect.width(outer.size.width); visual.rect.height(outer.size.height);
+                    const children = visual.group.getChildren();
+                    for (let i = 0; i < children.length; i++) {
+                        const child = children[i];
+                        if (child instanceof Konva.Text && child.align() === 'center') child.width(outer.size.width);
+                    }
+                    current = outer; expanded = true; break;
+                }
+            }
+            if (!expanded) break;
+            iterations++;
+        }
     }
 
     private drawNote(noteDef: LayoutNote) {

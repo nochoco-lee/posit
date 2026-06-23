@@ -192,6 +192,7 @@ export class ClassLayoutManager {
             sections: [{ statements: container.statements }],
             position,
             size: { width: 450, height: 0 },
+            pad: { x: 10, y: 10 },
             dividerYs: []
         };
         const groupIndex = this.map.groups.length;
@@ -244,6 +245,7 @@ export class ClassLayoutManager {
             sections: group.sections,
             position,
             size: { width: 450, height: 0 },
+            pad: { x: 10, y: 10 },
             dividerYs: []
         };
         const groupIndex = this.map.groups.length;
@@ -512,6 +514,7 @@ export class ClassLayoutManager {
             sections: group.sections,
             position: { x: 50, y: this.currentClassY },
             size: { width: 400, height: 100 },
+            pad: { x: 10, y: 10 },
             dividerYs: []
         };
 

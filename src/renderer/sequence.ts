@@ -45,8 +45,8 @@ export class SequenceRenderer {
         this.noteVisuals = [];
         const sortedNodes = Object.values(map.nodes).filter(n => n.type === 'participant' || n.type === 'actor').sort((a, b) => a.position.x - b.position.x);
         this.participantOrder = sortedNodes.map(n => n.id);
-        Object.values(map.nodes).forEach(node => { this.drawLifeline(node); this.drawNode(node); });
         map.groups.forEach(group => this.drawGroup(group));
+        Object.values(map.nodes).forEach(node => { this.drawLifeline(node); this.drawNode(node); });
         if (map.activations) map.activations.forEach(act => this.drawActivation(act));
         map.connections.forEach(conn => this.drawConnection(conn));
         if (map.dividers) map.dividers.forEach(div => this.drawDivider(div));
@@ -477,26 +477,31 @@ export class SequenceRenderer {
         });
 
         // Update Groups
+        const resizedGroups: LayoutGroup[] = [];
         this.groupVisuals.forEach(visual => {
             const { group, rect, def } = visual;
             if (def.participants && def.participants.indexOf(nodeId) !== -1) {
                 const nodes = def.participants.map(pId => ({ group: this.nodeGroups[pId], base: this.map!.nodes[pId] })).filter(n => n.group && n.base);
                 if (nodes.length > 0) {
-                    const padding = def.keyword === 'box' ? 20 : 10;
                     let minX = Infinity; let maxX = -Infinity;
                     for (const n of nodes) { const x = n.group.x(); if (x < minX) minX = x; const right = x + n.base.size.width; if (right > maxX) maxX = right; }
-                    minX -= padding; maxX += padding;
-                    group.x(minX); rect.width(Math.max(100, maxX - minX));
-                    def.position.x = minX; def.size.width = rect.width(); // Update internal state to prevent snapback
+                    const newWidth = Math.max(100, (maxX - minX) + 2 * def.pad.x);
+                    group.x(minX - def.pad.x);
+                    rect.width(newWidth);
+                    def.position.x = minX - def.pad.x;
+                    def.size.width = newWidth;
                     const children = group.getChildren();
                     for (let i = 0; i < children.length; i++) {
                         const child = children[i];
-                        if (child instanceof Konva.Text && child.align() === 'center') child.width(rect.width());
-                        else if (child instanceof Konva.Line) { const points = child.points(); points[2] = rect.width(); child.points(points); }
+                        if (child instanceof Konva.Text && child.align() === 'center') child.width(newWidth);
+                        else if (child instanceof Konva.Line) { const points = child.points(); points[2] = newWidth; child.points(points); }
                     }
+                    resizedGroups.push(def);
                 }
             }
         });
+        // Cascade resize to parent groups
+        for (const g of resizedGroups) this.cascadeGroupResize(g);
 
         // Update Dividers
         const allNodeGroupsList = Object.values(this.nodeGroups);
@@ -562,11 +567,109 @@ export class SequenceRenderer {
     }
 
     private drawGroup(groupDef: LayoutGroup) {
+        const isBox = groupDef.keyword === 'box';
+        const BORDER_THRESHOLD = 8;
+
+        // Helper: recompute group position/size from pad + current participant bounds
+        const recomputeFromPad = () => {
+            if (!this.map || !groupDef.participants) return;
+            const nodes = groupDef.participants.map(pId => ({ group: this.nodeGroups[pId], base: this.map!.nodes[pId] })).filter(n => n.group && n.base);
+            if (nodes.length === 0) return;
+            let minX = Infinity; let maxX = -Infinity;
+            for (const n of nodes) { const x = n.group.x(); if (x < minX) minX = x; const right = x + n.base.size.width; if (right > maxX) maxX = right; }
+            groupDef.position.x = minX - groupDef.pad.x;
+            groupDef.size.width = Math.max(100, (maxX - minX) + 2 * groupDef.pad.x);
+        };
+
         const group = new Konva.Group({ x: groupDef.position.x, y: groupDef.position.y, draggable: true, id: groupDef.id });
-        const isBox = groupDef.keyword === 'box'; const isRef = groupDef.keyword === 'ref';
-        group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
-        group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });
-        group.on('dragend', (e: any) => { if (this.onNodeMove) this.onNodeMove(groupDef.id, Math.round(e.target.x()), Math.round(e.target.y())); });
+
+        // Track drag start to detect border vs content drag
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let dragEdge: { left: boolean; right: boolean; top: boolean; bottom: boolean } | null = null;
+        let origPadX = 0;
+        let origPadY = 0;
+        let origGroupX = 0;
+        let origGroupY = 0;
+        let origWidth = 0;
+        let origHeight = 0;
+
+        group.on('dragstart', (e: any) => {
+            const pos = this.stage.getPointerPosition() || { x: 0, y: 0 };
+            const groupBox = group.getClientRect();
+            dragStartX = pos.x;
+            dragStartY = pos.y;
+            origPadX = groupDef.pad.x;
+            origPadY = groupDef.pad.y;
+            origGroupX = group.x();
+            origGroupY = group.y();
+            origWidth = groupDef.size.width;
+            origHeight = groupDef.size.height;
+
+            // Detect which edge(s) the user grabbed
+            const relX = pos.x - groupBox.x;
+            const relY = pos.y - groupBox.y;
+            const nearLeft = relX < BORDER_THRESHOLD;
+            const nearRight = relX > groupBox.width - BORDER_THRESHOLD;
+            const nearTop = relY < BORDER_THRESHOLD;
+            const nearBottom = relY > groupBox.height - BORDER_THRESHOLD;
+
+            if (nearLeft || nearRight || nearTop || nearBottom) {
+                dragEdge = { left: nearLeft, right: nearRight, top: nearTop, bottom: nearBottom };
+                this.stage.container().style.cursor = 'nwse-resize';
+            } else {
+                dragEdge = null;
+            }
+        });
+
+        group.on('dragmove', () => {
+            if (!dragEdge) return;
+            const pos = this.stage.getPointerPosition() || { x: 0, y: 0 };
+            const dx = pos.x - dragStartX;
+            const dy = pos.y - dragStartY;
+
+            if (dragEdge.right || dragEdge.left) {
+                const delta = dragEdge.right ? dx : -dx;
+                groupDef.pad.x = Math.max(0, origPadX + delta);
+            }
+            if (dragEdge.bottom || dragEdge.top) {
+                const delta = dragEdge.bottom ? dy : -dy;
+                groupDef.pad.y = Math.max(0, origPadY + delta);
+            }
+
+            recomputeFromPad();
+            if (isBox) {
+                groupDef.size.height = Math.max(50, origHeight + (dragEdge.bottom ? dy : dragEdge.top ? -dy : 0));
+            } else {
+                groupDef.position.y = origGroupY + (dragEdge.top ? dy : 0);
+                groupDef.size.height = Math.max(50, origHeight + (dragEdge.bottom ? dy : dragEdge.top ? -dy : 0));
+            }
+
+            // Update Konva visuals
+            group.position({ x: groupDef.position.x, y: groupDef.position.y });
+            rect.width(groupDef.size.width);
+            rect.height(groupDef.size.height);
+
+            // Update children
+            const children = group.getChildren();
+            for (let i = 0; i < children.length; i++) {
+                const child = children[i];
+                if (child instanceof Konva.Text && child.align() === 'center') child.width(groupDef.size.width);
+                else if (child instanceof Konva.Line) { const points = child.points(); points[2] = groupDef.size.width; child.points(points); }
+            }
+
+            // Cascade resize to parent groups if this group exceeds them
+            this.cascadeGroupResize(groupDef);
+        });
+
+        group.on('dragend', (e: any) => {
+            dragEdge = null;
+            this.stage.container().style.cursor = 'default';
+            if (this.onNodeMove) this.onNodeMove(groupDef.id, Math.round(e.target.x()), Math.round(e.target.y()));
+        });
+
+        group.on('mouseenter', () => { this.stage.container().style.cursor = 'default'; });
+        group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; dragEdge = null; });
         const rect = new Konva.Rect({ width: groupDef.size.width, height: groupDef.size.height, stroke: groupDef.color || THEME.stroke, strokeWidth: 2, fill: groupDef.color ? groupDef.color : (isBox ? THEME.boxFill : undefined), fillOpacity: groupDef.color ? 0.1 : (isBox ? 0.3 : 0) });
         group.add(rect);
         if (!isBox) {
@@ -587,6 +690,55 @@ export class SequenceRenderer {
             });
         }
         this.groupVisuals.push({ group, rect, dividers: [], labels: [], def: groupDef }); this.layer.add(group);
+    }
+
+    private cascadeGroupResize(changedDef: LayoutGroup) {
+        if (!this.map) return;
+        // Find all groups that contain this group and expand them if needed
+        let current = changedDef;
+        let iterations = 0;
+        while (iterations < 10) { // Safety limit for deep nesting
+            let expanded = false;
+            for (const visual of this.groupVisuals) {
+                const outer = visual.def;
+                if (outer === current) continue;
+                // Check if 'current' is inside 'outer'
+                const currentRight = current.position.x + current.size.width;
+                const currentBottom = current.position.y + current.size.height;
+                const outerRight = outer.position.x + outer.size.width;
+                const outerBottom = outer.position.y + outer.size.height;
+                const isInside = current.position.x >= outer.position.x - 2 &&
+                                 currentRight <= outerRight + 2 &&
+                                 current.position.y >= outer.position.y - 2 &&
+                                 currentBottom <= outerBottom + 2;
+                if (!isInside) continue;
+
+                // Expand outer if inner exceeds it
+                let needsResize = false;
+                if (currentRight > outerRight + 1) { outer.size.width = currentRight - outer.position.x + outer.pad.x; needsResize = true; }
+                if (currentBottom > outerBottom + 1) { outer.size.height = currentBottom - outer.position.y + outer.pad.y; needsResize = true; }
+                if (current.position.x < outer.position.x + 1) { const diff = outer.position.x - current.position.x; outer.position.x = current.position.x - outer.pad.x; outer.size.width += diff; needsResize = true; }
+                if (current.position.y < outer.position.y + 1) { const diff = outer.position.y - current.position.y; outer.position.y = current.position.y - outer.pad.y; outer.size.height += diff; needsResize = true; }
+
+                if (needsResize) {
+                    // Update Konva visuals for the outer group
+                    visual.group.position({ x: outer.position.x, y: outer.position.y });
+                    visual.rect.width(outer.size.width);
+                    visual.rect.height(outer.size.height);
+                    const children = visual.group.getChildren();
+                    for (let i = 0; i < children.length; i++) {
+                        const child = children[i];
+                        if (child instanceof Konva.Text && child.align() === 'center') child.width(outer.size.width);
+                        else if (child instanceof Konva.Line) { const points = child.points(); points[2] = outer.size.width; child.points(points); }
+                    }
+                    current = outer; // Continue cascading up
+                    expanded = true;
+                    break;
+                }
+            }
+            if (!expanded) break;
+            iterations++;
+        }
     }
 
     private updateAllActivations() { if (!this.map) return; Object.keys(this.activationRects).forEach(nodeId => { this.updateActivationsForNode(nodeId); }); }
