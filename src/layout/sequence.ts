@@ -103,10 +103,6 @@ export class SequenceLayoutManager {
             );
             if (innerBoxes.length > 0) {
                 const NESTED_PADDING = 20;
-                // Apply y padding to inner boxes - push them down from outer box top
-                for (const inner of innerBoxes) {
-                    inner.position.y = Math.max(inner.position.y, outer.position.y + NESTED_PADDING);
-                }
                 // Expand outer box to wrap inner box with extra padding
                 const innerMinX = Math.min(...innerBoxes.map(b => b.position.x));
                 const innerMaxRight = Math.max(...innerBoxes.map(b => b.position.x + b.size.width));
@@ -115,11 +111,13 @@ export class SequenceLayoutManager {
 
                 const newLeft = Math.min(outer.position.x, innerMinX - NESTED_PADDING);
                 const newRight = Math.max(outer.position.x + outer.size.width, innerMaxRight + NESTED_PADDING);
+                const newTop = Math.min(outer.position.y, innerMinY - NESTED_PADDING);
                 const newBottom = Math.max(outer.position.y + outer.size.height, innerMaxY + NESTED_PADDING);
 
                 outer.position.x = newLeft;
+                outer.position.y = newTop;
                 outer.size.width = newRight - newLeft;
-                outer.size.height = newBottom - outer.position.y;
+                outer.size.height = newBottom - newTop;
             }
         }
 
