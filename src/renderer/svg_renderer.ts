@@ -447,17 +447,18 @@ export class LayoutPumlSvgRenderer {
             const strokeDash = isDotted ? 'stroke-dasharray="2,2"' : isDashed ? 'stroke-dasharray="8,4"' : "";
             const strokeWidth = isBold ? 'stroke-width="4"' : 'stroke-width="2"';
             const markerEnd = isPlain ? '' : ` marker-end="url(#arrowhead)"`;
+            const connColor = (c as any).color || '#A80036';
             
             if (c.from === c.to && isSequence) {
                 const loopW = c.selfMessageWidth ? Math.min(40, c.selfMessageWidth / 2) : 30;
                 const path = `M ${ox} ${oy} L ${ox + loopW} ${oy} L ${ox + loopW} ${oy + 20} L ${ox + 7} ${oy + 20}`;
-                svg += `<path d="${path}" fill="none" stroke="#A80036" ${strokeWidth} ${strokeDash} />\n`;
-                if (!isPlain) svg += `<path d="M ${ox + 17} ${oy + 15} L ${ox + 7} ${oy + 20} L ${ox + 17} ${oy + 25} Z" fill="#A80036" />\n`;
+                svg += `<path d="${path}" fill="none" stroke="${connColor}" ${strokeWidth} ${strokeDash} />\n`;
+                if (!isPlain) svg += `<path d="M ${ox + 17} ${oy + 15} L ${ox + 7} ${oy + 20} L ${ox + 17} ${oy + 25} Z" fill="${connColor}" />\n`;
                 if (c.label) {
                     svg += this.renderText(ox + loopW + 5, oy + 10, c.label, 12, "start");
                 }
             } else {
-                svg += `<line x1="${ox}" y1="${oy}" x2="${tx}" y2="${ty}" stroke="#A80036" ${strokeWidth} ${strokeDash} />\n`;
+                svg += `<line x1="${ox}" y1="${oy}" x2="${tx}" y2="${ty}" stroke="${connColor}" ${strokeWidth} ${strokeDash} />\n`;
                 
                 const drawHead = (x: number, y: number, fromX: number, fromY: number, direction: number, type: string, isStart: boolean) => {
                     const angle = Math.atan2(y - fromY, x - fromX);
@@ -474,31 +475,31 @@ export class LayoutPumlSvgRenderer {
                         const isSolid = (headStr.includes(">") || headStr.includes("<")) && !isOpen && !isCircle && !isLost && !isUnknown;
 
                         if (isLost) {
-                            svg += `<line x1="${x - 5}" y1="${y - 5}" x2="${x + 5}" y2="${y + 5}" stroke="#A80036" stroke-width="2" />\n`;
-                            svg += `<line x1="${x + 5}" y1="${y - 5}" x2="${x - 5}" y2="${y + 5}" stroke="#A80036" stroke-width="2" />\n`;
+                            svg += `<line x1="${x - 5}" y1="${y - 5}" x2="${x + 5}" y2="${y + 5}" stroke="${connColor}" stroke-width="2" />\n`;
+                            svg += `<line x1="${x + 5}" y1="${y - 5}" x2="${x - 5}" y2="${y + 5}" stroke="${connColor}" stroke-width="2" />\n`;
                             return;
                         }
 
                         if (isUnknown) {
-                            svg += this.renderText(x, y - 5, "?", 14, "middle", "#A80036");
+                            svg += this.renderText(x, y - 5, "?", 14, "middle", connColor);
                             return;
                         }
 
                         let currentX = x;
                         if (isCircle) {
-                            svg += `<circle cx="${x - 5 * direction}" cy="${y}" r="5" fill="white" stroke="#A80036" stroke-width="2" />\n`;
+                            svg += `<circle cx="${x - 5 * direction}" cy="${y}" r="5" fill="white" stroke="${connColor}" stroke-width="2" />\n`;
                             currentX -= 10 * direction;
                         }
 
                         if (isHalfTop) {
-                            svg += `<line x1="${currentX - 10 * direction}" y1="${y - 5}" x2="${currentX}" y2="${y}" stroke="#A80036" stroke-width="2" />\n`;
+                            svg += `<line x1="${currentX - 10 * direction}" y1="${y - 5}" x2="${currentX}" y2="${y}" stroke="${connColor}" stroke-width="2" />\n`;
                         } else if (isHalfBottom) {
-                            svg += `<line x1="${currentX - 10 * direction}" y1="${y + 5}" x2="${currentX}" y2="${y}" stroke="#A80036" stroke-width="2" />\n`;
+                            svg += `<line x1="${currentX - 10 * direction}" y1="${y + 5}" x2="${currentX}" y2="${y}" stroke="${connColor}" stroke-width="2" />\n`;
                         } else if (isOpen) {
-                            svg += `<path d="M ${currentX - 10 * direction} ${y - 5} L ${currentX} ${y} L ${currentX - 10 * direction} ${y + 5}" fill="none" stroke="#A80036" stroke-width="2" />\n`;
+                            svg += `<path d="M ${currentX - 10 * direction} ${y - 5} L ${currentX} ${y} L ${currentX - 10 * direction} ${y + 5}" fill="none" stroke="${connColor}" stroke-width="2" />\n`;
                         } else if (isSolid) {
                             const headPath = `M ${currentX - 10 * direction} ${y - 5} L ${currentX} ${y} L ${currentX - 10 * direction} ${y + 5} Z`;
-                            svg += `<path d="${headPath}" fill="#A80036" />\n`;
+                            svg += `<path d="${headPath}" fill="${connColor}" />\n`;
                         }
                     } else {
                         // Class Diagram specific heads
@@ -519,7 +520,7 @@ export class LayoutPumlSvgRenderer {
                             const p1y = y - size * 1.5 * dy - size * py;
                             const p2x = x - size * 1.5 * dx + size * px;
                             const p2y = y - size * 1.5 * dy + size * py;
-                            svg += `<path d="M ${x} ${y} L ${p1x} ${p1y} L ${p2x} ${p2y} Z" fill="white" stroke="#A80036" stroke-width="1.5" />\n`;
+                            svg += `<path d="M ${x} ${y} L ${p1x} ${p1y} L ${p2x} ${p2y} Z" fill="white" stroke="${connColor}" stroke-width="1.5" />\n`;
                         } else if (headType === "compose" || headType === "aggregate") {
                             const p1x = x - size * dx - size * 0.6 * px;
                             const p1y = y - size * dy - size * 0.6 * py;
@@ -527,14 +528,14 @@ export class LayoutPumlSvgRenderer {
                             const p2y = y - size * 2 * dy;
                             const p3x = x - size * dx + size * 0.6 * px;
                             const p3y = y - size * dy + size * 0.6 * py;
-                            const fill = headType === "compose" ? "#A80036" : "white";
-                            svg += `<path d="M ${x} ${y} L ${p1x} ${p1y} L ${p2x} ${p2y} L ${p3x} ${p3y} Z" fill="${fill}" stroke="#A80036" stroke-width="1.5" />\n`;
+                            const fill = headType === "compose" ? connColor : "white";
+                            svg += `<path d="M ${x} ${y} L ${p1x} ${p1y} L ${p2x} ${p2y} L ${p3x} ${p3y} Z" fill="${fill}" stroke="${connColor}" stroke-width="1.5" />\n`;
                         } else if (headType === "nav") {
                             const p1x = x - size * dx - size * px;
                             const p1y = y - size * dy - size * py;
                             const p2x = x - size * dx + size * px;
                             const p2y = y - size * dy + size * py;
-                            svg += `<path d="M ${p1x} ${p1y} L ${x} ${y} L ${p2x} ${p2y}" fill="none" stroke="#A80036" stroke-width="2" />\n`;
+                            svg += `<path d="M ${p1x} ${p1y} L ${x} ${y} L ${p2x} ${p2y}" fill="none" stroke="${connColor}" stroke-width="2" />\n`;
                         }
                     }
                 };

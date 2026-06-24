@@ -323,7 +323,7 @@ export class SequenceRenderer {
         connGroup.on('dragend', (e: any) => { if (this.onNodeMove) { const newY = Math.round(e.target.y()); this.onNodeMove(connGroup.id(), 0, newY); } });
 
         let visualArrow: Konva.Arrow;
-        const color = THEME.stroke;
+        const color = (conn as any).color || THEME.stroke;
         let headObj: Konva.Shape | undefined;
         let startHeadObj: Konva.Shape | undefined;
 

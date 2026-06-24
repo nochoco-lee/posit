@@ -286,6 +286,7 @@ export class SequenceAstVisitor extends BaseVisitor {
         let from = this.aliasMap.get(fromRaw) || fromRaw;
         let to = this.aliasMap.get(toRaw) || toRaw;
         let label = "";
+        const color = ctx.color ? ctx.color[0].image : undefined;
         
         if (ctx.payload) {
             label = this.visit(ctx.payload[0]);
@@ -308,6 +309,7 @@ export class SequenceAstVisitor extends BaseVisitor {
             toLabel: "",
             arrow: arrow,
             label,
+            color,
             isCreation: false,
             isDeletion: false,
             layout: undefined,

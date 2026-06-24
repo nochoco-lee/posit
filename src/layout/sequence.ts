@@ -342,7 +342,7 @@ export class SequenceLayoutManager {
         }
         let autonumberStr: string | undefined = undefined;
         if (this.autonumberActive) { autonumberStr = this.autonumberValue.toString(); this.autonumberValue += this.autonumberStep; }
-        const layoutConn: LayoutConnection = { from: conn.from, fromLabel: conn.fromLabel, to: conn.to, toLabel: conn.toLabel, type: conn.arrow, label: finalLabel, number: autonumberStr, position, calculatedY, selfMessageWidth };
+        const layoutConn: LayoutConnection = { from: conn.from, fromLabel: conn.fromLabel, to: conn.to, toLabel: conn.toLabel, type: conn.arrow, label: finalLabel, number: autonumberStr, position, calculatedY, selfMessageWidth, color: conn.color };
         this.lastConnectionY = calculatedY;
         this.lastConnectionParticipants = [conn.from, conn.to];
         const connIndex = this.map.connections.length;
