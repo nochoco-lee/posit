@@ -79,15 +79,20 @@ export class MermaidAstVisitor extends BaseVisitor {
         }).join(" ");
     }
 
-    participantDeclaration(ctx: any): IRNode {
+    participantDeclaration(ctx: any): IRNode | null {
+        const isCreate = !!ctx.Create;
+        const isDestroy = !!ctx.Destroy;
+
+        // `destroy Carl` without participant/actor keyword should not create a new node
+        if (isDestroy && !ctx.Participant && !ctx.Actor) {
+            return null;
+        }
+
         const shape = ctx.Participant ? "participant" : "actor";
         const name = this.visit(ctx.name[0]);
         if (ctx.metadata) this.visit(ctx.metadata[0]);
         const alias = ctx.alias ? this.visit(ctx.alias[0]) : name;
         const label = ctx.label ? this.visit(ctx.label[0]) : alias;
-
-        const isCreate = !!ctx.Create;
-        const isDestroy = !!ctx.Destroy;
 
         if (name !== alias) {
             this.aliasMap.set(name, alias);
