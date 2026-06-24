@@ -130,6 +130,23 @@ export class LayoutPumlSvgRenderer {
                            L ${g.position.x} ${g.position.y + g.size.height} Z" 
                            fill="${g.color || 'white'}" fill-opacity="0.1" stroke="${g.color || '#A80036'}" stroke-width="2" />\n`;
                 svg += this.renderText(g.position.x + tabWidth/2, g.position.y + 14, g.label || "", 11, "middle", g.color || '#A80036');
+            } else if (g.keyword === 'node' || g.keyword === 'box') {
+                // 3D box shape (same as Konva renderer)
+                const w = g.size.width;
+                const h = g.size.height;
+                const x = g.position.x;
+                const y = g.position.y;
+                const stroke = g.color || '#A80036';
+                // Front face
+                svg += `<rect x="${x}" y="${y + 10}" width="${w - 10}" height="${h - 10}" fill="${g.color || '#FEFECE'}" fill-opacity="0.1" stroke="${stroke}" stroke-width="1.5" />\n`;
+                // Top face
+                svg += `<polygon points="${x},${y + 10} ${x + 10},${y} ${x + w},${y} ${x + w - 10},${y + 10}" fill="${g.color || '#F2F2FF'}" fill-opacity="0.3" stroke="${stroke}" stroke-width="1.5" />\n`;
+                // Right face
+                svg += `<polygon points="${x + w - 10},${y + 10} ${x + w},${y} ${x + w},${y + h - 10} ${x + w - 10},${y + h}" fill="${g.color || '#D2D2E0'}" fill-opacity="0.3" stroke="${stroke}" stroke-width="1.5" />\n`;
+                // Label
+                if (g.label) {
+                    svg += this.renderText(x + (w - 10) / 2, y + 10 + (h - 10) / 2, g.label, 14, "middle", "black");
+                }
             } else {
                 svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${g.size.width}" height="${g.size.height}" fill="${g.color || 'none'}" fill-opacity="0.1" stroke="${g.color || '#A80036'}" stroke-width="2" stroke-dasharray="5,5" />\n`;
                 

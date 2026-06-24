@@ -311,6 +311,14 @@ export class DeploymentLayoutManager {
                 const groupWidth = Math.max(this.minNodeWidth + 20, maxRowWidth + this.padding, labelWidth);
                 const groupHeight = Math.max(this.minNodeHeight + 20, contentSize.height + 2 * this.padding + 20);
 
+                // Update parent's rowOccupancy with nested container's extent
+                const containerEndX = x + this.padding + groupWidth;
+                const containerRowY = groupY;
+                const existingEndX = this.rowOccupancy.get(containerRowY) || (x + this.padding);
+                if (containerEndX > existingEndX) {
+                    this.rowOccupancy.set(containerRowY, containerEndX);
+                }
+
                 let position = { x, y: groupY };
                 if (container.layout) {
                     position = { x: container.layout.x, y: container.layout.y };
