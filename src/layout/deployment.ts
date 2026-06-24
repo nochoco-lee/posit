@@ -51,6 +51,7 @@ export class DeploymentLayoutManager {
         this.calculateRanks(ir.statements);
 
         this.layoutStatementsPass1(ir.statements, map, 50, 50);
+        this.expandGroupBounds(ir.statements, map);
         this.applyCentering(map);
         this.layoutStatementsPass2(ir.statements, map);
 
@@ -393,6 +394,52 @@ export class DeploymentLayoutManager {
                     }
                 });
             });
+        });
+    }
+
+    private expandGroupBounds(statements: IRStatement[], map: LayoutMap) {
+        const collectNodeIds = (stmts: IRStatement[]): string[] => {
+            const ids: string[] = [];
+            stmts.forEach(s => {
+                if (!s) return;
+                if (s.type === 'edge') {
+                    ids.push((s as IREdge).from, (s as IREdge).to);
+                } else if (s.type === 'container') {
+                    ids.push(...collectNodeIds((s as any).statements));
+                } else if (s.type === 'group') {
+                    (s as IRGroup).sections.forEach(sec => ids.push(...collectNodeIds(sec.statements)));
+                }
+            });
+            return ids;
+        };
+
+        map.groups.forEach(g => {
+            const stmts = g.sections?.[0]?.statements || [];
+            const nodeIds = collectNodeIds(stmts);
+
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            let hasNodes = false;
+            nodeIds.forEach(id => {
+                const node = map.nodes[id];
+                if (node) {
+                    hasNodes = true;
+                    minX = Math.min(minX, node.position.x);
+                    minY = Math.min(minY, node.position.y);
+                    maxX = Math.max(maxX, node.position.x + node.size.width);
+                    maxY = Math.max(maxY, node.position.y + node.size.height);
+                }
+            });
+
+            if (hasNodes) {
+                const pad = this.padding;
+                const labelH = 20;
+                const contentWidth = maxX - minX + pad;
+                const contentHeight = maxY - minY + labelH + pad;
+                g.size.width = Math.max(g.size.width, contentWidth);
+                g.size.height = Math.max(g.size.height, contentHeight);
+                g.position.x = Math.min(g.position.x, minX - pad);
+                g.position.y = Math.min(g.position.y, minY - labelH - pad / 2);
+            }
         });
     }
 
