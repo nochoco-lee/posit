@@ -406,7 +406,7 @@ export class SequenceRenderer {
     private drawDelay(delay: any) {
         const group = new Konva.Group({ x: delay.position.x, y: delay.position.y });
         for (let i = 0; i < 3; i++) { group.add(new Konva.Circle({ x: 0, y: i * 10, radius: 2, fill: THEME.stroke })); }
-        if (delay.text) { group.add(new Konva.Text({ text: delay.text, fontSize: 12, fill: THEME.stroke, fontStyle: 'italic', y: 5, x: 10 })); }
+        if (delay.text) { group.add(new Konva.Text({ text: delay.text, fontSize: 12, fill: THEME.stroke, fontStyle: 'italic', y: 15, x: 10 })); }
         this.layer.add(group);
     }
 
