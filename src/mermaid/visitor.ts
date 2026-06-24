@@ -121,8 +121,8 @@ export class MermaidAstVisitor extends BaseVisitor {
         const name = this.visit(ctx.name[0]);
         return {
             type: "activation",
-            nodeId: name,
-            isActivate
+            target: name,
+            action: isActivate ? 'activate' : 'deactivate'
         } as any;
     }
 
