@@ -331,9 +331,10 @@ export class MermaidAstVisitor extends BaseVisitor {
             ctx.to.forEach((t: any, i: number) => {
                 const toRaw = this.visit(t);
                 const to = this.aliasMap.get(toRaw) || toRaw;
-                const arrow = ctx.arrow[i].image;
+                const arrow = (ctx.arrow2 && ctx.arrow2[0]) ? ctx.arrow2[0].image : ctx.arrow[i].image;
                 
                 let label: string | undefined = undefined;
+                if (ctx.inlineLabel && i === 0) label = ctx.inlineLabel[0].image;
                 if (ctx.edgeLabel && ctx.edgeLabel[i]) label = this.visit(ctx.edgeLabel[i]);
                 if (ctx.edgeLabel2 && i === ctx.to.length - 1) label = this.visit(ctx.edgeLabel2[0]);
                 if (ctx.payload && i === ctx.to.length - 1) label = this.visit(ctx.payload[0]);

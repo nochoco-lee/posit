@@ -495,6 +495,13 @@ class MermaidParser extends CstParser {
                         { ALT: () => { this.CONSUME(LBracket); this.CONSUME(RBracket); } }
                     ]);
                 });
+                // Detect inline label between two arrows: e.g. `-. text .->` or `== text ==>`
+                this.OPTION4(() => {
+                    if (this.LA(1).tokenType === Identifier && this.LA(2).tokenType === Arrow) {
+                        this.CONSUME(Identifier, { LABEL: "inlineLabel" });
+                        this.CONSUME1(Arrow, { LABEL: "arrow2" });
+                    }
+                });
                 this.MANY1(() => {
                     this.OR2([
                         { ALT: () => { this.CONSUME(VerticalBar); this.SUBRULE1(this.payload, { LABEL: "edgeLabel" }); this.CONSUME1(VerticalBar); } },
@@ -502,16 +509,16 @@ class MermaidParser extends CstParser {
                     ]);
                 });
                 this.SUBRULE2(this.genericName, { LABEL: "to" });
-                this.OPTION4(() => this.SUBRULE3(this.nodeShapeSuffix));
+                this.OPTION5(() => this.SUBRULE3(this.nodeShapeSuffix));
             }
         });
-        this.OPTION5(() => {
+        this.OPTION6(() => {
             this.OR5([
                 { ALT: () => { this.CONSUME(Colon); this.SUBRULE4(this.payload, { LABEL: "payload" }); } },
                 { ALT: () => { this.CONSUME2(VerticalBar); this.SUBRULE5(this.payload, { LABEL: "edgeLabel2" }); this.CONSUME3(VerticalBar); } }
             ]);
         });
-        this.OPTION6(() => this.CONSUME(PosComment, { LABEL: "layout" }));
+        this.OPTION7(() => this.CONSUME(PosComment, { LABEL: "layout" }));
     });
 
     public nodeShapeSuffix = this.RULE("nodeShapeSuffix", () => {
