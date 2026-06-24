@@ -6,6 +6,7 @@ const BaseVisitor = parser.getBaseCstVisitorConstructor();
 
 export class MermaidAstVisitor extends BaseVisitor {
     private aliasMap: Map<string, string> = new Map();
+    private implicitNodes: Map<string, string> = new Map();
 
     constructor() {
         super();
@@ -14,6 +15,7 @@ export class MermaidAstVisitor extends BaseVisitor {
 
     diagram(ctx: any): IRDiagram {
         this.aliasMap.clear();
+        this.implicitNodes.clear();
         let statements: any[] = [];
         if (ctx.sequenceStatement) {
             statements = ctx.sequenceStatement.map((s: any) => this.visit(s));
@@ -24,6 +26,24 @@ export class MermaidAstVisitor extends BaseVisitor {
         }
         
         const flatStatements = statements.filter((s: any) => s).flat();
+        
+        // Emit implicit nodes from shape suffixes (e.g., C{Decision} --> D)
+        // Only emit if not already declared explicitly
+        const declaredNames = new Set<string>();
+        flatStatements.forEach((s: any) => {
+            if (s && s.type === 'node') declaredNames.add(s.name);
+        });
+        this.implicitNodes.forEach((shape, name) => {
+            if (!declaredNames.has(name)) {
+                flatStatements.unshift({
+                    type: "node",
+                    shape,
+                    name,
+                    origName: name,
+                    layout: undefined
+                });
+            }
+        });
         
         let diagramType: 'sequence' | 'class' | 'deployment' | 'unknown' = "unknown";
         if (ctx.SequenceDiagramHdr) diagramType = "sequence";
@@ -317,9 +337,24 @@ export class MermaidAstVisitor extends BaseVisitor {
         } as any;
     }
 
-    nodeShapeSuffix(ctx: any): string {
-        if (ctx.payload) return this.visit(ctx.payload[0]);
-        return "";
+    nodeShapeSuffix(ctx: any): { label: string, shape: string } {
+        const label = ctx.payload ? this.visit(ctx.payload[0]) : "";
+        let shape = "box";
+        if (ctx.LBrace) shape = "diamond";
+        else if (ctx.LBracket) shape = "square";
+        else if (ctx.LParen) shape = "rounded";
+        else if (ctx.LShape) {
+            const img = ctx.LShape[0].image;
+            if (img === "[[") shape = "subroutine";
+            else if (img === "((") shape = "circle";
+            else if (img === "(((") shape = "double-circle";
+            else if (img === "{{") shape = "hexagon";
+            else if (img === "([") shape = "stadium";
+            else if (img === "[/") shape = "parallelogram";
+            else if (img === "[\\") shape = "parallelogram_inv";
+            else shape = "node";
+        }
+        return { label, shape };
     }
 
     connectionDeclaration(ctx: any): IREdge[] {
@@ -327,11 +362,27 @@ export class MermaidAstVisitor extends BaseVisitor {
         let currentFromRaw = this.visit(ctx.from[0]);
         let currentFrom = this.aliasMap.get(currentFromRaw) || currentFromRaw;
 
+        // Check if from node has a shape suffix (e.g., C{Decision} --> D)
+        if (ctx.nodeShapeSuffix && ctx.nodeShapeSuffix[0]) {
+            const suffix = this.visit(ctx.nodeShapeSuffix[0]);
+            if (!this.implicitNodes.has(currentFrom)) {
+                this.implicitNodes.set(currentFrom, suffix.shape);
+            }
+        }
+
         if (ctx.to) {
             ctx.to.forEach((t: any, i: number) => {
                 const toRaw = this.visit(t);
                 const to = this.aliasMap.get(toRaw) || toRaw;
                 const arrow = (ctx.arrow2 && ctx.arrow2[0]) ? ctx.arrow2[0].image : ctx.arrow[i].image;
+                
+                // Check if to node has a shape suffix (e.g., A --> B{Decision})
+                if (ctx.nodeShapeSuffix && ctx.nodeShapeSuffix[i + 1]) {
+                    const suffix = this.visit(ctx.nodeShapeSuffix[i + 1]);
+                    if (!this.implicitNodes.has(to)) {
+                        this.implicitNodes.set(to, suffix.shape);
+                    }
+                }
                 
                 let label: string | undefined = undefined;
                 if (ctx.inlineLabel && i === 0) label = ctx.inlineLabel[0].image;
