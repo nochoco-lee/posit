@@ -216,10 +216,12 @@ export class SequenceLayoutManager {
             const maxX = Math.max(...nodes.map(n => n.position.x + n.size.width / 2));
             x = (minX + maxX) / 2;
         }
+        // Center the delay between messages: offset upward by half the default step
+        const centeredY = this.currentSequenceY - DEFAULTS.SEQUENCE_DEFAULT_Y_STEP / 2;
         this.map.delays!.push({
             type: 'delay',
             text: delay.text,
-            position: { x, y: this.currentSequenceY }
+            position: { x, y: centeredY }
         });
         this.currentSequenceY += 40;
     }
