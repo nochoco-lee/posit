@@ -189,13 +189,10 @@ export class DeploymentLayoutManager {
         if (arrow.includes('left') || arrow.includes('right') || arrow.includes('horizontal')) return true;
         if (arrow.includes('up') || arrow.includes('down') || arrow.includes('vertical')) return false;
 
-        // Strip bracket content (e.g. -[bold]-> -> -->) before checking direction
-        const stripped = arrow.replace(/\[[^\]]*\]/g, '');
-        const match = stripped.match(/([-=.~]{1,4})/);
-        if (match) {
-            return match[1].length === 1;
-        }
-        return false;
+        // After stripping bracket content (e.g. -[bold]-> -> -->), all arrow styles
+        // (-, --, .., ==) are horizontal by default in PlantUML deployment diagrams.
+        // Direction is only changed by explicit keywords like -down-, -left-, etc.
+        return true;
     }
 
     private layoutStatementsPass1(statements: IRStatement[], map: LayoutMap, startX: number, startY: number): { width: number, height: number } {
@@ -259,6 +256,25 @@ export class DeploymentLayoutManager {
                     totalHeight = Math.max(totalHeight, currentY - startY);
                 }
 
+            } else if (s.type === 'edge') {
+                const edge = s as IREdge;
+                for (const nodeId of [edge.from, edge.to]) {
+                    if (nodeId === '[' || nodeId === ']') continue;
+                    const node = map.nodes[nodeId];
+                    if (node && node.position.x === 0 && node.position.y === 0) {
+                        const rank = this.nodeRanks.get(nodeId) || 0;
+                        const targetY = startY + (rank * 200);
+                        const currentX = this.rowOccupancy.get(targetY) || startX;
+                        node.position = { x: currentX, y: targetY };
+                        this.rowOccupancy.set(targetY, currentX + node.size.width + 100);
+                        if (!this.nodesByRow.has(targetY)) {
+                            this.nodesByRow.set(targetY, []);
+                            this.rowInfo.set(targetY, { startX, baseY: startY });
+                        }
+                        this.nodesByRow.get(targetY)!.push(nodeId);
+                        currentY = Math.max(currentY, targetY + node.size.height + this.padding);
+                    }
+                }
             } else if (s.type === 'container' || s.type === 'group') {
                 const container = s as any;
                 const groupY = currentY;

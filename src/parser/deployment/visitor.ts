@@ -100,13 +100,11 @@ export class DeploymentAstVisitor extends BaseVisitor {
 
     payload(ctx: any): string {
         if (!ctx.anyToken) return "";
-        let result = "";
+        const parts: string[] = [];
         ctx.anyToken.forEach((t: any) => {
-            const image = this.visit(t);
-            result += image;
-            if (image.match(/^[a-zA-Z0-9]+$/)) result += " ";
+            parts.push(this.visit(t));
         });
-        return result.trim();
+        return parts.join("").trim();
     }
 
     nodeOrContainer(ctx: any): IRNode | IRContainer {
