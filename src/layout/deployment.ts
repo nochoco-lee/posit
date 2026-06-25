@@ -12,6 +12,7 @@ export class DeploymentLayoutManager {
     private rowOccupancy = new Map<number, number>();
     private nodesByRow = new Map<number, string[]>();
     private rowInfo = new Map<number, { startX: number, baseY: number }>();
+    private groupNames: Set<string> = new Set();
 
     public process(ir: IRDiagram): LayoutMap {
         const map: LayoutMap = {
@@ -27,16 +28,32 @@ export class DeploymentLayoutManager {
         this.rowOccupancy.clear();
         this.nodesByRow.clear();
         this.rowInfo.clear();
+        this.groupNames.clear();
+
+        // Collect all group names first
+        const collectGroupNames = (statements: IRStatement[]) => {
+            statements.forEach(s => {
+                if (!s) return;
+                if (s.type === 'group') {
+                    const g = s as IRGroup;
+                    this.groupNames.add(g.label);
+                    collectGroupNames(g.sections[0].statements);
+                } else if (s.type === 'container') {
+                    collectGroupNames((s as IRContainer).statements);
+                }
+            });
+        };
+        collectGroupNames(ir.statements);
 
         const collectImplicitNodes = (statements: IRStatement[]) => {
             statements.forEach(s => {
                 if (!s) return;
                 if (s.type === 'edge') {
                     const edge = s as IREdge;
-                    if (!map.nodes[edge.from] && edge.from !== '[' && edge.from !== ']') {
+                    if (!map.nodes[edge.from] && edge.from !== '[' && edge.from !== ']' && !this.groupNames.has(edge.from)) {
                         this.addNode(edge.from, 'box', map);
                     }
-                    if (!map.nodes[edge.to] && edge.to !== '[' && edge.to !== ']') {
+                    if (!map.nodes[edge.to] && edge.to !== '[' && edge.to !== ']' && !this.groupNames.has(edge.to)) {
                         this.addNode(edge.to, 'box', map);
                     }
                 } else if (s.type === 'group') {
@@ -444,14 +461,39 @@ export class DeploymentLayoutManager {
     }
 
     private layoutStatementsPass2(statements: IRStatement[], map: LayoutMap) {
+        const resolveGroupId = (id: string): string => {
+            if (this.groupNames.has(id)) {
+                const group = map.groups.find(g => g.label === id || g.id === id);
+                if (group) {
+                    const centerId = `__group_center_${id}`;
+                    if (!map.nodes[centerId]) {
+                        map.nodes[centerId] = {
+                            id: centerId,
+                            type: 'group_center',
+                            origName: id,
+                            position: {
+                                x: group.position.x + group.size.width / 2,
+                                y: group.position.y + group.size.height / 2
+                            },
+                            size: { width: 0, height: 0 }
+                        };
+                    }
+                    return centerId;
+                }
+            }
+            return id;
+        };
+
         for (const s of statements) {
             if (!s) continue;
 
             if (s.type === 'edge') {
                 const edge = s as IREdge;
+                const from = resolveGroupId(edge.from);
+                const to = resolveGroupId(edge.to);
                 map.connections.push({
-                    from: edge.from,
-                    to: edge.to,
+                    from,
+                    to,
                     type: edge.arrow,
                     label: edge.label,
                     position: edge.layout ? { x: edge.layout.x, y: edge.layout.y } : null

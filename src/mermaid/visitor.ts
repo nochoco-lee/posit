@@ -7,6 +7,7 @@ const BaseVisitor = parser.getBaseCstVisitorConstructor();
 export class MermaidAstVisitor extends BaseVisitor {
     private aliasMap: Map<string, string> = new Map();
     private implicitNodes: Map<string, string> = new Map();
+    private subgraphNames: Set<string> = new Set();
 
     constructor() {
         super();
@@ -16,6 +17,7 @@ export class MermaidAstVisitor extends BaseVisitor {
     diagram(ctx: any): IRDiagram {
         this.aliasMap.clear();
         this.implicitNodes.clear();
+        this.subgraphNames.clear();
         let statements: any[] = [];
         if (ctx.sequenceStatement) {
             statements = ctx.sequenceStatement.map((s: any) => this.visit(s));
@@ -34,7 +36,7 @@ export class MermaidAstVisitor extends BaseVisitor {
             if (s && s.type === 'node') declaredNames.add(s.name);
         });
         this.implicitNodes.forEach((shape, name) => {
-            if (!declaredNames.has(name)) {
+            if (!declaredNames.has(name) && !this.subgraphNames.has(name)) {
                 flatStatements.unshift({
                     type: "node",
                     shape,
@@ -462,6 +464,7 @@ export class MermaidAstVisitor extends BaseVisitor {
     subgraphDeclaration(ctx: any): IRStatement {
         const id = this.visit(ctx.id[0]);
         const label = ctx.label ? this.visit(ctx.label[0]) : id;
+        this.subgraphNames.add(id);
         
         let statements: any[] = [];
         if (ctx.flowchartStatement) {
