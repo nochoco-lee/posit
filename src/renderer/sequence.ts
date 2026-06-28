@@ -2,6 +2,11 @@ import Konva from 'konva';
 import { LayoutMap, LayoutNode, LayoutConnection, LayoutGroup, LayoutNote, LayoutActivation, LayoutDivider, DEFAULTS } from "../layout/types";
 import { THEME } from "./primitives";
 
+/** Sanitize IDs for use in Konva selectors (avoid CSS special chars like / " ' etc.) */
+function safeId(id: string): string {
+    return id.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
 export class SequenceRenderer {
     protected layer: Konva.Layer;
     protected stage: Konva.Stage;
@@ -25,6 +30,8 @@ export class SequenceRenderer {
     protected noteVisuals: { group: Konva.Group, rect: Konva.Rect, text: Konva.Text, def: LayoutNote }[] = [];
     protected participantOrder: string[] = [];
 
+    protected participantRects: Konva.Rect[] = [];  // tracked for shadow toggling during drag
+
     constructor(stage: Konva.Stage, layer: Konva.Layer) {
         this.stage = stage;
         this.layer = layer;
@@ -32,6 +39,17 @@ export class SequenceRenderer {
 
     public setOnDragEnd(callback: (id: string, newX: number, newY: number) => void) {
         this.onNodeMove = callback;
+    }
+
+    /**
+     * Toggle shadows on participant boxes on/off during drag.
+     * Canvas shadowBlur is extremely expensive — disabling it during drag
+     * reduces per-frame repaint cost significantly.
+     */
+    public setDragging(isDragging: boolean) {
+        for (const rect of this.participantRects) {
+            rect.shadowEnabled(!isDragging);
+        }
     }
 
     public render(map: LayoutMap) {
@@ -44,6 +62,7 @@ export class SequenceRenderer {
         this.groupVisuals = [];
         this.dividerVisuals = [];
         this.noteVisuals = [];
+        this.participantRects = [];
         const sortedNodes = Object.values(map.nodes).filter(n => n.type === 'participant' || n.type === 'actor').sort((a, b) => a.position.x - b.position.x);
         this.participantOrder = sortedNodes.map(n => n.id);
         map.groups.forEach(group => this.drawGroup(group));
@@ -151,7 +170,9 @@ export class SequenceRenderer {
         });
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });
+        group.on('dragstart', () => { this.setDragging(true); });
         group.on('dragend', (e: any) => {
+            this.setDragging(false);
             const newX = Math.round(e.target.x()); const newY = Math.round(e.target.y());
             if (this.onNodeMove) this.onNodeMove(nodeDef.id, newX, newY);
         });
@@ -170,6 +191,7 @@ export class SequenceRenderer {
             group.add(text);
         } else {
             const rect = new Konva.Rect({ width: nodeDef.size.width, height: nodeDef.size.height, fill: THEME.sequenceFill, stroke: THEME.stroke, strokeWidth: 1.5, cornerRadius: 5, shadowColor: 'black', shadowBlur: 5, shadowOffset: { x: 2, y: 2 }, shadowOpacity: 0.2, });
+            this.participantRects.push(rect);
             const text = new Konva.Text({
                 text: nodeDef.origName + (nodeDef.stereotype ? `\n${nodeDef.stereotype}` : ""),
                 fontSize: 14, fontFamily: 'sans-serif', fill: 'black', width: nodeDef.size.width, height: nodeDef.size.height, align: 'center', verticalAlign: 'middle',
@@ -298,7 +320,7 @@ export class SequenceRenderer {
 
         const arrowInfo = this.getArrowHeadType(conn.type);
         const connIndex = this.map.connections.indexOf(conn);
-        const connGroup = new Konva.Group({ x: 0, y: yPos, draggable: true, id: `conn-${conn.from}-${conn.to}-${conn.label || ''}` });
+        const connGroup = new Konva.Group({ x: 0, y: yPos, draggable: true, id: safeId(`conn-${conn.from}-${conn.to}-${conn.label || ''}`) });
         
         connGroup.dragBoundFunc((pos: {x: number, y: number}): {x: number, y: number} => {
             const absoluteX = connGroup.getAbsolutePosition().x;
@@ -567,7 +589,16 @@ export class SequenceRenderer {
             }
         });
 
-        this.updateAllActivations();
+        // Only update activations for nodes actually involved in this drag:
+        // the dragged node itself, plus any peer nodes it shares connections with.
+        // Calling updateAllActivations() here was O(N) over all participants and
+        // caused severe per-frame lag. This targeted approach is O(connections).
+        const affectedNodeIds = new Set<string>([nodeId]);
+        this.connectionArrows.forEach(conn => {
+            if (conn.originId === nodeId) affectedNodeIds.add(conn.targetId);
+            if (conn.targetId === nodeId) affectedNodeIds.add(conn.originId);
+        });
+        affectedNodeIds.forEach(id => this.updateActivationsForNode(id));
     }
 
     private drawGroup(groupDef: LayoutGroup) {

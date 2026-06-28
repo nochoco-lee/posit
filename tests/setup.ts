@@ -23,3 +23,6 @@ await Promise.all([
     import('../src/mermaid/parser'),
     import('../src/mermaid/visitor'),
 ]);
+
+export default function() {}
+

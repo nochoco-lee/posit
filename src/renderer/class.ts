@@ -2,6 +2,16 @@ import Konva from 'konva';
 import { LayoutMap, LayoutNode, LayoutConnection, LayoutGroup, LayoutNote } from "../layout/types";
 import { getIntersection, getMemberText, THEME } from "./primitives";
 
+/**
+ * Sanitize a logical node ID into a CSS-safe Konva element ID.
+ * Characters like `/`, `"`, `'`, `<`, `>`, spaces etc. are special in CSS
+ * selectors and will cause Konva's findOne() to behave unexpectedly (and very
+ * slowly) when used in an `#id` selector.  Replace them with underscores.
+ */
+function safeId(id: string): string {
+    return id.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
 export class ClassRenderer {
     protected layer: Konva.Layer;
     protected stage: Konva.Stage;
@@ -17,6 +27,7 @@ export class ClassRenderer {
         fromLabelObj?: Konva.Text,
         toLabelObj?: Konva.Text
     }[] = [];
+    protected nodeRects: Konva.Rect[] = [];  // tracked for shadow toggling during drag
 
     constructor(stage: Konva.Stage, layer: Konva.Layer) {
         this.stage = stage;
@@ -27,11 +38,15 @@ export class ClassRenderer {
         this.onNodeMove = callback;
     }
 
+    public setDragging(isDragging: boolean) {
+        for (const rect of this.nodeRects) rect.shadowEnabled(!isDragging);
+    }
+
     public syncPositions(map: LayoutMap) {
         this.map = map;
         // 1. Sync Nodes
         Object.values(map.nodes).forEach(node => {
-            const group = this.nodeGroups[node.id];
+            const group = this.nodeGroups[safeId(node.id)];
             if (group) {
                 group.position(node.position);
                 this.updateConnections(node.id);
@@ -40,7 +55,7 @@ export class ClassRenderer {
 
         // 2. Sync Notes
         map.notes.forEach(noteDef => {
-            const noteId = `note-${noteDef.text.substring(0, 10)}`;
+            const noteId = safeId(`note-${noteDef.text.substring(0, 10)}`);
             const group = this.layer.findOne(`#${noteId}`) as Konva.Group;
             if (group) {
                 group.position(noteDef.position);
@@ -52,22 +67,33 @@ export class ClassRenderer {
 
     public render(map: LayoutMap) {
         this.map = map;
-        this.layer.destroyChildren();
-        this.nodeGroups = {};
-        this.groupVisuals = [];
-        this.connectionArrows = [];
 
-        // 1. Draw Connections First (So they sit behind nodes)
-        map.connections.forEach(conn => this.drawConnection(conn));
+        // Disable auto-draw so that each layer.add() doesn't trigger an
+        // intermediate batchDraw/RAF — we do one explicit draw at the end.
+        const prevAutoDraw = Konva.autoDrawEnabled;
+        Konva.autoDrawEnabled = false;
 
-        // 2. Draw Nodes (Classes, Interfaces)
-        Object.values(map.nodes).forEach(node => this.drawNode(node));
+        try {
+            this.layer.destroyChildren();
+            this.nodeGroups = {};
+            this.groupVisuals = [];
+            this.connectionArrows = [];
+            this.nodeRects = [];
 
-        // 3. Draw Groups
-        map.groups.forEach(group => this.drawGroup(group));
+            // 1. Draw Connections First (So they sit behind nodes)
+            map.connections.forEach(conn => this.drawConnection(conn));
 
-        // 4. Draw Notes
-        map.notes.forEach(note => this.drawNote(note));
+            // 2. Draw Nodes (Classes, Interfaces)
+            Object.values(map.nodes).forEach(node => this.drawNode(node));
+
+            // 3. Draw Groups
+            map.groups.forEach(group => this.drawGroup(group));
+
+            // 4. Draw Notes
+            map.notes.forEach(note => this.drawNote(note));
+        } finally {
+            Konva.autoDrawEnabled = prevAutoDraw;
+        }
 
         this.layer.draw();
     }
@@ -77,13 +103,15 @@ export class ClassRenderer {
             x: nodeDef.position.x,
             y: nodeDef.position.y,
             draggable: true,
-            id: nodeDef.id
+            id: safeId(nodeDef.id)
         });
 
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });
 
+        group.on('dragstart', () => { this.setDragging(true); });
         group.on('dragend', (e: any) => {
+            this.setDragging(false);
             const newX = Math.round(e.target.x());
             const newY = Math.round(e.target.y());
             if (this.onNodeMove) {
@@ -110,6 +138,7 @@ export class ClassRenderer {
             shadowOffset: { x: 2, y: 2 },
             shadowOpacity: 0.2,
         });
+        this.nodeRects.push(rect);
 
         const text = new Konva.Text({
             text: nodeDef.origName,
@@ -175,7 +204,7 @@ export class ClassRenderer {
             currentY += 20;
         });
 
-        this.nodeGroups[nodeDef.id] = group;
+        this.nodeGroups[safeId(nodeDef.id)] = group;
         this.layer.add(group);
     }
 
@@ -315,7 +344,7 @@ export class ClassRenderer {
 
     private updateConnections(nodeId: string) {
         if (!this.map) return;
-        const draggedGroup = this.nodeGroups[nodeId];
+        const draggedGroup = this.nodeGroups[safeId(nodeId)];
         const draggedNodeBase = this.map.nodes[nodeId];
 
         if (!draggedGroup || !draggedNodeBase) return;
@@ -324,9 +353,9 @@ export class ClassRenderer {
             if (conn.originId !== nodeId && conn.targetId !== nodeId) return;
 
             const originBase = this.map!.nodes[conn.originId];
-            const originGroup = this.nodeGroups[conn.originId];
+            const originGroup = this.nodeGroups[safeId(conn.originId)];
             const targetBase = this.map!.nodes[conn.targetId];
-            const targetGroup = this.nodeGroups[conn.targetId];
+            const targetGroup = this.nodeGroups[safeId(conn.targetId)];
 
             if (!originGroup || !originBase || !targetGroup || !targetBase) return;
 
@@ -374,7 +403,7 @@ export class ClassRenderer {
         this.groupVisuals.forEach(visual => {
             const { group, rect, def } = visual;
             if (!def.participants || def.participants.indexOf(nodeId) === -1) return;
-            const nodes = def.participants.map(pId => ({ group: this.nodeGroups[pId], base: this.map!.nodes[pId] })).filter(n => n.group && n.base);
+            const nodes = def.participants.map(pId => ({ group: this.nodeGroups[safeId(pId)], base: this.map!.nodes[pId] })).filter(n => n.group && n.base);
             if (nodes.length === 0) return;
             let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
             for (const n of nodes) {
@@ -504,7 +533,7 @@ export class ClassRenderer {
             x: noteDef.position.x, 
             y: noteDef.position.y,
             draggable: true,
-            id: `note-${noteDef.text.substring(0, 10)}`
+            id: safeId(`note-${noteDef.text.substring(0, 10)}`)
         });
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });

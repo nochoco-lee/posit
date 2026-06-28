@@ -1,4 +1,4 @@
-import { parsePlantUml } from "./parser";
+import { parsePlantUml, warmUpParsers } from "./parser";
 import { parseMermaid } from "./mermaid/index";
 import { detectLanguage, Language } from "./detector";
 import { LayoutManager } from "./layout/engine";
@@ -11,6 +11,7 @@ const editor = document.getElementById('editor') as HTMLTextAreaElement;
 const errorPanel = document.getElementById('error-panel') as HTMLDivElement;
 const pngButton = document.getElementById('download-png') as HTMLButtonElement;
 const svgButton = document.getElementById('download-svg') as HTMLButtonElement;
+const syncButton = document.getElementById('sync-btn') as HTMLButtonElement;
 
 const renderer = new LayoutPumlRenderer('canvas-container');
 const svgRenderer = new LayoutPumlSvgRenderer();
@@ -53,6 +54,11 @@ async function refreshDiagram() {
     }
 }
 
+// Pre-warm all parser bundles immediately so that Chevrotain's expensive
+// performSelfAnalysis() runs during the loading overlay, not while the user
+// is typing.  Fire-and-forget — errors are silently swallowed inside warmUpParsers.
+warmUpParsers();
+
 // Initial draw — dismiss the loading overlay once the first render completes
 refreshDiagram().then(() => {
     const loadingOverlay = document.getElementById('loading-overlay');
@@ -62,6 +68,7 @@ refreshDiagram().then(() => {
         loadingOverlay.addEventListener('transitionend', () => loadingOverlay.remove(), { once: true });
     }
 });
+
 
 // Live update on type with debounce
 let debounceTimer: any = null;
@@ -107,6 +114,7 @@ svgButton.addEventListener('click', () => {
 /**
  * Orchestrates the two-way sync: Layout -> Source Code.
  * This is an expensive operation as it involves re-patching the source and re-parsing.
+ * It is now only triggered by the manual "Sync" button, not automatically on drag end.
  */
 async function syncLayoutToSource() {
     if (!currentAst || !currentLayoutMap) return;
@@ -131,7 +139,27 @@ async function syncLayoutToSource() {
     }
 }
 
-// For Phase 4 (Two-Way sync)
+// --- Sync button state helpers ---
+function markOutOfSync() {
+    syncButton.classList.add('out-of-sync');
+    syncButton.classList.remove('syncing');
+}
+
+function markSynced() {
+    syncButton.classList.remove('out-of-sync', 'syncing');
+}
+
+// Sync button click handler
+syncButton.addEventListener('click', async () => {
+    syncButton.disabled = true;
+    syncButton.classList.add('syncing');
+    syncButton.classList.remove('out-of-sync');
+    await syncLayoutToSource();
+    syncButton.disabled = false;
+    markSynced();
+});
+
+
 renderer.onDragEnd((id, newX, newY) => {
     // 1. We must have valid cached models to perform an update
     if (!currentAst || !currentLayoutMap) return;
@@ -200,6 +228,8 @@ renderer.onDragEnd((id, newX, newY) => {
     // Update visuals without a full redraw to avoid reset of dragging state
     renderer.syncPositions(currentLayoutMap);
 
-    // 3. Initiate the Emitter Two-Way Sync (on Drag End)
-    syncLayoutToSource();
+    // 3. Mark diagram as out-of-sync with the source.
+    //    The user can click the Sync button to write @pos tags back — this avoids
+    //    the 6-9s main-thread freeze that parsePlantUml() caused on every drag end.
+    markOutOfSync();
 });

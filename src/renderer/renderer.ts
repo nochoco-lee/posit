@@ -14,10 +14,14 @@ export class LayoutPumlRenderer {
     private deploymentRenderer: DeploymentRenderer;
 
     constructor(containerId: string) {
+        const container = document.getElementById(containerId)!;
+        const w = container.clientWidth || 1200;
+        const h = container.clientHeight || 800;
+
         this.stage = new Konva.Stage({
             container: containerId,
-            width: 3000,
-            height: 3000,
+            width: w,
+            height: h,
         });
 
         this.layer = new Konva.Layer();
@@ -26,6 +30,13 @@ export class LayoutPumlRenderer {
         this.sequenceRenderer = new SequenceRenderer(this.stage, this.layer);
         this.classRenderer = new ClassRenderer(this.stage, this.layer);
         this.deploymentRenderer = new DeploymentRenderer(this.stage, this.layer);
+
+        // Resize the stage when the window resizes so we never paint
+        // more pixels than the viewport requires.
+        window.addEventListener('resize', () => {
+            this.stage.width(container.clientWidth);
+            this.stage.height(container.clientHeight);
+        });
     }
 
     public onDragEnd(callback: (id: string, newX: number, newY: number) => void) {
@@ -57,4 +68,12 @@ export class LayoutPumlRenderer {
             this.deploymentRenderer.syncPositions(map);
         }
     }
+
+    /** Called by main.ts to toggle shadow rendering off during drag for performance */
+    public setDragging(isDragging: boolean) {
+        this.sequenceRenderer.setDragging(isDragging);
+        this.classRenderer.setDragging(isDragging);
+        this.deploymentRenderer.setDragging(isDragging);
+    }
 }
+

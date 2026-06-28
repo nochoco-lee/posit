@@ -10,6 +10,7 @@ export class DeploymentRenderer {
     protected nodeGroups: Record<string, Konva.Group> = {};
     protected groupVisuals: { group: Konva.Group, shape: Konva.Group | Konva.Shape, def: LayoutGroup }[] = [];
     protected connectionArrows: { originId: string, targetId: string, konvaObj: Konva.Arrow | Konva.Line, labelObj?: Konva.Text }[] = [];
+    protected nodeRects: Konva.Shape[] = [];  // tracked for shadow toggling during drag
 
     constructor(stage: Konva.Stage, layer: Konva.Layer) {
         this.stage = stage;
@@ -18,6 +19,10 @@ export class DeploymentRenderer {
 
     public setOnDragEnd(callback: (id: string, newX: number, newY: number) => void) {
         this.onNodeMove = callback;
+    }
+
+    public setDragging(isDragging: boolean) {
+        for (const rect of this.nodeRects) rect.shadowEnabled(!isDragging);
     }
 
     public syncPositions(map: LayoutMap) {
@@ -45,22 +50,31 @@ export class DeploymentRenderer {
 
     public render(map: LayoutMap) {
         this.map = map;
-        this.layer.destroyChildren();
-        this.nodeGroups = {};
-        this.groupVisuals = [];
-        this.connectionArrows = [];
 
-        // 1. Draw Groups First (Background)
-        map.groups.forEach(group => this.drawGroup(group));
+        const prevAutoDraw = Konva.autoDrawEnabled;
+        Konva.autoDrawEnabled = false;
 
-        // 2. Draw Connections
-        map.connections.forEach(conn => this.drawConnection(conn));
+        try {
+            this.layer.destroyChildren();
+            this.nodeGroups = {};
+            this.groupVisuals = [];
+            this.connectionArrows = [];
+            this.nodeRects = [];
 
-        // 3. Draw Nodes
-        Object.values(map.nodes).forEach(node => this.drawNode(node));
+            // 1. Draw Groups First (Background)
+            map.groups.forEach(group => this.drawGroup(group));
 
-        // 4. Draw Notes
-        map.notes.forEach(note => this.drawNote(note));
+            // 2. Draw Connections
+            map.connections.forEach(conn => this.drawConnection(conn));
+
+            // 3. Draw Nodes
+            Object.values(map.nodes).forEach(node => this.drawNode(node));
+
+            // 4. Draw Notes
+            map.notes.forEach(note => this.drawNote(note));
+        } finally {
+            Konva.autoDrawEnabled = prevAutoDraw;
+        }
 
         this.layer.draw();
     }
@@ -403,7 +417,9 @@ export class DeploymentRenderer {
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });
 
+        group.on('dragstart', () => { this.setDragging(true); });
         group.on('dragend', (e: any) => {
+            this.setDragging(false);
             const newX = Math.round(e.target.x());
             const newY = Math.round(e.target.y());
             if (this.onNodeMove) {
@@ -417,6 +433,14 @@ export class DeploymentRenderer {
 
         const colors = this.getShapeColors(nodeDef.type, nodeDef.color);
         const shape = this.createShape(nodeDef.type, nodeDef.size.width, nodeDef.size.height, colors);
+        // Track the primary shape for shadow toggling during drag.
+        // For group shapes, the first child that is a Rect/Shape is tracked.
+        if (shape instanceof Konva.Shape) {
+            this.nodeRects.push(shape);
+        } else if (shape instanceof Konva.Group) {
+            const first = shape.getChildren().find(c => c instanceof Konva.Shape);
+            if (first) this.nodeRects.push(first as Konva.Shape);
+        }
 
         let displayText = nodeDef.origName;
         if (nodeDef.stereotype) {

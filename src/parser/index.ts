@@ -55,6 +55,22 @@ async function getDeploymentBundle() {
     return _deploymentBundle;
 }
 
+/**
+ * Pre-warm all three parser bundles in parallel.
+ * Call this once on app startup (fire-and-forget).  Each bundle's
+ * Chevrotain performSelfAnalysis() is expensive and synchronous; running it
+ * eagerly — while the loading overlay is still visible — prevents the
+ * first diagram of each type from freezing the main thread.
+ */
+export function warmUpParsers(): void {
+    Promise.all([
+        getSequenceBundle(),
+        getClassBundle(),
+        getDeploymentBundle(),
+    ]).catch(() => { /* ignore errors during warm-up */ });
+}
+
+
 export async function parsePlantUml(text: string): Promise<IRDiagram> {
     const unescapedText = unescapeHtml(text);
     const scanner = new PlantUmlScanner();
