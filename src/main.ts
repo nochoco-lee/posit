@@ -54,11 +54,6 @@ async function refreshDiagram() {
     }
 }
 
-// Pre-warm all parser bundles immediately so that Chevrotain's expensive
-// performSelfAnalysis() runs during the loading overlay, not while the user
-// is typing.  Fire-and-forget — errors are silently swallowed inside warmUpParsers.
-warmUpParsers();
-
 // Initial draw — dismiss the loading overlay once the first render completes
 refreshDiagram().then(() => {
     const loadingOverlay = document.getElementById('loading-overlay');
@@ -67,6 +62,10 @@ refreshDiagram().then(() => {
         // Remove from DOM after transition completes to free memory
         loadingOverlay.addEventListener('transitionend', () => loadingOverlay.remove(), { once: true });
     }
+    // Warm up the remaining parser bundles in the background AFTER the first
+    // render so that the expensive synchronous performSelfAnalysis() calls
+    // don't compete with the initial load.  Fire-and-forget.
+    warmUpParsers();
 });
 
 
