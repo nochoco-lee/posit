@@ -11,7 +11,7 @@ export function detectLanguage(text: string): Language {
         return Language.PlantUML;
     }
 
-    if (/^\s*(sequenceDiagram|classDiagram)/m.test(text)) {
+    if (/^\s*(flowchart|graph|sequenceDiagram|classDiagram)\b/mi.test(text)) {
         return Language.Mermaid;
     }
 
