@@ -452,7 +452,10 @@ class MermaidParser extends CstParser {
     public flowchartClassDeclaration = this.RULE("flowchartClassDeclaration", () => {
         this.CONSUME(Class);
         this.SUBRULE(this.genericName, { LABEL: "name" });
-        this.MANY(() => this.SUBRULE1(this.genericName, { LABEL: "classNames" }));
+        this.MANY(() => {
+            this.CONSUME(Comma);
+            this.SUBRULE1(this.genericName, { LABEL: "classNames" });
+        });
     });
 
     public stereotypeDeclaration = this.RULE("stereotypeDeclaration", () => {
