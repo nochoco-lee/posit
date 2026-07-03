@@ -426,7 +426,11 @@ export class MermaidAstVisitor extends BaseVisitor {
             label = `${id}:::${styleClass}`;
         }
         if (ctx.label) {
-            label = this.visit(ctx.label[0]);
+            if (Array.isArray(ctx.label)) {
+                label = ctx.label.map((t: any) => this.visit(t)).join("");
+            } else {
+                label = this.visit(ctx.label[0]);
+            }
             if (ctx.LBrace) {
                 shape = "diamond";
             } else if (ctx.LBracket) {
@@ -537,6 +541,20 @@ export class MermaidAstVisitor extends BaseVisitor {
         if (!ctx.anyToken) return "";
         const parts = ctx.anyToken.map((t: any) => this.visit(t));
         return parts.join(" ").trim();
+    }
+
+    bracketContent(ctx: any): string {
+        if (!ctx.anyToken) return "";
+        const parts = ctx.anyToken.map((t: any) => this.visit(t));
+        const result = parts.join(" ").trim();
+        return result.replace(/^"(.*)"$/, '$1');
+    }
+
+    parenContent(ctx: any): string {
+        if (!ctx.anyToken) return "";
+        const parts = ctx.anyToken.map((t: any) => this.visit(t));
+        const result = parts.join(" ").trim();
+        return result.replace(/^"(.*)"$/, '$1');
     }
 
     private parsePosComment(commentStr: string) {

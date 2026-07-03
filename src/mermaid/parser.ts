@@ -533,6 +533,14 @@ class MermaidParser extends CstParser {
         ]);
     });
 
+    public bracketContent = this.RULE("bracketContent", () => {
+        this.MANY({ GATE: () => { const t = this.LA(1).tokenType; return t !== RBracket && t !== Newline && t !== EOF; }, DEF: () => this.SUBRULE(this.anyToken) });
+    });
+
+    public parenContent = this.RULE("parenContent", () => {
+        this.MANY({ GATE: () => { const t = this.LA(1).tokenType; return t !== RParen && t !== Newline && t !== EOF; }, DEF: () => this.SUBRULE(this.anyToken) });
+    });
+
     public flowchartNodeDeclaration = this.RULE("flowchartNodeDeclaration", () => {
         this.SUBRULE(this.genericName, { LABEL: "id" });
         this.OPTION(() => {
@@ -544,8 +552,8 @@ class MermaidParser extends CstParser {
         this.OPTION1(() => {
             this.OR([
                 { ALT: () => { this.CONSUME(LShape); this.SUBRULE2(this.payload, { LABEL: "label" }); this.CONSUME(RShape); } },
-                { ALT: () => { this.CONSUME(LBracket); this.MANY({ GATE: () => { const t = this.LA(1).tokenType; return t !== RBracket && t !== Newline && t !== EOF; }, DEF: () => this.SUBRULE3(this.anyToken) }); this.CONSUME(RBracket); } },
-                { ALT: () => { this.CONSUME(LParen); this.MANY1({ GATE: () => { const t = this.LA(1).tokenType; return t !== RParen && t !== Newline && t !== EOF; }, DEF: () => this.SUBRULE4(this.anyToken) }); this.CONSUME(RParen); } },
+                { ALT: () => { this.CONSUME(LBracket); this.SUBRULE3(this.bracketContent, { LABEL: "label" }); this.CONSUME(RBracket); } },
+                { ALT: () => { this.CONSUME(LParen); this.SUBRULE4(this.parenContent, { LABEL: "label" }); this.CONSUME(RParen); } },
                 { ALT: () => { 
                     this.OPTION2(() => this.CONSUME(At));
                     this.CONSUME(LBrace); 
