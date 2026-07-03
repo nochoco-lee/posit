@@ -64,6 +64,73 @@ sequenceDiagram
         expect(ast.type).toBe("Diagram");
         expect(ast.statements.length).toBe(0); // Assuming we ignore standalone comments for MVP
     });
+
+    it("should convert <br/> to newline in flowchart bracket labels", async () => {
+        const input = `
+flowchart LR
+    A[First<br/>Second]
+        `;
+        const ast = await parseMermaid(input);
+        const nodeA = ast.statements.find((s: any) => s.type === 'node' && s.name === 'A');
+        expect(nodeA).toBeDefined();
+        expect(nodeA.origName).toBe("First\nSecond");
+    });
+
+    it("should convert <br> to newline in flowchart bracket labels", async () => {
+        const input = `
+flowchart LR
+    A[First<br>Second]
+        `;
+        const ast = await parseMermaid(input);
+        const nodeA = ast.statements.find((s: any) => s.type === 'node' && s.name === 'A');
+        expect(nodeA).toBeDefined();
+        expect(nodeA.origName).toBe("First\nSecond");
+    });
+
+    it("should convert <br/> to newline in flowchart paren labels", async () => {
+        const input = `
+flowchart LR
+    A(First<br/>Second)
+        `;
+        const ast = await parseMermaid(input);
+        const nodeA = ast.statements.find((s: any) => s.type === 'node' && s.name === 'A');
+        expect(nodeA).toBeDefined();
+        expect(nodeA.origName).toBe("First\nSecond");
+    });
+
+    it("should convert <br/> to newline in flowchart edge labels", async () => {
+        const input = `
+flowchart LR
+    A -->|First<br/>Second| B
+        `;
+        const ast = await parseMermaid(input);
+        const edge = ast.statements.find((s: any) => s.type === 'edge');
+        expect(edge).toBeDefined();
+        expect(edge.label).toBe("First\nSecond");
+    });
+
+    it("should convert <br/> to newline in sequence diagram messages", async () => {
+        const input = `
+sequenceDiagram
+    Alice->>Bob: Hello<br/>World
+        `;
+        const ast = await parseMermaid(input);
+        const msg = ast.statements.find((s: any) => s.type === 'edge');
+        expect(msg).toBeDefined();
+        expect(msg.label).toBe("Hello\nWorld");
+    });
+
+    it("should convert <br/> to newline in sequence diagram participant aliases", async () => {
+        const input = `
+sequenceDiagram
+    participant Alice as Alice<br/>Johnson
+        `;
+        const ast = await parseMermaid(input);
+        const alice = ast.statements.find((s: any) => s.type === 'node' && s.origName === 'Alice\nJohnson');
+        expect(alice).toBeDefined();
+        expect(alice.name).toBe("Alice\nJohnson");
+        expect(alice.origName).toBe("Alice\nJohnson");
+    });
 });
 
 

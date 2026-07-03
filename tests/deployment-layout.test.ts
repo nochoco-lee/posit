@@ -100,6 +100,45 @@ node N1
         expect(layout.nodes["DB1"].size).toEqual({ width: 100, height: 80 });
         expect(layout.nodes["N1"].size).toEqual({ width: 120, height: 60 });
     });
+
+    it("should convert \\n to actual newlines in quoted labels", async () => {
+        const puml = `
+@startuml
+node "Server\\nProduction" as n1
+@enduml
+`;
+        const ast: IRDiagram = await parsePlantUml(puml);
+        const layout = new LayoutManager().process(ast);
+        
+        expect(layout.nodes['n1']).toBeDefined();
+        expect(layout.nodes['n1'].origName).toBe("Server\nProduction");
+    });
+
+    it("should convert escaped quotes in quoted labels", async () => {
+        const puml = `
+@startuml
+node "Server\\"Prod\\"" as n1
+@enduml
+`;
+        const ast: IRDiagram = await parsePlantUml(puml);
+        const layout = new LayoutManager().process(ast);
+        
+        expect(layout.nodes['n1']).toBeDefined();
+        expect(layout.nodes['n1'].origName).toBe('Server"Prod"');
+    });
+
+    it("should handle multiple \\n in quoted labels", async () => {
+        const puml = `
+@startuml
+node "Line1\\nLine2\\nLine3" as n1
+@enduml
+`;
+        const ast: IRDiagram = await parsePlantUml(puml);
+        const layout = new LayoutManager().process(ast);
+        
+        expect(layout.nodes['n1']).toBeDefined();
+        expect(layout.nodes['n1'].origName).toBe("Line1\nLine2\nLine3");
+    });
 });
 
 

@@ -540,21 +540,21 @@ export class MermaidAstVisitor extends BaseVisitor {
     payload(ctx: any): string {
         if (!ctx.anyToken) return "";
         const parts = ctx.anyToken.map((t: any) => this.visit(t));
-        return parts.join(" ").trim();
+        return parts.join(" ").trim().replace(/\s*<\s*br\s*\/?\s*>\s*/gi, '\n');
     }
 
     bracketContent(ctx: any): string {
         if (!ctx.anyToken) return "";
         const parts = ctx.anyToken.map((t: any) => this.visit(t));
         const result = parts.join(" ").trim();
-        return result.replace(/^"(.*)"$/, '$1');
+        return result.replace(/^"(.*)"$/, '$1').replace(/\s*<\s*br\s*\/?\s*>\s*/gi, '\n');
     }
 
     parenContent(ctx: any): string {
         if (!ctx.anyToken) return "";
         const parts = ctx.anyToken.map((t: any) => this.visit(t));
         const result = parts.join(" ").trim();
-        return result.replace(/^"(.*)"$/, '$1');
+        return result.replace(/^"(.*)"$/, '$1').replace(/\s*<\s*br\s*\/?\s*>\s*/gi, '\n');
     }
 
     private parsePosComment(commentStr: string) {

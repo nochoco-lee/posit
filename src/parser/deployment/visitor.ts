@@ -76,7 +76,7 @@ export class DeploymentAstVisitor extends BaseVisitor {
 
     namePart(ctx: any): string {
         if (ctx.nodeIdentifier) return this.visit(ctx.nodeIdentifier[0]);
-        if (ctx.StringLiteral) return ctx.StringLiteral[0].image.slice(1, -1);
+        if (ctx.StringLiteral) return ctx.StringLiteral[0].image.slice(1, -1).replace(/\\n/g, '\n').replace(/\\"/g, '"');
         if (ctx.LBracket) {
             if (!ctx.anyToken) return "";
             return ctx.anyToken.map((t: any) => this.visit(t)).join(" ");
@@ -95,7 +95,11 @@ export class DeploymentAstVisitor extends BaseVisitor {
     nodeIdentifier(ctx: any): string {
         const firstKey = Object.keys(ctx)[0];
         const tokens = ctx[firstKey] as IToken[];
-        return tokens[0].image;
+        let image = tokens[0].image;
+        if (tokens[0].tokenType.name === "StringLiteral") {
+            image = image.slice(1, -1).replace(/\\n/g, '\n').replace(/\\"/g, '"');
+        }
+        return image;
     }
 
     payload(ctx: any): string {
