@@ -379,9 +379,18 @@ export class MermaidAstVisitor extends BaseVisitor {
         let currentFromRaw = this.visit(ctx.from[0]);
         let currentFrom = this.aliasMap.get(currentFromRaw) || currentFromRaw;
 
+        // nodeShapeSuffix entries are flattened into one array by Chevrotain.
+        // If from has a suffix, it's at index 0 and to suffixes start at 1.
+        // If from has no suffix, to suffixes start at 0.
+        const toCount = ctx.to ? ctx.to.length : 0;
+        const totalSuffixes = ctx.nodeShapeSuffix ? ctx.nodeShapeSuffix.length : 0;
+        const hasFromSuffix = totalSuffixes > toCount;
+        let suffixIdx = 0;
+
         // Check if from node has a shape suffix (e.g., C{Decision} --> D)
-        if (ctx.nodeShapeSuffix && ctx.nodeShapeSuffix[0]) {
-            const suffix = this.visit(ctx.nodeShapeSuffix[0]);
+        if (hasFromSuffix && ctx.nodeShapeSuffix) {
+            const suffix = this.visit(ctx.nodeShapeSuffix[suffixIdx]);
+            suffixIdx++;
             if (!this.implicitNodes.has(currentFrom)) {
                 this.implicitNodes.set(currentFrom, { shape: suffix.shape, label: suffix.label || undefined });
             }
@@ -394,8 +403,9 @@ export class MermaidAstVisitor extends BaseVisitor {
                 const arrow = (ctx.arrow2 && ctx.arrow2[0]) ? ctx.arrow2[0].image : ctx.arrow[i].image;
                 
                 // Check if to node has a shape suffix (e.g., A --> B{Decision})
-                if (ctx.nodeShapeSuffix && ctx.nodeShapeSuffix[i + 1]) {
-                    const suffix = this.visit(ctx.nodeShapeSuffix[i + 1]);
+                if (ctx.nodeShapeSuffix && ctx.nodeShapeSuffix[suffixIdx]) {
+                    const suffix = this.visit(ctx.nodeShapeSuffix[suffixIdx]);
+                    suffixIdx++;
                     if (!this.implicitNodes.has(to)) {
                         this.implicitNodes.set(to, { shape: suffix.shape, label: suffix.label || undefined });
                     }
