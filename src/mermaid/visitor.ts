@@ -7,7 +7,7 @@ const BaseVisitor = parser.getBaseCstVisitorConstructor();
 
 export class MermaidAstVisitor extends BaseVisitor {
     private aliasMap: Map<string, string> = new Map();
-    private implicitNodes: Map<string, string> = new Map();
+    private implicitNodes: Map<string, { shape: string, label?: string }> = new Map();
     private subgraphNames: Set<string> = new Set();
 
     constructor() {
@@ -36,19 +36,19 @@ export class MermaidAstVisitor extends BaseVisitor {
         flatStatements.forEach((s: any) => {
             if (s && s.type === 'node') declaredNames.add(s.name);
         });
-        this.implicitNodes.forEach((shape, name) => {
+        this.implicitNodes.forEach((info, name) => {
             if (!declaredNames.has(name) && !this.subgraphNames.has(name)) {
-                // Parse icon syntax for implicit nodes
-                const iconResult = resolveIconInLabel(name);
+                const label = info.label || name;
+                const iconResult = resolveIconInLabel(label);
                 const node: IRNode = {
                     type: "node",
-                    shape,
+                    shape: info.shape,
                     name,
                     origName: iconResult.displayText,
                     layout: undefined
                 };
                 if (iconResult.iconCode) {
-                    const parsed = parseIconSyntax(name);
+                    const parsed = parseIconSyntax(label);
                     node.icon = parsed.icon;
                     node.iconCode = iconResult.iconCode;
                     node.prefix = parsed.prefix;
@@ -378,7 +378,7 @@ export class MermaidAstVisitor extends BaseVisitor {
         if (ctx.nodeShapeSuffix && ctx.nodeShapeSuffix[0]) {
             const suffix = this.visit(ctx.nodeShapeSuffix[0]);
             if (!this.implicitNodes.has(currentFrom)) {
-                this.implicitNodes.set(currentFrom, suffix.shape);
+                this.implicitNodes.set(currentFrom, { shape: suffix.shape, label: suffix.label || undefined });
             }
         }
 
@@ -392,7 +392,7 @@ export class MermaidAstVisitor extends BaseVisitor {
                 if (ctx.nodeShapeSuffix && ctx.nodeShapeSuffix[i + 1]) {
                     const suffix = this.visit(ctx.nodeShapeSuffix[i + 1]);
                     if (!this.implicitNodes.has(to)) {
-                        this.implicitNodes.set(to, suffix.shape);
+                        this.implicitNodes.set(to, { shape: suffix.shape, label: suffix.label || undefined });
                     }
                 }
                 
