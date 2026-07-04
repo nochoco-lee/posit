@@ -462,6 +462,20 @@ export class DeploymentRenderer {
         group.add(shape);
         group.add(text);
 
+        // Render Font Awesome icon if present
+        if (nodeDef.iconCode) {
+            const iconText = new Konva.Text({
+                text: nodeDef.iconCode,
+                fontSize: 20,
+                fontFamily: '"Font Awesome 6 Free"',
+                fontWeight: '900',
+                fill: 'black',
+                x: 5,
+                y: 5,
+            });
+            group.add(iconText);
+        }
+
         this.nodeGroups[nodeDef.id] = group;
         this.layer.add(group);
     }

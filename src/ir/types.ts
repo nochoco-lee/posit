@@ -27,6 +27,10 @@ export interface IRNode extends IRStatement {
     // Phase 6: Class Diagram expansion
     members?: IRMember[];
     parents?: string[];
+    // Font Awesome icon support
+    icon?: string;     // Icon name (e.g. "fa-twitter")
+    iconCode?: string; // Unicode code point for the icon
+    prefix?: string;   // Font Awesome prefix (e.g. "fas", "far", "fab")
 }
 
 export interface IRMember {

@@ -237,7 +237,10 @@ export class DeploymentLayoutManager {
                         stereotype: node.stereotype,
                         color: node.color,
                         position,
-                        size
+                        size,
+                        icon: node.icon,
+                        iconCode: node.iconCode,
+                        prefix: node.prefix
                     };
                 } else if (!map.nodes[id] || (map.nodes[id].position.x === 0 && map.nodes[id].position.y === 0)) {
                     const rank = this.nodeRanks.get(id) || 0;
@@ -262,7 +265,10 @@ export class DeploymentLayoutManager {
                         stereotype: node.stereotype,
                         color: node.color,
                         position,
-                        size
+                        size,
+                        icon: node.icon,
+                        iconCode: node.iconCode,
+                        prefix: node.prefix
                     };
                 }
 

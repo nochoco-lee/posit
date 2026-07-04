@@ -1,6 +1,7 @@
 import { CstNode, IToken } from "chevrotain";
 import { IRDiagram, IREdge, IRNode, IRStatement } from "../ir/types";
 import { parser } from "./parser";
+import { parseIconSyntax, resolveIconInLabel } from "../utils/fontawesome";
 
 const BaseVisitor = parser.getBaseCstVisitorConstructor();
 
@@ -37,13 +38,22 @@ export class MermaidAstVisitor extends BaseVisitor {
         });
         this.implicitNodes.forEach((shape, name) => {
             if (!declaredNames.has(name) && !this.subgraphNames.has(name)) {
-                flatStatements.unshift({
+                // Parse icon syntax for implicit nodes
+                const iconResult = resolveIconInLabel(name);
+                const node: IRNode = {
                     type: "node",
                     shape,
                     name,
-                    origName: name,
+                    origName: iconResult.displayText,
                     layout: undefined
-                });
+                };
+                if (iconResult.iconCode) {
+                    const parsed = parseIconSyntax(name);
+                    node.icon = parsed.icon;
+                    node.iconCode = iconResult.iconCode;
+                    node.prefix = parsed.prefix;
+                }
+                flatStatements.unshift(node);
             }
         });
         
@@ -449,13 +459,24 @@ export class MermaidAstVisitor extends BaseVisitor {
                 else shape = "node";
             }
         }
+        
+        // Parse icon syntax from label
+        const iconResult = resolveIconInLabel(label);
+        
         const node: IRNode = {
             type: "node",
             shape: shape,
             name: id,
-            origName: label,
+            origName: iconResult.displayText,
             layout: undefined
         };
+
+        if (iconResult.iconCode) {
+            const parsed = parseIconSyntax(label);
+            node.icon = parsed.icon;
+            node.iconCode = iconResult.iconCode;
+            node.prefix = parsed.prefix;
+        }
 
         if (ctx.layout) {
             const pos = this.parsePosComment(ctx.layout[0].image);

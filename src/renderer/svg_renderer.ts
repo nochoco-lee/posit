@@ -24,6 +24,10 @@ export class LayoutPumlSvgRenderer {
         return svg;
     }
 
+    private renderIcon(x: number, y: number, iconCode: string, fontSize: number = 16): string {
+        return `<text x="${x}" y="${y}" font-family='"Font Awesome 6 Free"' font-weight="900" font-size="${fontSize}" fill="black">${iconCode}</text>\n`;
+    }
+
     private getMemberSvg(x: number, y: number, member: any): string {
         const text = getMemberText(member);
         return this.renderText(x + 5, y, text, 10, "start", "black", member.isAbstract, member.isStatic);
@@ -212,6 +216,10 @@ export class LayoutPumlSvgRenderer {
                 svg += `<line x1="${centerX - 15}" y1="${headY + headRadius + 5}" x2="${centerX + 15}" y2="${headY + headRadius + 5}" stroke="${stroke}" stroke-width="2" />\n`;
                 svg += `<line x1="${centerX - 10}" y1="${headY + headRadius + 35}" x2="${centerX}" y2="${headY + headRadius + 20}" stroke="${stroke}" stroke-width="2" />\n`;
                 svg += `<line x1="${centerX + 10}" y1="${headY + headRadius + 35}" x2="${centerX}" y2="${headY + headRadius + 20}" stroke="${stroke}" stroke-width="2" />\n`;
+                // Render icon if present
+                if (n.iconCode) {
+                    svg += this.renderIcon(x + 5, headY + headRadius + 50, n.iconCode, 16);
+                }
                 const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
                 svg += this.renderText(centerX, headY + headRadius + 50, text, 14);
             } else if (n.type === 'node' || n.type === 'box') {
@@ -225,6 +233,10 @@ export class LayoutPumlSvgRenderer {
                 svg += `<path d="M ${bx} ${by} L ${bx+bw} ${by} L ${bx+bw} ${by+bh} L ${bx} ${by+bh} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
                 svg += `<path d="M ${bx} ${by} L ${bx+offset} ${by-offset} L ${bx+bw+offset} ${by-offset} L ${bx+bw} ${by} Z" fill="#F2F2FF" stroke="${stroke}" stroke-width="1.5" />\n`;
                 svg += `<path d="M ${bx+bw} ${by} L ${bx+bw+offset} ${by-offset} L ${bx+bw+offset} ${by+bh-offset} L ${bx+bw} ${by+bh} Z" fill="#D2D2E0" stroke="${stroke}" stroke-width="1.5" />\n`;
+                // Render icon if present
+                if (n.iconCode) {
+                    svg += this.renderIcon(bx + 5, by + 15, n.iconCode, 16);
+                }
                 const text = n.origName + (n.stereotype ? `\n${n.stereotype}` : "");
                 svg += this.renderText(bx + bw/2, by + bh/2 + 5, text, 14);
             } else if (n.type === 'round') {
@@ -367,6 +379,10 @@ export class LayoutPumlSvgRenderer {
             } else {
                 const isClass = n.type === 'class' || n.type === 'interface' || n.type === 'enum' || n.type === 'struct';
                 svg += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" rx="5" />\n`;
+                // Render icon if present
+                if (n.iconCode) {
+                    svg += this.renderIcon(x + 5, y + 15, n.iconCode, 16);
+                }
                 if (isClass) {
                     svg += `<line x1="${x}" y1="${y + 30}" x2="${x + w}" y2="${y + 30}" stroke="${stroke}" stroke-width="1" />\n`;
                     let titleY = y + 15;
