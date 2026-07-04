@@ -350,7 +350,12 @@ export class MermaidAstVisitor extends BaseVisitor {
     }
 
     nodeShapeSuffix(ctx: any): { label: string, shape: string } {
-        const label = ctx.payload ? this.visit(ctx.payload[0]) : "";
+        let label = "";
+        if (ctx.payload) {
+            label = this.visit(ctx.payload[0]);
+        } else if (ctx.anyToken) {
+            label = ctx.anyToken.map((t: any) => this.visit(t)).join(" ").trim().replace(/^"(.*)"$/, '$1');
+        }
         let shape = "box";
         if (ctx.LBrace) shape = "diamond";
         else if (ctx.LBracket) shape = "square";
