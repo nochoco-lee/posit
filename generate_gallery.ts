@@ -190,6 +190,7 @@ for (const dirInfo of testDirs) {
 <html>
 <head>
     <title>${dirInfo.name} Evaluation Gallery</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
         h1 { text-align: center; color: #333; }
@@ -234,6 +235,7 @@ const indexHtml = `<!DOCTYPE html>
 <html>
 <head>
     <title>Diagram Evaluation Gallery</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
         body { font-family: sans-serif; text-align: center; padding: 50px; }
         a { display: block; margin: 20px; font-size: 1.5em; color: #0066cc; text-decoration: none; }
