@@ -1,4 +1,4 @@
-import { parsePlantUml, warmUpParsers } from "./parser";
+import { parsePlantUml, warmUpParsers, warmUpParser } from "./parser";
 import { parseMermaid } from "./mermaid/index";
 import { detectLanguage, Language } from "./detector";
 import { LayoutManager } from "./layout/engine";
@@ -12,6 +12,7 @@ const errorPanel = document.getElementById('error-panel') as HTMLDivElement;
 const pngButton = document.getElementById('download-png') as HTMLButtonElement;
 const svgButton = document.getElementById('download-svg') as HTMLButtonElement;
 const syncButton = document.getElementById('sync-btn') as HTMLButtonElement;
+const diagramTypeSelect = document.getElementById('diagram-type') as HTMLSelectElement;
 
 const renderer = new LayoutPumlRenderer('canvas-container');
 const svgRenderer = new LayoutPumlSvgRenderer();
@@ -35,13 +36,28 @@ async function refreshDiagram() {
     try {
         const text = editor.value;
         currentText = text;
-        currentLanguage = detectLanguage(text);
+
+        const sel = diagramTypeSelect.value; // 'auto' | 'puml-sequence' | 'puml-class' | 'puml-deployment' | 'mermaid'
+
+        // Resolve language — skip the regex detector when the user has forced a type
+        if (sel === 'mermaid') {
+            currentLanguage = Language.Mermaid;
+        } else if (sel !== 'auto') {
+            currentLanguage = Language.PlantUML;
+        } else {
+            currentLanguage = detectLanguage(text);
+        }
+
+        // Extract the PlantUML sub-type from the select value, if forced
+        const forcedPumlType = (sel !== 'auto' && sel !== 'mermaid')
+            ? sel.replace('puml-', '') as 'sequence' | 'class' | 'deployment'
+            : undefined;
 
         if (currentLanguage === Language.Mermaid) {
             currentAst = await parseMermaid(text);
         } else {
-            // Default to PlantUML for currently unknown formats
-            currentAst = await parsePlantUml(text);
+            // Pass forcedPumlType so parsePlantUml can skip its scanner entirely
+            currentAst = await parsePlantUml(text, forcedPumlType);
         }
 
         const layoutManager = new LayoutManager();
@@ -62,10 +78,23 @@ refreshDiagram().then(() => {
         // Remove from DOM after transition completes to free memory
         loadingOverlay.addEventListener('transitionend', () => loadingOverlay.remove(), { once: true });
     }
-    // Warm up the remaining parser bundles in the background AFTER the first
-    // render so that the expensive synchronous performSelfAnalysis() calls
-    // don't compete with the initial load.  Fire-and-forget.
-    warmUpParsers();
+    // Only background-warm ALL parsers when on auto-detect.
+    // If the user has already selected a specific type, that parser was warmed
+    // immediately on selection — no need to warm the other two at all.
+    if (diagramTypeSelect.value === 'auto') {
+        warmUpParsers(); // staggered, fire-and-forget
+    }
+});
+
+// Diagram-type selector: immediately warm the chosen parser and re-render
+diagramTypeSelect.addEventListener('change', () => {
+    const sel = diagramTypeSelect.value;
+    if (sel !== 'auto' && sel !== 'mermaid') {
+        // Warm the specific parser right now — no delay — so the next
+        // refreshDiagram() call doesn't pay the cold-start cost.
+        warmUpParser(sel.replace('puml-', '') as 'sequence' | 'class' | 'deployment');
+    }
+    refreshDiagram();
 });
 
 
@@ -124,13 +153,17 @@ async function syncLayoutToSource() {
 
     try {
         const emitter = new Emitter();
+        const sel = diagramTypeSelect.value;
+        const forcedPumlType = (sel !== 'auto' && sel !== 'mermaid')
+            ? sel.replace('puml-', '') as 'sequence' | 'class' | 'deployment'
+            : undefined;
         // Use currentText which corresponds exactly to the offsets in currentAst
         const updatedSource = emitter.emitPlantUml(currentText, currentAst, currentLayoutMap);
         
         // Update the actual text area payload
         editor.value = updatedSource;
         currentText = updatedSource;
-        currentAst = await parsePlantUml(currentText);
+        currentAst = await parsePlantUml(currentText, forcedPumlType);
         showError(null);
     } catch (e: any) {
         console.error("Emitter Error on Sync:", e.message);

@@ -1,4 +1,5 @@
 import { IRDiagram } from "../ir/types";
+export type { DiagramType } from "./scanner";
 import { PlantUmlScanner } from "./scanner";
 
 function unescapeHtml(text: string): string {
@@ -82,13 +83,38 @@ export async function warmUpParsers(initialDelayMs = 2000): Promise<void> {
 }
 
 
-export async function parsePlantUml(text: string): Promise<IRDiagram> {
-    const unescapedText = unescapeHtml(text);
-    const scanner = new PlantUmlScanner();
-    const diagramType = scanner.scan(unescapedText);
+/**
+ * Immediately warm a single parser bundle — no delay, no other bundles touched.
+ * Use this when the user has explicitly selected a diagram type so we can
+ * pre-load just what's needed without the staggered background warm-up cost.
+ */
+export async function warmUpParser(type: 'sequence' | 'class' | 'deployment'): Promise<void> {
+    switch (type) {
+        case 'sequence':   await getSequenceBundle().catch(() => { /* ignore */ });   break;
+        case 'class':      await getClassBundle().catch(() => { /* ignore */ });       break;
+        case 'deployment': await getDeploymentBundle().catch(() => { /* ignore */ }); break;
+    }
+}
 
-    if (diagramType === 'unknown') {
-        throw new Error("Could not determine PlantUML diagram type. Please ensure your script starts with @startuml and contains valid diagram elements.");
+
+export async function parsePlantUml(
+    text: string,
+    forcedType?: 'sequence' | 'class' | 'deployment'
+): Promise<IRDiagram> {
+    const unescapedText = unescapeHtml(text);
+
+    // If the caller already knows the type (e.g. user selected it in the UI),
+    // skip the scanner entirely — saves a multi-regex line scan on every keystroke.
+    let diagramType: 'sequence' | 'class' | 'deployment';
+    if (forcedType) {
+        diagramType = forcedType;
+    } else {
+        const scanner = new PlantUmlScanner();
+        const detected = scanner.scan(unescapedText);
+        if (detected === 'unknown') {
+            throw new Error("Could not determine PlantUML diagram type. Please ensure your script starts with @startuml and contains valid diagram elements.");
+        }
+        diagramType = detected;
     }
 
     let bundle: { lexer: any; parser: any; visitor: any };

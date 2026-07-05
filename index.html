@@ -62,6 +62,24 @@
         opacity: 0.5;
         cursor: default;
       }
+      /* ── Diagram-type selector ───────────────────────────────── */
+      #diagram-type {
+        background: #2d2d2d;
+        color: #ccc;
+        border: 1px solid #444;
+        border-radius: 3px;
+        font-size: 10px;
+        padding: 2px 4px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        cursor: pointer;
+        outline: none;
+      }
+      #diagram-type:hover {
+        border-color: #666;
+      }
+      #diagram-type:focus {
+        border-color: #569cd6;
+      }
       #sync-btn .sync-dot {
         width: 6px;
         height: 6px;
@@ -177,8 +195,19 @@
     <div id="app">
       <div id="editor-panel">
         <div class="header">
-          Source (PlantUML)
+          Source
           <div style="float: right; display: flex; gap: 10px; align-items: center;">
+            <select id="diagram-type" title="Force a specific diagram type (skips auto-detection)">
+              <option value="auto">Auto-detect</option>
+              <optgroup label="PlantUML">
+                <option value="puml-sequence">Sequence</option>
+                <option value="puml-class">Class</option>
+                <option value="puml-deployment">Deployment</option>
+              </optgroup>
+              <optgroup label="Mermaid">
+                <option value="mermaid">Mermaid</option>
+              </optgroup>
+            </select>
             <button id="download-png" style="background: #333; color: #ccc; border: 1px solid #444; border-radius: 3px; font-size: 10px; cursor: pointer; padding: 2px 6px;">PNG</button>
             <button id="download-svg" style="background: #333; color: #ccc; border: 1px solid #444; border-radius: 3px; font-size: 10px; cursor: pointer; padding: 2px 6px;">SVG</button>
             <button id="sync-btn" title="Sync diagram positions back to source code">
