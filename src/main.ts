@@ -33,9 +33,20 @@ function showError(message: string | null) {
 }
 
 async function refreshDiagram() {
+    const text = editor.value;
+    currentText = text;
+
+    // Short-circuit on empty editor — clear canvas and reset state immediately
+    if (!text.trim()) {
+        currentAst = null;
+        currentLayoutMap = null;
+        currentLanguage = Language.Unknown;
+        renderer.clear();
+        showError(null);
+        return;
+    }
+
     try {
-        const text = editor.value;
-        currentText = text;
 
         const sel = diagramTypeSelect.value; // 'auto' | 'puml-sequence' | 'puml-class' | 'puml-deployment' | 'mermaid'
 
@@ -70,19 +81,14 @@ async function refreshDiagram() {
     }
 }
 
-// Initial draw — dismiss the loading overlay once the first render completes
-refreshDiagram().then(() => {
+// Dismiss the loading overlay immediately — the editor starts empty so there
+// is nothing to parse on startup. Parsers are loaded on-demand when the user
+// first types. Use requestAnimationFrame so the app frame is painted first.
+requestAnimationFrame(() => {
     const loadingOverlay = document.getElementById('loading-overlay');
     if (loadingOverlay) {
         loadingOverlay.classList.add('hidden');
-        // Remove from DOM after transition completes to free memory
         loadingOverlay.addEventListener('transitionend', () => loadingOverlay.remove(), { once: true });
-    }
-    // Only background-warm ALL parsers when on auto-detect.
-    // If the user has already selected a specific type, that parser was warmed
-    // immediately on selection — no need to warm the other two at all.
-    if (diagramTypeSelect.value === 'auto') {
-        warmUpParsers(); // staggered, fire-and-forget
     }
 });
 
@@ -98,9 +104,25 @@ diagramTypeSelect.addEventListener('change', () => {
 });
 
 
-// Live update on type with debounce
+// Live update on type with debounce.
+// On the very first keystroke, pre-warm the parser for the currently selected
+// type immediately (before the debounce fires) so it loads in parallel with
+// the user's initial typing — minimising the cold-start delay on first render.
+let hasStartedTyping = false;
 let debounceTimer: any = null;
 editor.addEventListener('input', () => {
+    if (!hasStartedTyping) {
+        hasStartedTyping = true;
+        const sel = diagramTypeSelect.value;
+        if (sel !== 'auto' && sel !== 'mermaid') {
+            // Specific type selected — warm exactly that one, right now
+            warmUpParser(sel.replace('puml-', '') as 'sequence' | 'class' | 'deployment');
+        } else if (sel === 'auto') {
+            // Auto-detect — warm all three staggered so they're ready when
+            // the user switches diagram types later in the session
+            warmUpParsers(0); // 0ms initial delay: user is already interacting
+        }
+    }
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
         refreshDiagram();

@@ -156,6 +156,12 @@ export class LayoutPumlRenderer {
         this.stage.offsetY(minY > 0 ? 0 : -minY + padding);
     }
 
+    /** Wipe the canvas — called when the editor is cleared */
+    public clear() {
+        this.layer.destroyChildren();
+        this.layer.draw();
+    }
+
     public syncPositions(map: LayoutMap) {
         // Sub-renderers are guaranteed to exist here since syncPositions is only called
         // after a drag-end, which requires the diagram to already be rendered.
