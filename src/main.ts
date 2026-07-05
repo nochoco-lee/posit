@@ -46,7 +46,7 @@ async function refreshDiagram() {
 
         const layoutManager = new LayoutManager();
         currentLayoutMap = layoutManager.process(currentAst);
-        renderer.render(currentLayoutMap);
+        await renderer.render(currentLayoutMap);
         showError(null);
     } catch (e: any) {
         console.error("Parse Error:", e.message);

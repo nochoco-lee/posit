@@ -56,18 +56,29 @@ async function getDeploymentBundle() {
 }
 
 /**
- * Pre-warm all three parser bundles in parallel.
- * Call this once on app startup (fire-and-forget).  Each bundle's
- * Chevrotain performSelfAnalysis() is expensive and synchronous; running it
- * eagerly — while the loading overlay is still visible — prevents the
- * first diagram of each type from freezing the main thread.
+ * Sequentially warm up the remaining parser bundles with a delay between each.
+ *
+ * Why sequential instead of parallel (Promise.all)?
+ * Chevrotain's performSelfAnalysis() is synchronous and CPU-intensive.
+ * Running all three at once monopolises the main thread and causes ANR-style
+ * freezes right after the loading overlay dismisses — exactly when the user
+ * tries to interact.  Loading them one at a time with a breathing gap lets
+ * the event loop process input events between each bundle.
+ *
+ * Why the initialDelayMs?
+ * The first diagram's parser bundle is already warm after the initial render.
+ * We wait a couple of seconds before warming the remaining two so the user
+ * has a comfortable interaction window first.
+ *
+ * Call this once on app startup (fire-and-forget).
  */
-export function warmUpParsers(): void {
-    Promise.all([
-        getSequenceBundle(),
-        getClassBundle(),
-        getDeploymentBundle(),
-    ]).catch(() => { /* ignore errors during warm-up */ });
+export async function warmUpParsers(initialDelayMs = 2000): Promise<void> {
+    await new Promise<void>(r => setTimeout(r, initialDelayMs));
+    await getSequenceBundle().catch(() => { /* ignore */ });
+    await new Promise<void>(r => setTimeout(r, 400));
+    await getClassBundle().catch(() => { /* ignore */ });
+    await new Promise<void>(r => setTimeout(r, 400));
+    await getDeploymentBundle().catch(() => { /* ignore */ });
 }
 
 

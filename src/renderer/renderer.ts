@@ -1,17 +1,20 @@
 import Konva from 'konva';
 import { LayoutMap } from "../layout/types";
-import { SequenceRenderer } from './sequence';
-import { ClassRenderer } from './class';
-import { DeploymentRenderer } from './deployment';
+// Type-only imports — erased at runtime, so these modules are NOT bundled eagerly.
+// The actual code is loaded on-demand via dynamic import() inside the lazy getters below.
+import type { SequenceRenderer as SequenceRendererType } from './sequence';
+import type { ClassRenderer as ClassRendererType } from './class';
+import type { DeploymentRenderer as DeploymentRendererType } from './deployment';
 
 export class LayoutPumlRenderer {
     public stage: Konva.Stage;
     private layer: Konva.Layer;
     private onNodeMoveCallback?: (id: string, newX: number, newY: number) => void;
 
-    private sequenceRenderer: SequenceRenderer;
-    private classRenderer: ClassRenderer;
-    private deploymentRenderer: DeploymentRenderer;
+    // Lazily instantiated — null until first render of that diagram type
+    private _sequenceRenderer: SequenceRendererType | null = null;
+    private _classRenderer: ClassRendererType | null = null;
+    private _deploymentRenderer: DeploymentRendererType | null = null;
 
     private contentWidth: number = 0;
     private contentHeight: number = 0;
@@ -30,10 +33,6 @@ export class LayoutPumlRenderer {
         this.layer = new Konva.Layer();
         this.stage.add(this.layer);
 
-        this.sequenceRenderer = new SequenceRenderer(this.stage, this.layer);
-        this.classRenderer = new ClassRenderer(this.stage, this.layer);
-        this.deploymentRenderer = new DeploymentRenderer(this.stage, this.layer);
-
         // Resize the stage when the window resizes so we never paint
         // more pixels than the viewport requires, but don't shrink below content.
         window.addEventListener('resize', () => {
@@ -44,23 +43,68 @@ export class LayoutPumlRenderer {
         });
     }
 
-    public onDragEnd(callback: (id: string, newX: number, newY: number) => void) {
-        this.onNodeMoveCallback = callback;
-        this.sequenceRenderer.setOnDragEnd(callback);
-        this.classRenderer.setOnDragEnd(callback);
-        this.deploymentRenderer.setOnDragEnd(callback);
+    // ── Lazy sub-renderer getters ──────────────────────────────────────────────
+    // Each getter dynamically imports its module on first call and caches the
+    // instance for all subsequent calls. The drag-end callback is applied
+    // immediately if it was registered before the renderer was created.
+
+    private async getSequenceRenderer(): Promise<SequenceRendererType> {
+        if (!this._sequenceRenderer) {
+            const { SequenceRenderer } = await import('./sequence');
+            this._sequenceRenderer = new SequenceRenderer(this.stage, this.layer);
+            if (this.onNodeMoveCallback) {
+                this._sequenceRenderer.setOnDragEnd(this.onNodeMoveCallback);
+            }
+        }
+        return this._sequenceRenderer;
     }
 
-    public render(map: LayoutMap) {
+    private async getClassRenderer(): Promise<ClassRendererType> {
+        if (!this._classRenderer) {
+            const { ClassRenderer } = await import('./class');
+            this._classRenderer = new ClassRenderer(this.stage, this.layer);
+            if (this.onNodeMoveCallback) {
+                this._classRenderer.setOnDragEnd(this.onNodeMoveCallback);
+            }
+        }
+        return this._classRenderer;
+    }
+
+    private async getDeploymentRenderer(): Promise<DeploymentRendererType> {
+        if (!this._deploymentRenderer) {
+            const { DeploymentRenderer } = await import('./deployment');
+            this._deploymentRenderer = new DeploymentRenderer(this.stage, this.layer);
+            if (this.onNodeMoveCallback) {
+                this._deploymentRenderer.setOnDragEnd(this.onNodeMoveCallback);
+            }
+        }
+        return this._deploymentRenderer;
+    }
+
+    // ── Public API ─────────────────────────────────────────────────────────────
+
+    public onDragEnd(callback: (id: string, newX: number, newY: number) => void) {
+        this.onNodeMoveCallback = callback;
+        // Apply to any already-instantiated sub-renderers
+        this._sequenceRenderer?.setOnDragEnd(callback);
+        this._classRenderer?.setOnDragEnd(callback);
+        this._deploymentRenderer?.setOnDragEnd(callback);
+    }
+
+    public async render(map: LayoutMap): Promise<void> {
         if (map.diagramType === 'sequence') {
-            this.sequenceRenderer.render(map);
+            const r = await this.getSequenceRenderer();
+            r.render(map);
         } else if (map.diagramType === 'class') {
-            this.classRenderer.render(map);
+            const r = await this.getClassRenderer();
+            r.render(map);
         } else if (map.diagramType === 'deployment') {
-            this.deploymentRenderer.render(map);
+            const r = await this.getDeploymentRenderer();
+            r.render(map);
         } else {
             // Default to sequence for unknown
-            this.sequenceRenderer.render(map);
+            const r = await this.getSequenceRenderer();
+            r.render(map);
         }
 
         this.fitStageToContent(map);
@@ -113,20 +157,21 @@ export class LayoutPumlRenderer {
     }
 
     public syncPositions(map: LayoutMap) {
+        // Sub-renderers are guaranteed to exist here since syncPositions is only called
+        // after a drag-end, which requires the diagram to already be rendered.
         if (map.diagramType === 'sequence' || map.diagramType === 'unknown') {
-            this.sequenceRenderer.syncPositions(map);
+            this._sequenceRenderer?.syncPositions(map);
         } else if (map.diagramType === 'class') {
-            this.classRenderer.syncPositions(map);
+            this._classRenderer?.syncPositions(map);
         } else if (map.diagramType === 'deployment') {
-            this.deploymentRenderer.syncPositions(map);
+            this._deploymentRenderer?.syncPositions(map);
         }
     }
 
     /** Called by main.ts to toggle shadow rendering off during drag for performance */
     public setDragging(isDragging: boolean) {
-        this.sequenceRenderer.setDragging(isDragging);
-        this.classRenderer.setDragging(isDragging);
-        this.deploymentRenderer.setDragging(isDragging);
+        this._sequenceRenderer?.setDragging(isDragging);
+        this._classRenderer?.setDragging(isDragging);
+        this._deploymentRenderer?.setDragging(isDragging);
     }
 }
-
