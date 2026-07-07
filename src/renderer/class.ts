@@ -80,14 +80,14 @@ export class ClassRenderer {
             this.connectionArrows = [];
             this.nodeRects = [];
 
-            // 1. Draw Connections First (So they sit behind nodes)
+            // 1. Draw Groups First (Background) — reverse so outer groups render behind inner ones
+            [...map.groups].reverse().forEach(group => this.drawGroup(group));
+
+            // 2. Draw Connections
             map.connections.forEach(conn => this.drawConnection(conn));
 
-            // 2. Draw Nodes (Classes, Interfaces)
+            // 3. Draw Nodes (Classes, Interfaces)
             Object.values(map.nodes).forEach(node => this.drawNode(node));
-
-            // 3. Draw Groups
-            map.groups.forEach(group => this.drawGroup(group));
 
             // 4. Draw Notes
             map.notes.forEach(note => this.drawNote(note));

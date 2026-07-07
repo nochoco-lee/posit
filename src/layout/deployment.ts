@@ -77,8 +77,16 @@ export class DeploymentLayoutManager {
         return map;
     }
 
-    private addNode(id: string, shape: string, map: LayoutMap) {
-        const size = this.getNodeSize(shape);
+    private addNode(id: string, shape: string, map: LayoutMap, displayLabel?: string) {
+        let size = this.getNodeSize(shape);
+        // Adjust width to fit label text
+        const label = displayLabel || id;
+        if (label) {
+            const textWidth = measureText(label, 14, 'sans-serif').width + 40;
+            if (textWidth > size.width) {
+                size = { width: textWidth, height: size.height };
+            }
+        }
         map.nodes[id] = {
             id,
             type: shape,
@@ -227,7 +235,12 @@ export class DeploymentLayoutManager {
             if (s.type === 'node') {
                 const node = s as IRNode;
                 const id = node.name;
-                const size = this.getNodeSize(node.shape);
+                const displayLabel = node.origName || node.name;
+                let size = this.getNodeSize(node.shape);
+                const textWidth = measureText(displayLabel, 14, 'sans-serif').width + 40;
+                if (textWidth > size.width) {
+                    size = { width: textWidth, height: size.height };
+                }
 
                 if (node.layout) {
                     const position = { x: node.layout.x, y: node.layout.y };

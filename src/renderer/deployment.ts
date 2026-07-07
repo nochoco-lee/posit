@@ -61,14 +61,14 @@ export class DeploymentRenderer {
             this.connectionArrows = [];
             this.nodeRects = [];
 
-            // 1. Draw Groups First (Background)
-            map.groups.forEach(group => this.drawGroup(group));
+            // 1. Draw Groups First (Background) — reverse so outer groups render behind inner ones
+            [...map.groups].reverse().forEach(group => this.drawGroup(group));
 
-            // 2. Draw Connections
-            map.connections.forEach(conn => this.drawConnection(conn));
-
-            // 3. Draw Nodes
+            // 2. Draw Nodes (middle layer)
             Object.values(map.nodes).forEach(node => this.drawNode(node));
+
+            // 3. Draw Connections (top layer, so arrowheads are visible over nodes)
+            map.connections.forEach(conn => this.drawConnection(conn));
 
             // 4. Draw Notes
             map.notes.forEach(note => this.drawNote(note));

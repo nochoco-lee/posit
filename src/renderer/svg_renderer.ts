@@ -95,8 +95,8 @@ export class LayoutPumlSvgRenderer {
 
         const isSequence = map.diagramType === 'sequence' || map.diagramType === 'unknown';
 
-        // 1. Groups (background)
-        map.groups.forEach(g => {
+        // 1. Groups (background) — reverse so outer groups render behind inner ones
+        [...map.groups].reverse().forEach(g => {
             if (isSequence) {
                 const isBox = g.keyword === 'box';
                 const isRef = g.keyword === 'ref';
