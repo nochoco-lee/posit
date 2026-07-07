@@ -110,7 +110,7 @@ export class LayoutPumlSvgRenderer {
                     const keyword = g.keyword === 'group' ? 'alt' : g.keyword;
                     const keywordWidth = keyword.length * 9 + 10;
                     svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${keywordWidth}" height="18" fill="${THEME.headerFill}" stroke="${stroke}" stroke-width="1" />\n`;
-                    svg += `<text x="${g.position.x + 5}" y="${g.position.y + 13}" font-family="${THEME.fontFamily}" font-size="11" font-weight="bold" fill="${THEME.text}">${keyword}</text>\n`;
+                    svg += `<text x="${g.position.x + 5}" y="${g.position.y + 13}" font-family="${THEME.fontFamily}" font-size="11" font-weight="${THEME.fontWeightHeader}" fill="${THEME.text}">${keyword}</text>\n`;
                     
                     if (isRef) {
                         svg += this.renderText(g.position.x + g.size.width/2, g.position.y + g.size.height/2, g.label || "", 12, "middle", THEME.text);
@@ -157,10 +157,10 @@ export class LayoutPumlSvgRenderer {
                 // Measure keyword to size its box
                 const keywordWidth = g.keyword.length * 8 + 10;
                 svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${keywordWidth}" height="18" fill="${THEME.headerFill}" stroke="${g.color || THEME.stroke}" stroke-width="1" />\n`;
-                svg += `<text x="${g.position.x + 5}" y="${g.position.y + 13}" font-family="${THEME.fontFamily}" font-size="11" font-weight="bold" fill="${THEME.text}">${g.keyword}</text>\n`;
+                svg += `<text x="${g.position.x + 5}" y="${g.position.y + 13}" font-family="${THEME.fontFamily}" font-size="11" font-weight="${THEME.fontWeightHeader}" fill="${THEME.text}">${g.keyword}</text>\n`;
                 
                 if (g.label) {
-                    svg += `<text x="${g.position.x + keywordWidth + 5}" y="${g.position.y + 13}" font-family="${THEME.fontFamily}" font-size="11" font-weight="bold" fill="${g.color || THEME.stroke}">[${g.label}]</text>\n`;
+                    svg += `<text x="${g.position.x + keywordWidth + 5}" y="${g.position.y + 13}" font-family="${THEME.fontFamily}" font-size="11" font-weight="${THEME.fontWeightHeader}" fill="${g.color || THEME.stroke}">[${g.label}]</text>\n`;
                 }
             }
             g.dividerYs?.forEach((dy, index) => {
@@ -478,7 +478,7 @@ export class LayoutPumlSvgRenderer {
             const isBold = bracketStyle === 'bold';
             const isPlain = bracketStyle === 'plain';
             const strokeDash = isDotted ? 'stroke-dasharray="2,2"' : isDashed ? 'stroke-dasharray="8,4"' : "";
-            const strokeWidth = isBold ? 'stroke-width="4"' : 'stroke-width="2"';
+            const strokeWidth = isBold ? `stroke-width="${THEME.connectionStrokeWidth * 2.5}"` : `stroke-width="${THEME.connectionStrokeWidth}"`;
             const markerEnd = isPlain ? '' : ` marker-end="url(#arrowhead)"`;
             const connColor = (c as any).color || THEME.stroke;
             

@@ -25,11 +25,17 @@
         --pos-shadow-offset-x: 0px;
         --pos-shadow-offset-y: 2px;
         --pos-shadow-opacity: 1;
-        --pos-stroke-width: 2;
-        --pos-node-radius: 5;
-        --pos-note-radius: 0;
+        --pos-stroke-width: 1.5;
+        --pos-node-radius: 6;
+        --pos-note-radius: 4;
         --pos-box-top-y: 0;
         --pos-box-side-x: 0;
+        --pos-font-weight-header: 600;
+        --pos-font-weight-body: normal;
+        --pos-actor-stroke-width: 2.0;
+        --pos-connection-stroke-width: 1.5;
+        --pos-node-border-dash: none;
+        --pos-lifeline-dash: 5,5;
       }
       [data-theme="dark"] {
         --pos-bg: #1A202C;
@@ -60,6 +66,117 @@
         --pos-arrow-fill: #9F7AEA;
         --pos-shadow-color: rgba(159,122,234,0.15);
         --pos-shadow-blur: 10px;
+        --pos-font-family: 'Quicksand', 'Nunito', 'Segoe UI', sans-serif;
+        --pos-font-weight-header: 700;
+        --pos-font-weight-body: 500;
+        --pos-actor-stroke-width: 2.0;
+        --pos-connection-stroke-width: 2.0;
+        --pos-node-radius: 10;
+        --pos-note-radius: 6;
+        --pos-stroke-width: 2.0;
+        --pos-lifeline-dash: 6,6;
+      }
+      [data-theme="forest"] {
+        --pos-bg: #FAF8F5;
+        --pos-stroke: #2F5E42;
+        --pos-node-fill: #FAF8F5;
+        --pos-sequence-fill: #E2ECE5;
+        --pos-activation-fill: #D2E4D8;
+        --pos-note-fill: #FCF6E8;
+        --pos-header-fill: #E8EFE9;
+        --pos-box-fill: #E9EDE9;
+        --pos-box-top: #D5E4D9;
+        --pos-box-side: #BCCFC0;
+        --pos-text: #1C2E24;
+        --pos-arrow-fill: #2F5E42;
+        --pos-shadow-color: rgba(47,97,68,0.12);
+        --pos-shadow-blur: 8px;
+        --pos-font-family: 'Georgia', 'Times New Roman', serif;
+        --pos-font-weight-header: bold;
+        --pos-font-weight-body: normal;
+        --pos-actor-stroke-width: 1.5;
+        --pos-connection-stroke-width: 1.2;
+        --pos-node-radius: 4;
+        --pos-note-radius: 2;
+        --pos-stroke-width: 1.2;
+        --pos-lifeline-dash: 4,4;
+      }
+      [data-theme="neobrutalist"] {
+        --pos-bg: #FFFFFF;
+        --pos-stroke: #000000;
+        --pos-node-fill: #FDFFB6;
+        --pos-sequence-fill: #CAFFBF;
+        --pos-activation-fill: #9BF6FF;
+        --pos-note-fill: #FFD6A5;
+        --pos-header-fill: #FFADAD;
+        --pos-box-fill: #E8F0FE;
+        --pos-box-top: #E0E0E0;
+        --pos-box-side: #B5B5B5;
+        --pos-text: #000000;
+        --pos-arrow-fill: #000000;
+        --pos-shadow-color: #000000;
+        --pos-shadow-blur: 0px;
+        --pos-shadow-offset-x: 4px;
+        --pos-shadow-offset-y: 4px;
+        --pos-font-family: 'Consolas', 'Courier New', monospace;
+        --pos-font-weight-header: 900;
+        --pos-font-weight-body: 700;
+        --pos-actor-stroke-width: 3.0;
+        --pos-connection-stroke-width: 2.5;
+        --pos-node-radius: 0;
+        --pos-note-radius: 0;
+        --pos-stroke-width: 3.0;
+        --pos-lifeline-dash: none;
+      }
+      [data-theme="sketch"] {
+        --pos-bg: #FAFBFD;
+        --pos-stroke: #1D3B6F;
+        --pos-node-fill: #F4F8FF;
+        --pos-sequence-fill: #E3EFFF;
+        --pos-activation-fill: #D1E6FF;
+        --pos-note-fill: #FFFEE0;
+        --pos-header-fill: #EAF2FF;
+        --pos-box-fill: #F0F4FA;
+        --pos-box-top: #E1EDFC;
+        --pos-box-side: #C6DCF9;
+        --pos-text: #1D3B6F;
+        --pos-arrow-fill: #1D3B6F;
+        --pos-shadow-color: rgba(29,59,111,0.06);
+        --pos-shadow-blur: 6px;
+        --pos-font-family: 'Architects Daughter', 'Comic Sans MS', cursive, sans-serif;
+        --pos-font-weight-header: bold;
+        --pos-font-weight-body: normal;
+        --pos-actor-stroke-width: 2.0;
+        --pos-connection-stroke-width: 1.8;
+        --pos-node-radius: 8;
+        --pos-note-radius: 4;
+        --pos-stroke-width: 2.0;
+        --pos-lifeline-dash: 12,6;
+      }
+      [data-theme="mermaid"] {
+        --pos-bg: #FFFFFF;
+        --pos-stroke: #333333;
+        --pos-node-fill: #ECECFF;
+        --pos-sequence-fill: #ECECFF;
+        --pos-activation-fill: #ECECFF;
+        --pos-note-fill: #FFF5AD;
+        --pos-header-fill: #ECECFF;
+        --pos-box-fill: #F4F4F4;
+        --pos-box-top: #E0E0E0;
+        --pos-box-side: #CCCCCC;
+        --pos-text: #333333;
+        --pos-arrow-fill: #333333;
+        --pos-shadow-color: rgba(0,0,0,0.05);
+        --pos-shadow-blur: 3px;
+        --pos-font-family: 'trebuchet ms', verdana, arial, sans-serif;
+        --pos-font-weight-header: 600;
+        --pos-font-weight-body: normal;
+        --pos-actor-stroke-width: 1.5;
+        --pos-connection-stroke-width: 1.2;
+        --pos-node-radius: 5;
+        --pos-note-radius: 2;
+        --pos-stroke-width: 1.2;
+        --pos-lifeline-dash: 4,4;
       }
       body {
         margin: 0;
@@ -256,6 +373,10 @@
               <option value="light">Light</option>
               <option value="dark">Dark</option>
               <option value="pastel">Pastel</option>
+              <option value="forest">Forest</option>
+              <option value="neobrutalist">Neobrutalist</option>
+              <option value="sketch">Sketch</option>
+              <option value="mermaid">Mermaid</option>
             </select>
             <select id="diagram-type" title="Force a specific diagram type (skips auto-detection)">
               <option value="auto">Auto-detect</option>

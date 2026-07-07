@@ -31,7 +31,21 @@ export const THEME = {
     boxTop: '#E8EDF4',
     boxSide: '#D4DBE8',
     arrowFill: '#4A5568',
+    // New structural parameters loaded from theme CSS
+    fontWeightHeader: '600',
+    fontWeightBody: 'normal',
+    actorStrokeWidth: 2.0,
+    connectionStrokeWidth: 1.5,
+    nodeBorderDash: undefined as number[] | undefined,
+    lifelineDash: [5, 5] as number[] | undefined,
 };
+
+function parseDashPattern(dashStr: string): number[] | undefined {
+    if (!dashStr || dashStr.trim() === 'none') return undefined;
+    const parts = dashStr.split(',').map(p => parseFloat(p.trim()));
+    if (parts.some(isNaN)) return undefined;
+    return parts;
+}
 
 /**
  * Read CSS custom properties into the mutable THEME object.
@@ -56,6 +70,15 @@ export function syncThemeFromCSS() {
     THEME.boxTop = t['--pos-box-top'];
     THEME.boxSide = t['--pos-box-side'];
     THEME.arrowFill = t['--pos-arrow-fill'];
+    
+    // Sync the new properties
+    THEME.fontWeightHeader = t['--pos-font-weight-header'] || '600';
+    THEME.fontWeightBody = t['--pos-font-weight-body'] || 'normal';
+    THEME.actorStrokeWidth = parseFloat(t['--pos-actor-stroke-width']) || 2.0;
+    THEME.connectionStrokeWidth = parseFloat(t['--pos-connection-stroke-width']) || 1.5;
+    THEME.nodeBorderDash = parseDashPattern(t['--pos-node-border-dash']);
+    THEME.lifelineDash = parseDashPattern(t['--pos-lifeline-dash']);
+
     const shadow = parseShadow(t['--pos-shadow']);
     if (shadow) {
         THEME.shadowColor = shadow.shadowColor;
@@ -63,6 +86,13 @@ export function syncThemeFromCSS() {
         THEME.shadowOffsetX = shadow.shadowOffsetX;
         THEME.shadowOffsetY = shadow.shadowOffsetY;
         THEME.shadowOpacity = shadow.shadowOpacity;
+    } else {
+        // Clear shadow config if set to none/null
+        THEME.shadowColor = 'transparent';
+        THEME.shadowBlur = 0;
+        THEME.shadowOffsetX = 0;
+        THEME.shadowOffsetY = 0;
+        THEME.shadowOpacity = 0;
     }
 }
 
