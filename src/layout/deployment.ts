@@ -334,6 +334,21 @@ export class DeploymentLayoutManager {
                     currentY + this.padding + 20
                 );
 
+                // Collect participant node IDs from container statements
+                const participants: string[] = [];
+                const collectParticipants = (stmts: IRStatement[]) => {
+                    stmts.forEach(st => {
+                        if (!st) return;
+                        if (st.type === 'node') participants.push((st as IRNode).name);
+                        else if (st.type === 'edge') {
+                            participants.push((st as IREdge).from);
+                            participants.push((st as IREdge).to);
+                        } else if (st.type === 'container') collectParticipants((st as IRContainer).statements);
+                        else if (st.type === 'group') (st as IRGroup).sections.forEach(sec => collectParticipants(sec.statements));
+                    });
+                };
+                collectParticipants(stmts);
+
                 // Compute actual content width from local rowOccupancy before restoring
                 let maxRowWidth = 0;
                 this.rowOccupancy.forEach((endX, _targetY) => {
@@ -374,7 +389,8 @@ export class DeploymentLayoutManager {
                     size: { width: groupWidth, height: groupHeight },
                     pad: { x: 10, y: 10 },
                     sections: s.type === 'container' ? [{ statements: stmts }] : container.sections,
-                    dividerYs: []
+                    dividerYs: [],
+                    participants: [...new Set(participants)]
                 };
                 map.groups.push(group);
 

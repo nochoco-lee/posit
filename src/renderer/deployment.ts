@@ -600,35 +600,11 @@ export class DeploymentRenderer {
         });
 
         // Resize groups that contain the dragged node
-        this.groupVisuals.forEach(visual => {
-            const { group, shape, def } = visual;
-            if (!def.participants || def.participants.indexOf(nodeId) === -1) return;
-            const nodes = def.participants.map(pId => ({ group: this.nodeGroups[pId], base: this.map!.nodes[pId] })).filter(n => n.group && n.base);
-            if (nodes.length === 0) return;
-            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-            for (const n of nodes) {
-                const x = n.group.x(), y = n.group.y();
-                if (x < minX) minX = x; if (x + n.base.size.width > maxX) maxX = x + n.base.size.width;
-                if (y < minY) minY = y; if (y + n.base.size.height > maxY) maxY = y + n.base.size.height;
-            }
-            const newX = minX - def.pad.x;
-            const newY = minY - def.pad.y;
-            const newW = Math.max(100, (maxX - minX) + 2 * def.pad.x);
-            const newH = Math.max(50, (maxY - minY) + 2 * def.pad.y);
-            def.position.x = newX; def.position.y = newY;
-            def.size.width = newW; def.size.height = newH;
-            group.position({ x: newX, y: newY });
-            // Replace the old shape with a new one at the updated size
-            const oldShape = shape;
-            const colors = this.getShapeColors(def.keyword, def.color);
-            const newShape = this.createShape(def.keyword, newW, newH, colors);
-            if (newShape instanceof Konva.Rect && (def.keyword === 'folder' || def.keyword === 'package')) newShape.dash([5, 5]);
-            group.replaceChildren(newShape, group.getChildren()[1]); // Replace shape, keep label
-            visual.shape = newShape;
-            // Update label width
-            const labelChild = group.getChildren().find(c => c instanceof Konva.Text);
-            if (labelChild && labelChild instanceof Konva.Text && labelChild.align() === 'center') labelChild.width(newW);
-        });
+        for (const visual of this.groupVisuals) {
+            const { def } = visual;
+            if (!def.participants || def.participants.indexOf(nodeId) === -1) continue;
+            this.recalcGroupBounds(def);
+        }
         // Cascade resize to parent groups
         for (const v of this.groupVisuals) this.cascadeGroupResize(v.def);
     }
@@ -656,7 +632,7 @@ export class DeploymentRenderer {
         });
         group.add(label);
 
-        // Border drag to adjust pad
+        // Border drag to adjust pad; content drag to move group + children
         let dragStartX = 0, dragStartY = 0;
         let dragEdge: { left: boolean; right: boolean; top: boolean; bottom: boolean } | null = null;
         let origPadX = 0, origPadY = 0, origW = 0, origH = 0, origGX = 0, origGY = 0;
@@ -674,28 +650,75 @@ export class DeploymentRenderer {
             if (nearLeft || nearRight || nearTop || nearBottom) {
                 dragEdge = { left: nearLeft, right: nearRight, top: nearTop, bottom: nearBottom };
                 this.stage.container().style.cursor = 'nwse-resize';
-            } else { dragEdge = null; }
+            } else {
+                dragEdge = null;
+                this.stage.container().style.cursor = 'move';
+            }
         });
 
         group.on('dragmove', () => {
-            if (!dragEdge) return;
             const pos = this.stage.getPointerPosition() || { x: 0, y: 0 };
             const dx = pos.x - dragStartX, dy = pos.y - dragStartY;
-            if (dragEdge.right || dragEdge.left) groupDef.pad.x = Math.max(0, origPadX + (dragEdge.right ? dx : -dx));
-            if (dragEdge.bottom || dragEdge.top) groupDef.pad.y = Math.max(0, origPadY + (dragEdge.bottom ? dy : -dy));
-            groupDef.size.width = Math.max(100, origW + (dragEdge.right ? dx : dragEdge.left ? -dx : 0));
-            groupDef.size.height = Math.max(50, origH + (dragEdge.bottom ? dy : dragEdge.top ? -dy : 0));
-            groupDef.position.x = origGX + (dragEdge.left ? dx : 0);
-            groupDef.position.y = origGY + (dragEdge.top ? dy : 0);
-            group.position({ x: groupDef.position.x, y: groupDef.position.y });
-            // Replace shape with new one at updated size
-            const colors = this.getShapeColors(groupDef.keyword, groupDef.color);
-            const newShape = this.createShape(groupDef.keyword, groupDef.size.width, groupDef.size.height, colors);
-            if (newShape instanceof Konva.Rect && (groupDef.keyword === 'folder' || groupDef.keyword === 'package')) newShape.dash([5, 5]);
-            group.replaceChildren(newShape, group.getChildren()[1]);
-            const visual = this.groupVisuals.find(v => v.def === groupDef);
-            if (visual) visual.shape = newShape;
-            this.cascadeGroupResize(groupDef);
+
+            if (dragEdge) {
+                // Border drag: resize by changing padding
+                if (dragEdge.left) {
+                    groupDef.pad.x = Math.max(0, origPadX - dx);
+                    groupDef.position.x = origGX + dx;
+                    groupDef.size.width = Math.max(100, origW - dx);
+                } else if (dragEdge.right) {
+                    groupDef.pad.x = Math.max(0, origPadX + dx);
+                    groupDef.size.width = Math.max(100, origW + dx);
+                }
+                if (dragEdge.top) {
+                    groupDef.pad.y = Math.max(0, origPadY - dy);
+                    groupDef.position.y = origGY + dy;
+                    groupDef.size.height = Math.max(50, origH - dy);
+                } else if (dragEdge.bottom) {
+                    groupDef.pad.y = Math.max(0, origPadY + dy);
+                    groupDef.size.height = Math.max(50, origH + dy);
+                }
+                group.position({ x: groupDef.position.x, y: groupDef.position.y });
+                // Replace shape with new one at updated size
+                const colors = this.getShapeColors(groupDef.keyword, groupDef.color);
+                const newShape = this.createShape(groupDef.keyword, groupDef.size.width, groupDef.size.height, colors);
+                if (newShape instanceof Konva.Rect && (groupDef.keyword === 'folder' || groupDef.keyword === 'package')) newShape.dash([5, 5]);
+                group.replaceChildren(newShape, group.getChildren()[1]);
+                const visual = this.groupVisuals.find(v => v.def === groupDef);
+                if (visual) visual.shape = newShape;
+                this.cascadeGroupResize(groupDef);
+            } else {
+                // Content drag: move all children by the same delta
+                const newGX = origGX + dx;
+                const newGY = origGY + dy;
+                const deltaX = newGX - groupDef.position.x;
+                const deltaY = newGY - groupDef.position.y;
+                groupDef.position.x = newGX;
+                groupDef.position.y = newGY;
+                group.position({ x: newGX, y: newGY });
+                // Move all participant nodes
+                if (groupDef.participants) {
+                    groupDef.participants.forEach(pId => {
+                        const nodeGroup = this.nodeGroups[pId];
+                        const nodeDef = this.map?.nodes[pId];
+                        if (nodeGroup && nodeDef) {
+                            nodeDef.position.x += deltaX;
+                            nodeDef.position.y += deltaY;
+                            nodeGroup.position(nodeDef.position);
+                            this.updateConnections(pId);
+                        }
+                    });
+                }
+                // Also move nested group children
+                this.groupVisuals.forEach(v => {
+                    if (v.def !== groupDef && groupDef.participants?.indexOf(v.def.id) !== -1) {
+                        v.def.position.x += deltaX;
+                        v.def.position.y += deltaY;
+                        v.group.position(v.def.position);
+                    }
+                });
+                this.cascadeGroupResize(groupDef);
+            }
         });
 
         group.on('dragend', () => { dragEdge = null; this.stage.container().style.cursor = 'default'; });
@@ -704,6 +727,50 @@ export class DeploymentRenderer {
 
         this.groupVisuals.push({ group, shape, def: groupDef });
         this.layer.add(group);
+    }
+
+    private recalcGroupBounds(groupDef: LayoutGroup) {
+        if (!this.map || !groupDef.participants || groupDef.participants.length === 0) return;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const pId of groupDef.participants) {
+            const ng = this.nodeGroups[pId];
+            const nd = this.map.nodes[pId];
+            if (!ng || !nd) continue;
+            const x = ng.x(), y = ng.y();
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x + nd.size.width > maxX) maxX = x + nd.size.width;
+            if (y + nd.size.height > maxY) maxY = y + nd.size.height;
+        }
+        if (minX === Infinity) return;
+        // Check nested groups inside this group
+        for (const v of this.groupVisuals) {
+            if (v.def === groupDef) continue;
+            if (groupDef.participants.indexOf(v.def.id) !== -1) continue;
+            // Is this group inside groupDef?
+            if (v.def.position.x >= groupDef.position.x && v.def.position.y >= groupDef.position.y &&
+                v.def.position.x + v.def.size.width <= groupDef.position.x + groupDef.size.width &&
+                v.def.position.y + v.def.size.height <= groupDef.position.y + groupDef.size.height) {
+                if (v.def.position.x < minX) minX = v.def.position.x;
+                if (v.def.position.y < minY) minY = v.def.position.y;
+                if (v.def.position.x + v.def.size.width > maxX) maxX = v.def.position.x + v.def.size.width;
+                if (v.def.position.y + v.def.size.height > maxY) maxY = v.def.position.y + v.def.size.height;
+            }
+        }
+        groupDef.position.x = minX - groupDef.pad.x;
+        groupDef.position.y = minY - groupDef.pad.y;
+        groupDef.size.width = Math.max(100, (maxX - minX) + 2 * groupDef.pad.x);
+        groupDef.size.height = Math.max(50, (maxY - minY) + 2 * groupDef.pad.y);
+        // Update visuals
+        const visual = this.groupVisuals.find(v => v.def === groupDef);
+        if (visual) {
+            visual.group.position(groupDef.position);
+            const colors = this.getShapeColors(groupDef.keyword, groupDef.color);
+            const newShape = this.createShape(groupDef.keyword, groupDef.size.width, groupDef.size.height, colors);
+            if (newShape instanceof Konva.Rect && (groupDef.keyword === 'folder' || groupDef.keyword === 'package')) newShape.dash([5, 5]);
+            visual.group.replaceChildren(newShape, visual.group.getChildren()[1]);
+            visual.shape = newShape;
+        }
     }
 
     private cascadeGroupResize(changedDef: LayoutGroup) {
@@ -715,22 +782,29 @@ export class DeploymentRenderer {
             for (const visual of this.groupVisuals) {
                 const outer = visual.def;
                 if (outer === current) continue;
-                const cR = current.position.x + current.size.width;
-                const cB = current.position.y + current.size.height;
-                const oR = outer.position.x + outer.size.width;
-                const oB = outer.position.y + outer.size.height;
-                if (current.position.x < outer.position.x - 2 || cR > oR + 2 || current.position.y < outer.position.y - 2 || cB > oB + 2) continue;
-                let needsResize = false;
-                if (cR > oR + 1) { outer.size.width = cR - outer.position.x + outer.pad.x; needsResize = true; }
-                if (cB > oB + 1) { outer.size.height = cB - outer.position.y + outer.pad.y; needsResize = true; }
-                if (needsResize) {
-                    visual.group.position({ x: outer.position.x, y: outer.position.y });
-                    const colors = this.getShapeColors(outer.keyword, outer.color);
-                    const newShape = this.createShape(outer.keyword, outer.size.width, outer.size.height, colors);
-                    if (newShape instanceof Konva.Rect && (outer.keyword === 'folder' || outer.keyword === 'package')) newShape.dash([5, 5]);
-                    visual.group.replaceChildren(newShape, visual.group.getChildren()[1]);
-                    visual.shape = newShape;
-                    current = outer; expanded = true; break;
+                // Check if current is inside outer
+                if (current.position.x >= outer.position.x - 2 && current.position.y >= outer.position.y - 2 &&
+                    current.position.x + current.size.width <= outer.position.x + outer.size.width + 2 &&
+                    current.position.y + current.size.height <= outer.position.y + outer.size.height + 2) {
+                    // Current is inside outer - resize outer if needed
+                    let needsResize = false;
+                    if (current.position.x < outer.position.x + 1) { outer.position.x = current.position.x - outer.pad.x; outer.size.width += (outer.position.x + outer.size.width - current.position.x); needsResize = true; }
+                    if (current.position.y < outer.position.y + 1) { outer.position.y = current.position.y - outer.pad.y; outer.size.height += (outer.position.y + outer.size.height - current.position.y); needsResize = true; }
+                    const currentRight = current.position.x + current.size.width;
+                    const currentBottom = current.position.y + current.size.height;
+                    const outerRight = outer.position.x + outer.size.width;
+                    const outerBottom = outer.position.y + outer.size.height;
+                    if (currentRight > outerRight + 1) { outer.size.width = currentRight - outer.position.x + outer.pad.x; needsResize = true; }
+                    if (currentBottom > outerBottom + 1) { outer.size.height = currentBottom - outer.position.y + outer.pad.y; needsResize = true; }
+                    if (needsResize) {
+                        visual.group.position({ x: outer.position.x, y: outer.position.y });
+                        const colors = this.getShapeColors(outer.keyword, outer.color);
+                        const newShape = this.createShape(outer.keyword, outer.size.width, outer.size.height, colors);
+                        if (newShape instanceof Konva.Rect && (outer.keyword === 'folder' || outer.keyword === 'package')) newShape.dash([5, 5]);
+                        visual.group.replaceChildren(newShape, visual.group.getChildren()[1]);
+                        visual.shape = newShape;
+                        current = outer; expanded = true; break;
+                    }
                 }
             }
             if (!expanded) break;
