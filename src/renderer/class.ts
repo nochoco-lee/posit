@@ -132,19 +132,20 @@ export class ClassRenderer {
             height: nodeDef.size.height,
             fill: fill,
             stroke: stroke,
-            strokeWidth: 1.5,
-            shadowColor: 'black',
-            shadowBlur: 5,
-            shadowOffset: { x: 2, y: 2 },
-            shadowOpacity: 0.2,
+            strokeWidth: THEME.strokeWidth,
+            cornerRadius: THEME.nodeRadius,
+            shadowColor: THEME.shadowColor,
+            shadowBlur: THEME.shadowBlur,
+            shadowOffset: { x: THEME.shadowOffsetX, y: THEME.shadowOffsetY },
+            shadowOpacity: THEME.shadowOpacity,
         });
         this.nodeRects.push(rect);
 
         const text = new Konva.Text({
             text: nodeDef.origName,
-            fontSize: 14,
-            fontFamily: 'sans-serif',
-            fill: 'black',
+            fontSize: THEME.fontSize,
+            fontFamily: THEME.fontFamily,
+            fill: THEME.text,
             width: nodeDef.size.width,
             height: 30, // Header height
             align: 'center',
@@ -220,7 +221,9 @@ export class ClassRenderer {
             wrap: 'none',
             ellipsis: true,
             fontStyle: member.isAbstract ? 'italic' : 'normal',
-            textDecoration: member.isStatic ? 'underline' : ''
+            textDecoration: member.isStatic ? 'underline' : '',
+            fontFamily: THEME.fontFamily,
+            fill: THEME.text,
         });
     }
 
@@ -254,8 +257,8 @@ export class ClassRenderer {
             points: [startPt.x, startPt.y, endPt.x, endPt.y],
             pointerLength: arrowType !== 'default' ? 15 : 10,
             pointerWidth: arrowType !== 'default' ? 15 : 10,
-            fill: arrowType === 'extend' ? 'white' : (arrowType === 'compose' ? 'black' : (arrowType === 'aggregate' ? 'white' : THEME.stroke)),
-            stroke: THEME.stroke,
+            fill: arrowType === 'extend' ? 'white' : (arrowType === 'compose' ? 'black' : (arrowType === 'aggregate' ? 'white' : THEME.arrowFill)),
+            stroke: THEME.arrowFill,
             strokeWidth: 2,
             dash: isDashed ? [10, 5] : undefined
         });
@@ -284,7 +287,8 @@ export class ClassRenderer {
                 y: midY + offsetY,
                 text: conn.label,
                 fontSize: 12,
-                fill: '#000',
+                fill: THEME.text,
+                fontFamily: THEME.fontFamily,
             });
             this.layer.add(labelTextObj);
         }
@@ -434,11 +438,12 @@ export class ClassRenderer {
         const group = new Konva.Group({ x: groupDef.position.x, y: groupDef.position.y, draggable: true, id: groupDef.id });
         const rect = new Konva.Rect({
             width: groupDef.size.width, height: groupDef.size.height,
-            stroke: THEME.stroke, strokeWidth: 2, dash: [5, 5]
+            stroke: THEME.stroke, strokeWidth: THEME.strokeWidth, dash: [5, 5]
         });
         const label = new Konva.Text({
             text: `${groupDef.keyword} [${groupDef.label}]`,
-            fontSize: 12, fontStyle: 'bold', padding: 5, fill: THEME.stroke
+            fontSize: 12, fontStyle: 'bold', padding: 5, fill: THEME.text,
+            fontFamily: THEME.fontFamily,
         });
         group.add(rect); group.add(label);
 
@@ -540,8 +545,8 @@ export class ClassRenderer {
         group.on('dragend', (e: any) => {
             if (this.onNodeMove) this.onNodeMove(group.id(), Math.round(e.target.x()), Math.round(e.target.y()));
         });
-        const rect = new Konva.Rect({ width: noteDef.size.width, height: noteDef.size.height, fill: THEME.noteFill, stroke: THEME.stroke, strokeWidth: 1 });
-        const text = new Konva.Text({ text: noteDef.text, width: noteDef.size.width, padding: 5, fontSize: 12, align: 'center' });
+        const rect = new Konva.Rect({ width: noteDef.size.width, height: noteDef.size.height, fill: THEME.noteFill, stroke: THEME.stroke, strokeWidth: THEME.strokeWidth, cornerRadius: THEME.noteRadius });
+        const text = new Konva.Text({ text: noteDef.text, width: noteDef.size.width, padding: 5, fontSize: 12, align: 'center', fontFamily: THEME.fontFamily, fill: THEME.text });
         group.add(rect); group.add(text); this.layer.add(group);
     }
 }

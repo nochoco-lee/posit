@@ -1,16 +1,70 @@
 /**
  * Shared rendering calculations, utilities, and constants for Posit Diagramming Engine.
+ *
+ * `THEME` is mutable — it is populated by `syncThemeFromCSS()` which reads
+ * CSS custom properties from `document.documentElement`. All renderers
+ * (Konva canvas + SVG) read from this single object.
  */
 
+import { readThemeFromCSS, parseShadow } from "./themes";
+
 export const THEME = {
-    stroke: '#A80036',
-    nodeFill: '#FEFECE',
-    noteFill: '#FBFB77',
-    headerFill: '#EEEEEE',
-    sequenceFill: '#E2E2F0',
-    activationFill: '#E2E2F0',
-    boxFill: '#DDDDDD'
+    stroke: '#4A5568',
+    nodeFill: '#FFFFFF',
+    noteFill: '#FFFDE7',
+    headerFill: '#EDF2F7',
+    sequenceFill: '#EBF4FF',
+    activationFill: '#EBF4FF',
+    boxFill: '#E2E8F0',
+    text: '#1A202C',
+    bg: '#F7FAFC',
+    nodeRadius: 6,
+    noteRadius: 4,
+    shadowColor: 'rgba(0,0,0,0.08)',
+    shadowBlur: 8,
+    shadowOffsetX: 0,
+    shadowOffsetY: 2,
+    shadowOpacity: 0.08,
+    strokeWidth: 1.5,
+    fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
+    fontSize: 14,
+    boxTop: '#E8EDF4',
+    boxSide: '#D4DBE8',
+    arrowFill: '#4A5568',
 };
+
+/**
+ * Read CSS custom properties into the mutable THEME object.
+ * Call this before each render cycle or when the theme changes.
+ */
+export function syncThemeFromCSS() {
+    const t = readThemeFromCSS();
+    THEME.stroke = t['--pos-stroke'];
+    THEME.nodeFill = t['--pos-node-fill'];
+    THEME.noteFill = t['--pos-note-fill'];
+    THEME.headerFill = t['--pos-header-fill'];
+    THEME.sequenceFill = t['--pos-sequence-fill'];
+    THEME.activationFill = t['--pos-activation-fill'];
+    THEME.boxFill = t['--pos-box-fill'];
+    THEME.text = t['--pos-text'];
+    THEME.bg = t['--pos-bg'];
+    THEME.nodeRadius = parseFloat(t['--pos-node-radius']) || 6;
+    THEME.noteRadius = parseFloat(t['--pos-note-radius']) || 4;
+    THEME.strokeWidth = parseFloat(t['--pos-stroke-width']) || 1.5;
+    THEME.fontFamily = t['--pos-font-family'];
+    THEME.fontSize = parseFloat(t['--pos-font-size']) || 14;
+    THEME.boxTop = t['--pos-box-top'];
+    THEME.boxSide = t['--pos-box-side'];
+    THEME.arrowFill = t['--pos-arrow-fill'];
+    const shadow = parseShadow(t['--pos-shadow']);
+    if (shadow) {
+        THEME.shadowColor = shadow.shadowColor;
+        THEME.shadowBlur = shadow.shadowBlur;
+        THEME.shadowOffsetX = shadow.shadowOffsetX;
+        THEME.shadowOffsetY = shadow.shadowOffsetY;
+        THEME.shadowOpacity = shadow.shadowOpacity;
+    }
+}
 
 /**
  * Calculates the intersection point between a line segment and a rectangle boundary.

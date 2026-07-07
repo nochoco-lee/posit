@@ -7,16 +7,16 @@ export class LayoutPumlSvgRenderer {
 
     constructor() {}
 
-    private renderText(x: number, y: number, text: string, fontSize: number, anchor: string = "middle", color: string = "black", isAbstract: boolean = false, isStatic: boolean = false): string {
+    private renderText(x: number, y: number, text: string, fontSize: number, anchor: string = "middle", color: string = THEME.text, isAbstract: boolean = false, isStatic: boolean = false): string {
         const lines = text.split('\n');
         const style = `${isAbstract ? 'font-style="italic"' : ''} ${isStatic ? 'text-decoration="underline"' : ''}`;
         if (lines.length === 1) {
-            return `<text x="${x}" y="${y}" font-family="sans-serif" font-size="${fontSize}" text-anchor="${anchor}" fill="${color}" ${style}>${text}</text>\n`;
+            return `<text x="${x}" y="${y}" font-family="${THEME.fontFamily}" font-size="${fontSize}" text-anchor="${anchor}" fill="${color}" ${style}>${text}</text>\n`;
         }
         // Offset y to roughly center the lines vertically around the original y
         const totalHeight = lines.length * fontSize * 1.2;
         let currentY = y - (totalHeight / 2) + (fontSize);
-        let svg = `<text x="${x}" y="${currentY}" font-family="sans-serif" font-size="${fontSize}" text-anchor="${anchor}" fill="${color}" ${style}>\n`;
+        let svg = `<text x="${x}" y="${currentY}" font-family="${THEME.fontFamily}" font-size="${fontSize}" text-anchor="${anchor}" fill="${color}" ${style}>\n`;
         lines.forEach((line, i) => {
             svg += `<tspan x="${x}" dy="${i === 0 ? 0 : fontSize * 1.2}">${line}</tspan>\n`;
         });
@@ -25,12 +25,12 @@ export class LayoutPumlSvgRenderer {
     }
 
     private renderIcon(x: number, y: number, iconCode: string, fontSize: number = 16): string {
-        return `<text x="${x}" y="${y}" font-family='"Font Awesome 6 Free"' font-weight="900" font-size="${fontSize}" fill="black">${iconCode}</text>\n`;
+        return `<text x="${x}" y="${y}" font-family='"Font Awesome 6 Free"' font-weight="900" font-size="${fontSize}" fill="${THEME.text}">${iconCode}</text>\n`;
     }
 
     private getMemberSvg(x: number, y: number, member: any): string {
         const text = getMemberText(member);
-        return this.renderText(x + 5, y, text, 10, "start", "black", member.isAbstract, member.isStatic);
+        return this.renderText(x + 5, y, text, 10, "start", THEME.text, member.isAbstract, member.isStatic);
     }
 
     private getAdjustedX(map: LayoutMap, nodeId: string, otherX: number, yPos: number): number {
@@ -91,7 +91,7 @@ export class LayoutPumlSvgRenderer {
         this.height = maxY - minY;
 
         let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${this.width}" height="${this.height}" viewBox="${minX} ${minY} ${this.width} ${this.height}">\n`;
-        svg += `<rect x="${minX}" y="${minY}" width="${this.width}" height="${this.height}" fill="white" />\n`;
+        svg += `<rect x="${minX}" y="${minY}" width="${this.width}" height="${this.height}" fill="${THEME.bg}" />\n`;
 
         const isSequence = map.diagramType === 'sequence' || map.diagramType === 'unknown';
 
@@ -100,25 +100,25 @@ export class LayoutPumlSvgRenderer {
             if (isSequence) {
                 const isBox = g.keyword === 'box';
                 const isRef = g.keyword === 'ref';
-                const fill = g.color || (isBox ? '#DDDDDD' : 'none');
+                const fill = g.color || (isBox ? THEME.boxFill : 'none');
                 const fillOpacity = g.color ? 0.1 : (isBox ? 0.3 : 0);
-                const stroke = g.color || '#A80036';
+                const stroke = g.color || THEME.stroke;
                 
                 svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${g.size.width}" height="${g.size.height}" fill="${fill}" fill-opacity="${fillOpacity}" stroke="${stroke}" stroke-width="2" />\n`;
                 
                 if (!isBox) {
                     const keyword = g.keyword === 'group' ? 'alt' : g.keyword;
                     const keywordWidth = keyword.length * 9 + 10;
-                    svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${keywordWidth}" height="18" fill="#EEEEEE" stroke="${stroke}" stroke-width="1" />\n`;
-                    svg += `<text x="${g.position.x + 5}" y="${g.position.y + 13}" font-family="sans-serif" font-size="11" font-weight="bold" fill="black">${keyword}</text>\n`;
+                    svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${keywordWidth}" height="18" fill="${THEME.headerFill}" stroke="${stroke}" stroke-width="1" />\n`;
+                    svg += `<text x="${g.position.x + 5}" y="${g.position.y + 13}" font-family="${THEME.fontFamily}" font-size="11" font-weight="bold" fill="${THEME.text}">${keyword}</text>\n`;
                     
                     if (isRef) {
-                        svg += this.renderText(g.position.x + g.size.width/2, g.position.y + g.size.height/2, g.label || "", 12, "middle", "black");
+                        svg += this.renderText(g.position.x + g.size.width/2, g.position.y + g.size.height/2, g.label || "", 12, "middle", THEME.text);
                     } else if (g.label) {
                         svg += `<text x="${g.position.x + keywordWidth + 5}" y="${g.position.y + 13}" font-family="sans-serif" font-size="11" font-weight="bold" fill="${stroke}">[${g.label}]</text>\n`;
                     }
                 } else if (g.label) {
-                    svg += this.renderText(g.position.x + g.size.width/2, g.position.y + 15, g.label, 14, "middle", "black");
+                    svg += this.renderText(g.position.x + g.size.width/2, g.position.y + 15, g.label, 14, "middle", THEME.text);
                 }
             } else if (g.keyword === 'package' || g.keyword === 'namespace' || g.keyword === 'folder') {
                 // Classic package shape with a tab
@@ -132,42 +132,42 @@ export class LayoutPumlSvgRenderer {
                            L ${g.position.x + g.size.width} ${g.position.y + tabHeight} 
                            L ${g.position.x + g.size.width} ${g.position.y + g.size.height} 
                            L ${g.position.x} ${g.position.y + g.size.height} Z" 
-                           fill="${g.color || 'white'}" fill-opacity="0.1" stroke="${g.color || '#A80036'}" stroke-width="2" />\n`;
-                svg += this.renderText(g.position.x + tabWidth/2, g.position.y + 14, g.label || "", 11, "middle", g.color || '#A80036');
+                           fill="${g.color || THEME.bg}" fill-opacity="0.1" stroke="${g.color || THEME.stroke}" stroke-width="2" />\n`;
+                svg += this.renderText(g.position.x + tabWidth/2, g.position.y + 14, g.label || "", 11, "middle", g.color || THEME.stroke);
             } else if (g.keyword === 'node' || g.keyword === 'box') {
                 // 3D box shape (same as Konva renderer)
                 const w = g.size.width;
                 const h = g.size.height;
                 const x = g.position.x;
                 const y = g.position.y;
-                const stroke = g.color || '#A80036';
+                const stroke = g.color || THEME.stroke;
                 // Front face
-                svg += `<rect x="${x}" y="${y + 10}" width="${w - 10}" height="${h - 10}" fill="${g.color || '#FEFECE'}" fill-opacity="0.1" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<rect x="${x}" y="${y + 10}" width="${w - 10}" height="${h - 10}" fill="${g.color || THEME.nodeFill}" fill-opacity="0.1" stroke="${stroke}" stroke-width="1.5" />\n`;
                 // Top face
-                svg += `<polygon points="${x},${y + 10} ${x + 10},${y} ${x + w},${y} ${x + w - 10},${y + 10}" fill="${g.color || '#F2F2FF'}" fill-opacity="0.3" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<polygon points="${x},${y + 10} ${x + 10},${y} ${x + w},${y} ${x + w - 10},${y + 10}" fill="${g.color || THEME.boxTop}" fill-opacity="0.3" stroke="${stroke}" stroke-width="1.5" />\n`;
                 // Right face
-                svg += `<polygon points="${x + w - 10},${y + 10} ${x + w},${y} ${x + w},${y + h - 10} ${x + w - 10},${y + h}" fill="${g.color || '#D2D2E0'}" fill-opacity="0.3" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<polygon points="${x + w - 10},${y + 10} ${x + w},${y} ${x + w},${y + h - 10} ${x + w - 10},${y + h}" fill="${g.color || THEME.boxSide}" fill-opacity="0.3" stroke="${stroke}" stroke-width="1.5" />\n`;
                 // Label
                 if (g.label) {
-                    svg += this.renderText(x + (w - 10) / 2, y + 10 + (h - 10) / 2, g.label, 14, "middle", "black");
+                    svg += this.renderText(x + (w - 10) / 2, y + 10 + (h - 10) / 2, g.label, 14, "middle", THEME.text);
                 }
             } else {
-                svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${g.size.width}" height="${g.size.height}" fill="${g.color || 'none'}" fill-opacity="0.1" stroke="${g.color || '#A80036'}" stroke-width="2" stroke-dasharray="5,5" />\n`;
+                svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${g.size.width}" height="${g.size.height}" fill="${g.color || 'none'}" fill-opacity="0.1" stroke="${g.color || THEME.stroke}" stroke-width="2" stroke-dasharray="5,5" />\n`;
                 
                 // Measure keyword to size its box
                 const keywordWidth = g.keyword.length * 8 + 10;
-                svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${keywordWidth}" height="18" fill="#EEEEEE" stroke="${g.color || '#A80036'}" stroke-width="1" />\n`;
-                svg += `<text x="${g.position.x + 5}" y="${g.position.y + 13}" font-family="sans-serif" font-size="11" font-weight="bold" fill="black">${g.keyword}</text>\n`;
+                svg += `<rect x="${g.position.x}" y="${g.position.y}" width="${keywordWidth}" height="18" fill="${THEME.headerFill}" stroke="${g.color || THEME.stroke}" stroke-width="1" />\n`;
+                svg += `<text x="${g.position.x + 5}" y="${g.position.y + 13}" font-family="${THEME.fontFamily}" font-size="11" font-weight="bold" fill="${THEME.text}">${g.keyword}</text>\n`;
                 
                 if (g.label) {
-                    svg += `<text x="${g.position.x + keywordWidth + 5}" y="${g.position.y + 13}" font-family="sans-serif" font-size="11" font-weight="bold" fill="${g.color || '#A80036'}">[${g.label}]</text>\n`;
+                    svg += `<text x="${g.position.x + keywordWidth + 5}" y="${g.position.y + 13}" font-family="${THEME.fontFamily}" font-size="11" font-weight="bold" fill="${g.color || THEME.stroke}">[${g.label}]</text>\n`;
                 }
             }
             g.dividerYs?.forEach((dy, index) => {
-                svg += `<line x1="${g.position.x}" y1="${dy}" x2="${g.position.x + g.size.width}" y2="${dy}" stroke="${g.color || '#A80036'}" stroke-width="1" stroke-dasharray="5,5" />\n`;
+                svg += `<line x1="${g.position.x}" y1="${dy}" x2="${g.position.x + g.size.width}" y2="${dy}" stroke="${g.color || THEME.stroke}" stroke-width="1" stroke-dasharray="5,5" />\n`;
                 const nextSection = g.sections?.[index + 1];
                 if (nextSection && nextSection.label) {
-                    svg += `<text x="${g.position.x + 5}" y="${dy + 14}" font-family="sans-serif" font-size="11" font-style="italic" fill="${g.color || '#A80036'}">[${nextSection.label}]</text>\n`;
+                    svg += `<text x="${g.position.x + 5}" y="${dy + 14}" font-family="${THEME.fontFamily}" font-size="11" font-style="italic" fill="${g.color || THEME.stroke}">[${nextSection.label}]</text>\n`;
                 }
             });
         });
@@ -181,19 +181,19 @@ export class LayoutPumlSvgRenderer {
                         const destroyAct = map.activations.find(act => act.nodeId === n.id && act.isDestroy);
                         if (destroyAct) endY = destroyAct.startPosition.y + destroyAct.size.height;
                     }
-                    svg += `<line x1="${n.lifelineX}" y1="${n.lifelineY}" x2="${n.lifelineX}" y2="${endY}" stroke="#A80036" stroke-width="1" stroke-dasharray="5,5" />\n`;
+                    svg += `<line x1="${n.lifelineX}" y1="${n.lifelineY}" x2="${n.lifelineX}" y2="${endY}" stroke="${THEME.stroke}" stroke-width="1" stroke-dasharray="5,5" />\n`;
                 }
             });
         }
 
         // 3. Activations
         map.activations?.forEach(act => {
-            svg += `<rect x="${act.startPosition.x}" y="${act.startPosition.y}" width="${act.size.width}" height="${act.size.height}" fill="#E2E2F0" stroke="#A80036" stroke-width="1" />\n`;
+            svg += `<rect x="${act.startPosition.x}" y="${act.startPosition.y}" width="${act.size.width}" height="${act.size.height}" fill="${THEME.sequenceFill}" stroke="${THEME.stroke}" stroke-width="1" />\n`;
             if (act.isDestroy) {
                 const cx = act.startPosition.x + act.size.width / 2;
                 const ey = act.startPosition.y + act.size.height;
-                svg += `<line x1="${cx - 10}" y1="${ey - 10}" x2="${cx + 10}" y2="${ey + 10}" stroke="#A80036" stroke-width="4" />\n`;
-                svg += `<line x1="${cx + 10}" y1="${ey - 10}" x2="${cx - 10}" y2="${ey + 10}" stroke="#A80036" stroke-width="4" />\n`;
+                svg += `<line x1="${cx - 10}" y1="${ey - 10}" x2="${cx + 10}" y2="${ey + 10}" stroke="${THEME.stroke}" stroke-width="4" />\n`;
+                svg += `<line x1="${cx + 10}" y1="${ey - 10}" x2="${cx - 10}" y2="${ey + 10}" stroke="${THEME.stroke}" stroke-width="4" />\n`;
             }
         });
 
@@ -205,8 +205,8 @@ export class LayoutPumlSvgRenderer {
             const h = n.size.height;
             const centerX = x + w / 2;
             const centerY = y + h / 2;
-            const fill = n.color || (isSequence ? '#E2E2F0' : '#FEFECE');
-            const stroke = '#A80036';
+            const fill = n.color || (isSequence ? THEME.sequenceFill : THEME.nodeFill);
+            const stroke = THEME.stroke;
 
             if (n.type === 'actor' || n.type === 'person') {
                 const headRadius = 10;
@@ -231,8 +231,8 @@ export class LayoutPumlSvgRenderer {
                 const by = y + offset;
                 
                 svg += `<path d="M ${bx} ${by} L ${bx+bw} ${by} L ${bx+bw} ${by+bh} L ${bx} ${by+bh} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
-                svg += `<path d="M ${bx} ${by} L ${bx+offset} ${by-offset} L ${bx+bw+offset} ${by-offset} L ${bx+bw} ${by} Z" fill="#F2F2FF" stroke="${stroke}" stroke-width="1.5" />\n`;
-                svg += `<path d="M ${bx+bw} ${by} L ${bx+bw+offset} ${by-offset} L ${bx+bw+offset} ${by+bh-offset} L ${bx+bw} ${by+bh} Z" fill="#D2D2E0" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<path d="M ${bx} ${by} L ${bx+offset} ${by-offset} L ${bx+bw+offset} ${by-offset} L ${bx+bw} ${by} Z" fill="${THEME.boxTop}" stroke="${stroke}" stroke-width="1.5" />\n`;
+                svg += `<path d="M ${bx+bw} ${by} L ${bx+bw+offset} ${by-offset} L ${bx+bw+offset} ${by+bh-offset} L ${bx+bw} ${by+bh} Z" fill="${THEME.boxSide}" stroke="${stroke}" stroke-width="1.5" />\n`;
                 // Render icon if present
                 if (n.iconCode) {
                     svg += this.renderIcon(bx + 5, by + 15, n.iconCode, 16);
@@ -378,7 +378,7 @@ export class LayoutPumlSvgRenderer {
                 svg += this.renderText(centerX, y + h + 15, text, 14);
             } else {
                 const isClass = n.type === 'class' || n.type === 'interface' || n.type === 'enum' || n.type === 'struct';
-                svg += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" rx="5" />\n`;
+                svg += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" rx="${THEME.nodeRadius}" />\n`;
                 // Render icon if present
                 if (n.iconCode) {
                     svg += this.renderIcon(x + 5, y + 15, n.iconCode, 16);
@@ -387,13 +387,13 @@ export class LayoutPumlSvgRenderer {
                     svg += `<line x1="${x}" y1="${y + 30}" x2="${x + w}" y2="${y + 30}" stroke="${stroke}" stroke-width="1" />\n`;
                     let titleY = y + 15;
                     if (n.type === 'interface') {
-                        svg += this.renderText(x + w/2, y + 12, "<<interface>>", 10, "middle", "black");
+                        svg += this.renderText(x + w/2, y + 12, "<<interface>>", 10, "middle", THEME.text);
                         titleY = y + 22;
                     } else if (n.stereotype) {
-                        svg += this.renderText(x + w/2, y + 10, n.stereotype, 10, "middle", "black");
+                        svg += this.renderText(x + w/2, y + 10, n.stereotype, 10, "middle", THEME.text);
                         titleY = y + 22;
                     }
-                    svg += this.renderText(x + w/2, titleY, n.origName, 12, "middle", "black", false, false);
+                    svg += this.renderText(x + w/2, titleY, n.origName, 12, "middle", THEME.text, false, false);
                     
                     if (n.members) {
                         const fields = n.members.filter((m: any) => m.isField);
@@ -480,7 +480,7 @@ export class LayoutPumlSvgRenderer {
             const strokeDash = isDotted ? 'stroke-dasharray="2,2"' : isDashed ? 'stroke-dasharray="8,4"' : "";
             const strokeWidth = isBold ? 'stroke-width="4"' : 'stroke-width="2"';
             const markerEnd = isPlain ? '' : ` marker-end="url(#arrowhead)"`;
-            const connColor = (c as any).color || '#A80036';
+            const connColor = (c as any).color || THEME.stroke;
             
             if (c.from === c.to && isSequence) {
                 const loopW = c.selfMessageWidth ? Math.min(40, c.selfMessageWidth / 2) : 30;
@@ -520,7 +520,7 @@ export class LayoutPumlSvgRenderer {
 
                         let currentX = x;
                         if (isCircle) {
-                            svg += `<circle cx="${x - 5 * direction}" cy="${y}" r="5" fill="white" stroke="${connColor}" stroke-width="2" />\n`;
+                            svg += `<circle cx="${x - 5 * direction}" cy="${y}" r="5" fill="${THEME.bg}" stroke="${connColor}" stroke-width="2" />\n`;
                             currentX -= 10 * direction;
                         }
 
@@ -553,7 +553,7 @@ export class LayoutPumlSvgRenderer {
                             const p1y = y - size * 1.5 * dy - size * py;
                             const p2x = x - size * 1.5 * dx + size * px;
                             const p2y = y - size * 1.5 * dy + size * py;
-                            svg += `<path d="M ${x} ${y} L ${p1x} ${p1y} L ${p2x} ${p2y} Z" fill="white" stroke="${connColor}" stroke-width="1.5" />\n`;
+                            svg += `<path d="M ${x} ${y} L ${p1x} ${p1y} L ${p2x} ${p2y} Z" fill="${THEME.bg}" stroke="${connColor}" stroke-width="1.5" />\n`;
                         } else if (headType === "compose" || headType === "aggregate") {
                             const p1x = x - size * dx - size * 0.6 * px;
                             const p1y = y - size * dy - size * 0.6 * py;
@@ -561,7 +561,7 @@ export class LayoutPumlSvgRenderer {
                             const p2y = y - size * 2 * dy;
                             const p3x = x - size * dx + size * 0.6 * px;
                             const p3y = y - size * dy + size * 0.6 * py;
-                            const fill = headType === "compose" ? connColor : "white";
+                            const fill = headType === "compose" ? connColor : THEME.bg;
                             svg += `<path d="M ${x} ${y} L ${p1x} ${p1y} L ${p2x} ${p2y} L ${p3x} ${p3y} Z" fill="${fill}" stroke="${connColor}" stroke-width="1.5" />\n`;
                         } else if (headType === "nav") {
                             const p1x = x - size * dx - size * px;
@@ -601,12 +601,12 @@ export class LayoutPumlSvgRenderer {
                     if (c.fromLabel) {
                         const fx = ox + dx * 0.1;
                         const fy = oy + dy * 0.1;
-                        svg += this.renderText(fx + offsetX, fy + offsetY, c.fromLabel, 10, "start", "black", true); // Italic
+                        svg += this.renderText(fx + offsetX, fy + offsetY, c.fromLabel, 10, "start", THEME.text, true); // Italic
                     }
                     if (c.toLabel) {
                         const fx = ox + dx * 0.9;
                         const fy = oy + dy * 0.9;
-                        svg += this.renderText(fx + offsetX, fy + offsetY, c.toLabel, 10, "start", "black", true); // Italic
+                        svg += this.renderText(fx + offsetX, fy + offsetY, c.toLabel, 10, "start", THEME.text, true); // Italic
                     }
                 }
             }
@@ -614,7 +614,7 @@ export class LayoutPumlSvgRenderer {
 
         // 6. Notes
         map.notes.forEach(n => {
-            svg += `<rect x="${n.position.x}" y="${n.position.y}" width="${n.size.width}" height="${n.size.height}" fill="#FBFB77" stroke="#A80036" stroke-width="1" />\n`;
+            svg += `<rect x="${n.position.x}" y="${n.position.y}" width="${n.size.width}" height="${n.size.height}" fill="${THEME.noteFill}" stroke="${THEME.stroke}" stroke-width="1" />\n`;
             svg += this.renderText(n.position.x + n.size.width/2, n.position.y + n.size.height/2 + 5, n.text, 12);
         });
 
@@ -626,19 +626,19 @@ export class LayoutPumlSvgRenderer {
             if (isInitialization) {
                 const textWidth = d.label.length * 9;
                 const midX = (minX + maxX) / 2;
-                svg += `<rect x="${midX - textWidth/2 - 5}" y="${d.position.y}" width="${textWidth + 10}" height="${d.size.height}" fill="#EEEEEE" stroke="#A80036" stroke-width="1" />\n`;
-                svg += this.renderText(midX, y + 5, d.label, 14, "middle", "#A80036");
+                svg += `<rect x="${midX - textWidth/2 - 5}" y="${d.position.y}" width="${textWidth + 10}" height="${d.size.height}" fill="${THEME.headerFill}" stroke="${THEME.stroke}" stroke-width="1" />\n`;
+                svg += this.renderText(midX, y + 5, d.label, 14, "middle", THEME.stroke);
                 // Double lines on sides
-                svg += `<line x1="${minX + 20}" y1="${y - 2}" x2="${midX - textWidth/2 - 10}" y2="${y - 2}" stroke="#A80036" stroke-width="2" />\n`;
-                svg += `<line x1="${minX + 20}" y1="${y + 2}" x2="${midX - textWidth/2 - 10}" y2="${y + 2}" stroke="#A80036" stroke-width="2" />\n`;
-                svg += `<line x1="${midX + textWidth/2 + 10}" y1="${y - 2}" x2="${maxX - 20}" y2="${y - 2}" stroke="#A80036" stroke-width="2" />\n`;
-                svg += `<line x1="${midX + textWidth/2 + 10}" y1="${y + 2}" x2="${maxX - 20}" y2="${y + 2}" stroke="#A80036" stroke-width="2" />\n`;
+                svg += `<line x1="${minX + 20}" y1="${y - 2}" x2="${midX - textWidth/2 - 10}" y2="${y - 2}" stroke="${THEME.stroke}" stroke-width="2" />\n`;
+                svg += `<line x1="${minX + 20}" y1="${y + 2}" x2="${midX - textWidth/2 - 10}" y2="${y + 2}" stroke="${THEME.stroke}" stroke-width="2" />\n`;
+                svg += `<line x1="${midX + textWidth/2 + 10}" y1="${y - 2}" x2="${maxX - 20}" y2="${y - 2}" stroke="${THEME.stroke}" stroke-width="2" />\n`;
+                svg += `<line x1="${midX + textWidth/2 + 10}" y1="${y + 2}" x2="${maxX - 20}" y2="${y + 2}" stroke="${THEME.stroke}" stroke-width="2" />\n`;
             } else {
-                svg += `<line x1="${minX + 20}" y1="${y}" x2="${maxX - 20}" y2="${y}" stroke="#A80036" stroke-width="2" />\n`;
-                svg += `<line x1="${minX + 20}" y1="${y + 4}" x2="${maxX - 20}" y2="${y + 4}" stroke="#A80036" stroke-width="2" />\n`;
+                svg += `<line x1="${minX + 20}" y1="${y}" x2="${maxX - 20}" y2="${y}" stroke="${THEME.stroke}" stroke-width="2" />\n`;
+                svg += `<line x1="${minX + 20}" y1="${y + 4}" x2="${maxX - 20}" y2="${y + 4}" stroke="${THEME.stroke}" stroke-width="2" />\n`;
                 const textWidth = d.label.length * 10;
-                svg += `<rect x="${(minX + maxX)/2 - textWidth/2}" y="${d.position.y}" width="${textWidth}" height="${d.size.height}" fill="white" />\n`;
-                svg += this.renderText((minX + maxX)/2, y + 5, d.label, 14, "middle", "#A80036");
+                svg += `<rect x="${(minX + maxX)/2 - textWidth/2}" y="${d.position.y}" width="${textWidth}" height="${d.size.height}" fill="${THEME.bg}" />\n`;
+                svg += this.renderText((minX + maxX)/2, y + 5, d.label, 14, "middle", THEME.stroke);
             }
         });
 
@@ -646,10 +646,10 @@ export class LayoutPumlSvgRenderer {
         map.delays?.forEach(delay => {
             const midX = (minX + maxX) / 2;
             for (let i = 0; i < 3; i++) {
-                svg += `<circle cx="${midX}" cy="${delay.position.y + i * 10}" r="2" fill="#A80036" />\n`;
+                svg += `<circle cx="${midX}" cy="${delay.position.y + i * 10}" r="2" fill="${THEME.stroke}" />\n`;
             }
             if (delay.text) {
-                svg += this.renderText(midX + 15, delay.position.y + 15, delay.text, 12, "start", "#A80036", true);
+                svg += this.renderText(midX + 15, delay.position.y + 15, delay.text, 12, "start", THEME.stroke, true);
             }
         });
 

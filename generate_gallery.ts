@@ -192,6 +192,61 @@ for (const dirInfo of testDirs) {
     <title>${dirInfo.name} Evaluation Gallery</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
+        :root {
+            --pos-bg: #ffffff;
+            --pos-stroke: #4A5568;
+            --pos-node-fill: #FFFFFF;
+            --pos-sequence-fill: #E8EDF3;
+            --pos-note-fill: #FFF9DB;
+            --pos-header-fill: #EDF2F7;
+            --pos-box-fill: #EDF2F7;
+            --pos-box-top: #E2E8F0;
+            --pos-box-side: #CBD5E0;
+            --pos-text: #2D3748;
+            --pos-arrow-fill: #4A5568;
+            --pos-font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --pos-font-size: 14px;
+            --pos-shadow-color: rgba(0,0,0,0.08);
+            --pos-shadow-blur: 8px;
+            --pos-shadow-offset-x: 0px;
+            --pos-shadow-offset-y: 2px;
+            --pos-shadow-opacity: 1;
+            --pos-stroke-width: 2;
+            --pos-node-radius: 5;
+            --pos-note-radius: 0;
+            --pos-box-top-y: 0;
+            --pos-box-side-x: 0;
+        }
+        [data-theme="dark"] {
+            --pos-bg: #1A202C;
+            --pos-stroke: #90CDF4;
+            --pos-node-fill: #2D3748;
+            --pos-sequence-fill: #2D3748;
+            --pos-note-fill: #4A5568;
+            --pos-header-fill: #2D3748;
+            --pos-box-fill: #2D3748;
+            --pos-box-top: #4A5568;
+            --pos-box-side: #718096;
+            --pos-text: #E2E8F0;
+            --pos-arrow-fill: #90CDF4;
+            --pos-shadow-color: rgba(0,0,0,0.3);
+            --pos-shadow-blur: 12px;
+        }
+        [data-theme="pastel"] {
+            --pos-bg: #FFFAF0;
+            --pos-stroke: #9F7AEA;
+            --pos-node-fill: #FFFFFF;
+            --pos-sequence-fill: #F0E6FF;
+            --pos-note-fill: #FEFCBF;
+            --pos-header-fill: #F5F0FF;
+            --pos-box-fill: #F5F0FF;
+            --pos-box-top: #E9D8FD;
+            --pos-box-side: #D6BCFA;
+            --pos-text: #553C9A;
+            --pos-arrow-fill: #9F7AEA;
+            --pos-shadow-color: rgba(159,122,234,0.15);
+            --pos-shadow-blur: 10px;
+        }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
         h1 { text-align: center; color: #333; }
         .nav { text-align: center; margin-bottom: 20px; }
@@ -237,7 +292,23 @@ const indexHtml = `<!DOCTYPE html>
     <title>Diagram Evaluation Gallery</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 50px; }
+        :root {
+            --pos-bg: #ffffff;
+            --pos-stroke: #4A5568;
+            --pos-text: #2D3748;
+            --pos-font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        [data-theme="dark"] {
+            --pos-bg: #1A202C;
+            --pos-stroke: #90CDF4;
+            --pos-text: #E2E8F0;
+        }
+        [data-theme="pastel"] {
+            --pos-bg: #FFFAF0;
+            --pos-stroke: #9F7AEA;
+            --pos-text: #553C9A;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 50px; }
         a { display: block; margin: 20px; font-size: 1.5em; color: #0066cc; text-decoration: none; }
     </style>
 </head>

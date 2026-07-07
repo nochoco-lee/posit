@@ -83,7 +83,7 @@ export class DeploymentRenderer {
         return {
             fill: customColor || THEME.nodeFill,
             stroke: THEME.stroke,
-            strokeWidth: 1.5
+            strokeWidth: THEME.strokeWidth
         };
     }
 
@@ -180,6 +180,7 @@ export class DeploymentRenderer {
                 return new Konva.Rect({
                     width: width,
                     height: height,
+                    cornerRadius: THEME.nodeRadius,
                     fill: colors.fill,
                     stroke: colors.stroke,
                     strokeWidth: colors.strokeWidth,
@@ -395,13 +396,14 @@ export class DeploymentRenderer {
                 return new Konva.Rect({
                     width: width,
                     height: height,
+                    cornerRadius: THEME.nodeRadius,
                     fill: colors.fill,
                     stroke: colors.stroke,
                     strokeWidth: colors.strokeWidth,
-                    shadowColor: 'black',
-                    shadowBlur: 5,
-                    shadowOffset: { x: 2, y: 2 },
-                    shadowOpacity: 0.2,
+                    shadowColor: THEME.shadowColor,
+                    shadowBlur: THEME.shadowBlur,
+                    shadowOffset: { x: THEME.shadowOffsetX, y: THEME.shadowOffsetY },
+                    shadowOpacity: THEME.shadowOpacity,
                 });
         }
     }
@@ -433,13 +435,23 @@ export class DeploymentRenderer {
 
         const colors = this.getShapeColors(nodeDef.type, nodeDef.color);
         const shape = this.createShape(nodeDef.type, nodeDef.size.width, nodeDef.size.height, colors);
-        // Track the primary shape for shadow toggling during drag.
-        // For group shapes, the first child that is a Rect/Shape is tracked.
+
+        // Apply theme shadow to the primary shape
+        const applyShadow = (s: Konva.Shape) => {
+            s.shadowColor(THEME.shadowColor);
+            s.shadowBlur(THEME.shadowBlur);
+            s.shadowOffset({ x: THEME.shadowOffsetX, y: THEME.shadowOffsetY });
+            s.shadowOpacity(THEME.shadowOpacity);
+        };
         if (shape instanceof Konva.Shape) {
             this.nodeRects.push(shape);
+            applyShadow(shape);
         } else if (shape instanceof Konva.Group) {
             const first = shape.getChildren().find(c => c instanceof Konva.Shape);
-            if (first) this.nodeRects.push(first as Konva.Shape);
+            if (first) {
+                this.nodeRects.push(first as Konva.Shape);
+                applyShadow(first as Konva.Shape);
+            }
         }
 
         let displayText = nodeDef.origName;
@@ -449,9 +461,9 @@ export class DeploymentRenderer {
 
         const text = new Konva.Text({
             text: displayText,
-            fontSize: 14,
-            fontFamily: 'sans-serif',
-            fill: 'black',
+            fontSize: THEME.fontSize,
+            fontFamily: THEME.fontFamily,
+            fill: THEME.text,
             width: nodeDef.size.width,
             height: nodeDef.size.height,
             align: 'center',
@@ -469,7 +481,7 @@ export class DeploymentRenderer {
                 fontSize: 20,
                 fontFamily: '"Font Awesome 6 Free"',
                 fontWeight: '900',
-                fill: 'black',
+                fill: THEME.text,
                 x: 5,
                 y: 5,
             });
@@ -512,8 +524,8 @@ export class DeploymentRenderer {
             points: [originCenterX, originCenterY, targetCenterX, targetCenterY],
             pointerLength,
             pointerWidth,
-            fill: THEME.stroke,
-            stroke: THEME.stroke,
+            fill: THEME.arrowFill,
+            stroke: THEME.arrowFill,
             strokeWidth,
             dash: dashPattern
         });
@@ -530,7 +542,8 @@ export class DeploymentRenderer {
                 y: midY - 15,
                 text: conn.label,
                 fontSize: 12,
-                fill: '#000',
+                fontFamily: THEME.fontFamily,
+                fill: THEME.text,
             });
             this.layer.add(labelTextObj);
         }
@@ -638,7 +651,8 @@ export class DeploymentRenderer {
         }
         const label = new Konva.Text({
             text: labelText,
-            fontSize: 12, fontStyle: 'bold', padding: 5, fill: THEME.stroke
+            fontSize: 12, fontStyle: 'bold', padding: 5, fill: THEME.stroke,
+            fontFamily: THEME.fontFamily,
         });
         group.add(label);
 
@@ -736,8 +750,8 @@ export class DeploymentRenderer {
         group.on('dragend', (e: any) => {
             if (this.onNodeMove) this.onNodeMove(group.id(), Math.round(e.target.x()), Math.round(e.target.y()));
         });
-        const rect = new Konva.Rect({ width: noteDef.size.width, height: noteDef.size.height, fill: THEME.noteFill, stroke: THEME.stroke, strokeWidth: 1 });
-        const text = new Konva.Text({ text: noteDef.text, width: noteDef.size.width, padding: 5, fontSize: 12, align: 'center' });
+        const rect = new Konva.Rect({ width: noteDef.size.width, height: noteDef.size.height, fill: THEME.noteFill, stroke: THEME.stroke, strokeWidth: THEME.strokeWidth, cornerRadius: THEME.noteRadius });
+        const text = new Konva.Text({ text: noteDef.text, width: noteDef.size.width, padding: 5, fontSize: 12, align: 'center', fontFamily: THEME.fontFamily, fill: THEME.text });
         group.add(rect); group.add(text); this.layer.add(group);
     }
 }

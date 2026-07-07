@@ -13,9 +13,28 @@ const pngButton = document.getElementById('download-png') as HTMLButtonElement;
 const svgButton = document.getElementById('download-svg') as HTMLButtonElement;
 const syncButton = document.getElementById('sync-btn') as HTMLButtonElement;
 const diagramTypeSelect = document.getElementById('diagram-type') as HTMLSelectElement;
+const themeSelect = document.getElementById('theme-select') as HTMLSelectElement;
 
 const renderer = new LayoutPumlRenderer('canvas-container');
 const svgRenderer = new LayoutPumlSvgRenderer();
+
+// Theme persistence
+function applyTheme(theme: string) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('posit-theme', theme);
+}
+
+// Load saved theme on startup
+const savedTheme = localStorage.getItem('posit-theme') || 'light';
+applyTheme(savedTheme);
+themeSelect.value = savedTheme;
+
+themeSelect.addEventListener('change', () => {
+    applyTheme(themeSelect.value);
+    if (currentLayoutMap) {
+        renderer.render(currentLayoutMap);
+    }
+});
 
 let currentAst: any = null;
 let currentLayoutMap: any = null;

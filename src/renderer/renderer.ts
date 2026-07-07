@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import { LayoutMap } from "../layout/types";
+import { syncThemeFromCSS } from "./primitives";
 // Type-only imports — erased at runtime, so these modules are NOT bundled eagerly.
 // The actual code is loaded on-demand via dynamic import() inside the lazy getters below.
 import type { SequenceRenderer as SequenceRendererType } from './sequence';
@@ -92,6 +93,7 @@ export class LayoutPumlRenderer {
     }
 
     public async render(map: LayoutMap): Promise<void> {
+        syncThemeFromCSS();
         if (map.diagramType === 'sequence') {
             const r = await this.getSequenceRenderer();
             r.render(map);

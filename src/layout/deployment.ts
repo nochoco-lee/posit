@@ -331,7 +331,7 @@ export class DeploymentLayoutManager {
                 this.nodesByRow = savedNodesByRow;
                 this.rowInfo = savedRowInfo;
 
-                const labelWidth = measureText(container.name || container.label || '', 14, 'sans-serif').width + 40;
+                const labelWidth = measureText(container.origName || container.name || container.label || '', 14, 'sans-serif').width + 40;
                 const groupWidth = Math.max(this.minNodeWidth + 20, maxRowWidth + this.padding, labelWidth);
                 const groupHeight = Math.max(this.minNodeHeight + 20, contentSize.height + 2 * this.padding + 20);
 
@@ -352,7 +352,7 @@ export class DeploymentLayoutManager {
                     type: 'group',
                     id: container.name || container.label || `group-${Math.random()}`,
                     keyword: container.keyword || 'subgraph',
-                    label: container.name || container.label || '',
+                    label: container.origName || container.name || container.label || '',
                     stereotype: container.stereotype,
                     color: container.color,
                     position,
