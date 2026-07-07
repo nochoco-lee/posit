@@ -30,7 +30,7 @@ export class DeploymentLayoutManager {
         this.rowInfo.clear();
         this.groupNames.clear();
 
-        // Collect all group names first
+        // Collect all group names first (including container aliases like A, B)
         const collectGroupNames = (statements: IRStatement[]) => {
             statements.forEach(s => {
                 if (!s) return;
@@ -39,7 +39,9 @@ export class DeploymentLayoutManager {
                     this.groupNames.add(g.label);
                     collectGroupNames(g.sections[0].statements);
                 } else if (s.type === 'container') {
-                    collectGroupNames((s as IRContainer).statements);
+                    const c = s as IRContainer;
+                    if (c.name) this.groupNames.add(c.name);
+                    collectGroupNames(c.statements);
                 }
             });
         };

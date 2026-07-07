@@ -645,7 +645,7 @@ export class DeploymentRenderer {
         }
         group.add(shape);
 
-        let labelText = `${groupDef.keyword} [${groupDef.label}]`;
+        let labelText = groupDef.label;
         if (groupDef.stereotype) {
             labelText = `${groupDef.stereotype}\n${labelText}`;
         }
