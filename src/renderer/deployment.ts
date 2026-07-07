@@ -736,11 +736,22 @@ export class DeploymentRenderer {
                         v.group.position(v.def.position);
                     }
                 });
-                this.cascadeGroupResize(groupDef);
+                // Note: do NOT call cascadeGroupResize here - it modifies group.position()
+                // which conflicts with Konva's drag tracking. Defer to dragend.
             }
         });
 
-        group.on('dragend', () => { dragEdge = null; this.stage.container().style.cursor = 'default'; });
+        group.on('dragend', () => {
+            dragEdge = null;
+            this.stage.container().style.cursor = 'default';
+            // Now safe to recalculate bounds and cascade
+            this.recalcGroupBounds(groupDef);
+            this.cascadeGroupResize(groupDef);
+            // Sync all connections
+            if (groupDef.participants) {
+                groupDef.participants.forEach(pId => this.updateConnections(pId));
+            }
+        });
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'default'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; dragEdge = null; });
 
@@ -780,10 +791,9 @@ export class DeploymentRenderer {
         groupDef.position.y = minY - groupDef.pad.y;
         groupDef.size.width = Math.max(100, (maxX - minX) + 2 * groupDef.pad.x);
         groupDef.size.height = Math.max(50, (maxY - minY) + 2 * groupDef.pad.y);
-        // Update visuals
+        // Update visuals WITHOUT calling group.position() to avoid conflict with Konva drag
         const visual = this.groupVisuals.find(v => v.def === groupDef);
         if (visual) {
-            visual.group.position(groupDef.position);
             const colors = this.getShapeColors(groupDef.keyword, groupDef.color);
             const newShape = this.createShape(groupDef.keyword, groupDef.size.width, groupDef.size.height, colors);
             if (newShape instanceof Konva.Rect && (groupDef.keyword === 'folder' || groupDef.keyword === 'package')) newShape.dash([5, 5]);
@@ -816,7 +826,7 @@ export class DeploymentRenderer {
                     if (currentRight > outerRight + 1) { outer.size.width = currentRight - outer.position.x + outer.pad.x; needsResize = true; }
                     if (currentBottom > outerBottom + 1) { outer.size.height = currentBottom - outer.position.y + outer.pad.y; needsResize = true; }
                     if (needsResize) {
-                        visual.group.position({ x: outer.position.x, y: outer.position.y });
+                        // Update shape only, NOT group.position() to avoid conflict with Konva drag
                         const colors = this.getShapeColors(outer.keyword, outer.color);
                         const newShape = this.createShape(outer.keyword, outer.size.width, outer.size.height, colors);
                         if (newShape instanceof Konva.Rect && (outer.keyword === 'folder' || outer.keyword === 'package')) newShape.dash([5, 5]);
