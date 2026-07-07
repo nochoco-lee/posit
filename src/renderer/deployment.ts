@@ -1,6 +1,6 @@
 import Konva from 'konva';
 import { LayoutMap, LayoutNode, LayoutConnection, LayoutGroup, LayoutNote } from "../layout/types";
-import { THEME } from "./primitives";
+import { THEME, getIntersection } from "./primitives";
 
 export class DeploymentRenderer {
     protected layer: Konva.Layer;
@@ -504,11 +504,19 @@ export class DeploymentRenderer {
         const bracketStyle = bracketMatch ? bracketMatch[1].toLowerCase() : '';
         if (bracketStyle === 'hidden') return; // Don't draw hidden connections
 
+        // Calculate centers
         const originCenterX = originNode.position.x + (originNode.size.width / 2);
         const originCenterY = originNode.position.y + (originNode.size.height / 2);
 
         const targetCenterX = targetNode.position.x + (targetNode.size.width / 2);
         const targetCenterY = targetNode.position.y + (targetNode.size.height / 2);
+
+        // Calculate border intersection points for arrow start/end
+        const originRect = { x: originNode.position.x, y: originNode.position.y, width: originNode.size.width, height: originNode.size.height };
+        const targetRect = { x: targetNode.position.x, y: targetNode.position.y, width: targetNode.size.width, height: targetNode.size.height };
+
+        const originPt = getIntersection({ x: targetCenterX, y: targetCenterY }, { x: originCenterX, y: originCenterY }, originRect);
+        const targetPt = getIntersection({ x: originCenterX, y: originCenterY }, { x: targetCenterX, y: targetCenterY }, targetRect);
 
         // Determine visual properties from bracket style
         const isDashed = bracketStyle === 'dashed' || conn.type.includes('..');
@@ -521,7 +529,7 @@ export class DeploymentRenderer {
         const pointerWidth = isPlain ? 0 : 10;
 
         const arrow = new Konva.Arrow({
-            points: [originCenterX, originCenterY, targetCenterX, targetCenterY],
+            points: [originPt.x, originPt.y, targetPt.x, targetPt.y],
             pointerLength,
             pointerWidth,
             fill: THEME.arrowFill,
@@ -534,8 +542,8 @@ export class DeploymentRenderer {
 
         let labelTextObj: Konva.Text | undefined;
         if (conn.label) {
-            const midX = (originCenterX + targetCenterX) / 2;
-            const midY = (originCenterY + targetCenterY) / 2;
+            const midX = (originPt.x + targetPt.x) / 2;
+            const midY = (originPt.y + targetPt.y) / 2;
 
             labelTextObj = new Konva.Text({
                 x: midX + 5,
@@ -565,6 +573,7 @@ export class DeploymentRenderer {
 
         const draggedCenterX = draggedGroup.x() + (draggedNodeBase.size.width / 2);
         const draggedCenterY = draggedGroup.y() + (draggedNodeBase.size.height / 2);
+        const draggedRect = { x: draggedGroup.x(), y: draggedGroup.y(), width: draggedNodeBase.size.width, height: draggedNodeBase.size.height };
 
         this.connectionArrows.forEach(conn => {
             if (conn.originId === nodeId) {
@@ -573,12 +582,16 @@ export class DeploymentRenderer {
                 if (!targetGroup || !targetBase) return;
                 const targetCenterX = targetGroup.x() + (targetBase.size.width / 2);
                 const targetCenterY = targetGroup.y() + (targetBase.size.height / 2);
+                const targetRect = { x: targetGroup.x(), y: targetGroup.y(), width: targetBase.size.width, height: targetBase.size.height };
 
-                (conn.konvaObj as Konva.Arrow).points([draggedCenterX, draggedCenterY, targetCenterX, targetCenterY]);
+                const originPt = getIntersection({ x: targetCenterX, y: targetCenterY }, { x: draggedCenterX, y: draggedCenterY }, draggedRect);
+                const targetPt = getIntersection({ x: draggedCenterX, y: draggedCenterY }, { x: targetCenterX, y: targetCenterY }, targetRect);
+
+                (conn.konvaObj as Konva.Arrow).points([originPt.x, originPt.y, targetPt.x, targetPt.y]);
 
                 if (conn.labelObj) {
-                    const midX = (draggedCenterX + targetCenterX) / 2;
-                    const midY = (draggedCenterY + targetCenterY) / 2;
+                    const midX = (originPt.x + targetPt.x) / 2;
+                    const midY = (originPt.y + targetPt.y) / 2;
                     conn.labelObj.position({ x: midX + 5, y: midY - 15 });
                 }
             } else if (conn.targetId === nodeId) {
@@ -588,12 +601,16 @@ export class DeploymentRenderer {
                 if (!originGroup || !originBase) return;
                 const originCenterX = originGroup.x() + (originBase.size.width / 2);
                 const originCenterY = originGroup.y() + (originBase.size.height / 2);
+                const originRect = { x: originGroup.x(), y: originGroup.y(), width: originBase.size.width, height: originBase.size.height };
 
-                (conn.konvaObj as Konva.Arrow).points([originCenterX, originCenterY, draggedCenterX, draggedCenterY]);
+                const originPt = getIntersection({ x: draggedCenterX, y: draggedCenterY }, { x: originCenterX, y: originCenterY }, originRect);
+                const targetPt = getIntersection({ x: originCenterX, y: originCenterY }, { x: draggedCenterX, y: draggedCenterY }, draggedRect);
+
+                (conn.konvaObj as Konva.Arrow).points([originPt.x, originPt.y, targetPt.x, targetPt.y]);
 
                 if (conn.labelObj) {
-                    const midX = (originCenterX + draggedCenterX) / 2;
-                    const midY = (originCenterY + draggedCenterY) / 2;
+                    const midX = (originPt.x + targetPt.x) / 2;
+                    const midY = (originPt.y + targetPt.y) / 2;
                     conn.labelObj.position({ x: midX + 5, y: midY - 15 });
                 }
             }
@@ -636,6 +653,7 @@ export class DeploymentRenderer {
         let dragStartX = 0, dragStartY = 0;
         let dragEdge: { left: boolean; right: boolean; top: boolean; bottom: boolean } | null = null;
         let origPadX = 0, origPadY = 0, origW = 0, origH = 0, origGX = 0, origGY = 0;
+        let lastGX = 0, lastGY = 0;
 
         group.on('dragstart', () => {
             const pos = this.stage.getPointerPosition() || { x: 0, y: 0 };
@@ -644,6 +662,7 @@ export class DeploymentRenderer {
             origPadX = groupDef.pad.x; origPadY = groupDef.pad.y;
             origW = groupDef.size.width; origH = groupDef.size.height;
             origGX = group.x(); origGY = group.y();
+            lastGX = origGX; lastGY = origGY;
             const relX = pos.x - box.x, relY = pos.y - box.y;
             const nearLeft = relX < BORDER_THRESHOLD, nearRight = relX > box.width - BORDER_THRESHOLD;
             const nearTop = relY < BORDER_THRESHOLD, nearBottom = relY > box.height - BORDER_THRESHOLD;
@@ -657,14 +676,19 @@ export class DeploymentRenderer {
         });
 
         group.on('dragmove', () => {
-            const pos = this.stage.getPointerPosition() || { x: 0, y: 0 };
-            const dx = pos.x - dragStartX, dy = pos.y - dragStartY;
+            const curGX = group.x();
+            const curGY = group.y();
+            const deltaX = curGX - lastGX;
+            const deltaY = curGY - lastGY;
+            lastGX = curGX;
+            lastGY = curGY;
 
             if (dragEdge) {
                 // Border drag: resize by changing padding
+                const dx = curGX - origGX;
+                const dy = curGY - origGY;
                 if (dragEdge.left) {
                     groupDef.pad.x = Math.max(0, origPadX - dx);
-                    groupDef.position.x = origGX + dx;
                     groupDef.size.width = Math.max(100, origW - dx);
                 } else if (dragEdge.right) {
                     groupDef.pad.x = Math.max(0, origPadX + dx);
@@ -672,13 +696,13 @@ export class DeploymentRenderer {
                 }
                 if (dragEdge.top) {
                     groupDef.pad.y = Math.max(0, origPadY - dy);
-                    groupDef.position.y = origGY + dy;
                     groupDef.size.height = Math.max(50, origH - dy);
                 } else if (dragEdge.bottom) {
                     groupDef.pad.y = Math.max(0, origPadY + dy);
                     groupDef.size.height = Math.max(50, origH + dy);
                 }
-                group.position({ x: groupDef.position.x, y: groupDef.position.y });
+                groupDef.position.x = curGX;
+                groupDef.position.y = curGY;
                 // Replace shape with new one at updated size
                 const colors = this.getShapeColors(groupDef.keyword, groupDef.color);
                 const newShape = this.createShape(groupDef.keyword, groupDef.size.width, groupDef.size.height, colors);
@@ -688,14 +712,9 @@ export class DeploymentRenderer {
                 if (visual) visual.shape = newShape;
                 this.cascadeGroupResize(groupDef);
             } else {
-                // Content drag: move all children by the same delta
-                const newGX = origGX + dx;
-                const newGY = origGY + dy;
-                const deltaX = newGX - groupDef.position.x;
-                const deltaY = newGY - groupDef.position.y;
-                groupDef.position.x = newGX;
-                groupDef.position.y = newGY;
-                group.position({ x: newGX, y: newGY });
+                // Content drag: move all children by delta
+                groupDef.position.x = curGX;
+                groupDef.position.y = curGY;
                 // Move all participant nodes
                 if (groupDef.participants) {
                     groupDef.participants.forEach(pId => {
