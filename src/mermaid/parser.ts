@@ -509,11 +509,13 @@ class MermaidParser extends CstParser {
                     }
                     // If we hit an Arrow, consume all preceding label tokens
                     if (t.tokenType === Arrow) {
-                        // Consume label tokens (identifiers, keywords, etc.) until we hit the Arrow
-                        const labelTokens: any[] = [];
-                        while (this.LA(1).tokenType !== Arrow && this.LA(1).tokenType !== Newline && this.LA(1).tokenType !== EOF) {
-                            labelTokens.push(this.SUBRULE(this.anyToken, { LABEL: "inlineLabel" }));
-                        }
+                        this.MANY({
+                            GATE: () => {
+                                const lt = this.LA(1).tokenType;
+                                return lt !== Arrow && lt !== Newline && lt !== EOF;
+                            },
+                            DEF: () => this.SUBRULE(this.anyToken, { LABEL: "inlineLabel" })
+                        });
                         this.CONSUME1(Arrow, { LABEL: "arrow2" });
                     }
                 });

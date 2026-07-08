@@ -418,7 +418,7 @@ export class MermaidAstVisitor extends BaseVisitor {
                 
                 let label: string | undefined = undefined;
                 if (ctx.inlineLabel && ctx.inlineLabel.length > 0 && i === 0) {
-                    label = ctx.inlineLabel.map((t: any) => t.image).join(' ');
+                    label = ctx.inlineLabel.map((t: any) => this.visit(t)).join(' ');
                 }
                 if (ctx.edgeLabel && ctx.edgeLabel[i]) label = this.visit(ctx.edgeLabel[i]);
                 if (ctx.edgeLabel2 && i === ctx.to.length - 1) label = this.visit(ctx.edgeLabel2[0]);
