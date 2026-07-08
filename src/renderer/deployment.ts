@@ -50,6 +50,7 @@ export class DeploymentRenderer {
 
     public render(map: LayoutMap) {
         this.map = map;
+        (window as any).__positMap = map;
 
         const prevAutoDraw = Konva.autoDrawEnabled;
         Konva.autoDrawEnabled = false;
@@ -500,6 +501,14 @@ export class DeploymentRenderer {
         const originNode = this.map.nodes[conn.from];
         const targetNode = this.map.nodes[conn.to];
         if (!originNode || !targetNode) return;
+
+        // Debug: warn if arrow points to a node at origin or with zero size
+        if ((targetNode.position.x === 0 && targetNode.position.y === 0) ||
+            targetNode.size.width === 0 || targetNode.size.height === 0) {
+            console.warn(`[posit] Suspicious arrow: ${conn.from} -> ${conn.to}`, {
+                targetPos: targetNode.position, targetSize: targetNode.size
+            });
+        }
 
         // Parse bracket styles from arrow type
         const bracketMatch = conn.type.match(/\[([^\]]+)\]/);
