@@ -786,7 +786,6 @@ export class DeploymentRenderer {
         // Check nested groups inside this group
         for (const v of this.groupVisuals) {
             if (v.def === groupDef) continue;
-            if (groupDef.participants.indexOf(v.def.id) !== -1) continue;
             // Is this group inside groupDef?
             if (v.def.position.x >= groupDef.position.x && v.def.position.y >= groupDef.position.y &&
                 v.def.position.x + v.def.size.width <= groupDef.position.x + groupDef.size.width &&
