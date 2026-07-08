@@ -767,8 +767,10 @@ export class DeploymentRenderer {
 
     private recalcGroupBounds(groupDef: LayoutGroup) {
         if (!this.map || !groupDef.participants || groupDef.participants.length === 0) return;
-        // Label area height: fontSize(12) + padding(5*2) + margin(2) = 24
-        const LABEL_AREA_HEIGHT = 24;
+        // Use actual label height instead of hardcoded constant
+        const grpVisual = this.groupVisuals.find(v => v.def === groupDef);
+        const labelNode = grpVisual ? grpVisual.group.getChildren()[1] : null;
+        const LABEL_AREA_HEIGHT = (labelNode && 'height' in labelNode) ? (labelNode as any).height() : 24;
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         for (const pId of groupDef.participants) {
             const ng = this.nodeGroups[pId];
@@ -821,8 +823,6 @@ export class DeploymentRenderer {
 
     private cascadeGroupResize(changedDef: LayoutGroup) {
         if (!this.map) return;
-        // Label area height: fontSize(12) + padding(5*2) + margin(2) = 24
-        const LABEL_AREA_HEIGHT = 24;
         let current = changedDef;
         let iterations = 0;
         while (iterations < 10) {
@@ -835,9 +835,11 @@ export class DeploymentRenderer {
                     current.position.x + current.size.width <= outer.position.x + outer.size.width + 2 &&
                     current.position.y + current.size.height <= outer.position.y + outer.size.height + 2) {
                     // Current is inside outer - resize outer if needed
+                    const outerLabelNode = visual.group.getChildren()[1];
+                    const outerLabelH = (outerLabelNode && 'height' in outerLabelNode) ? (outerLabelNode as any).height() : 24;
                     let needsResize = false;
                     if (current.position.x < outer.position.x + 1) { outer.position.x = current.position.x - outer.pad.x; outer.size.width += (outer.position.x + outer.size.width - current.position.x); needsResize = true; }
-                    if (current.position.y < outer.position.y + LABEL_AREA_HEIGHT + 1) { outer.position.y = current.position.y - outer.pad.y - LABEL_AREA_HEIGHT; outer.size.height += (outer.position.y + outer.size.height - current.position.y); needsResize = true; }
+                    if (current.position.y < outer.position.y + outerLabelH + 1) { outer.position.y = current.position.y - outer.pad.y - outerLabelH; outer.size.height += (outer.position.y + outer.size.height - current.position.y); needsResize = true; }
                     const currentRight = current.position.x + current.size.width;
                     const currentBottom = current.position.y + current.size.height;
                     const outerRight = outer.position.x + outer.size.width;
