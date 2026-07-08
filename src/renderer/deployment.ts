@@ -427,6 +427,8 @@ export class DeploymentRenderer {
             if (this.onNodeMove) {
                 this.onNodeMove(nodeDef.id, newX, newY);
             }
+            // Sync parent group Konva positions after drag
+            this.syncGroupPositions();
         });
 
         group.on('dragmove', () => {
@@ -807,6 +809,12 @@ export class DeploymentRenderer {
             if (label) visual.group.add(label);
             visual.shape = newShape;
         }
+    }
+
+    private syncGroupPositions() {
+        this.groupVisuals.forEach(v => {
+            v.group.position(v.def.position);
+        });
     }
 
     private cascadeGroupResize(changedDef: LayoutGroup) {
