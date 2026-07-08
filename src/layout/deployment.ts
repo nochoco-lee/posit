@@ -343,8 +343,15 @@ export class DeploymentLayoutManager {
                         else if (st.type === 'edge') {
                             participants.push((st as IREdge).from);
                             participants.push((st as IREdge).to);
-                        } else if (st.type === 'container') collectParticipants((st as IRContainer).statements);
-                        else if (st.type === 'group') (st as IRGroup).sections.forEach(sec => collectParticipants(sec.statements));
+                        } else if (st.type === 'container') {
+                            const c = st as IRContainer;
+                            if (c.name) participants.push(c.name);
+                            collectParticipants(c.statements);
+                        } else if (st.type === 'group') {
+                            const g = st as IRGroup;
+                            if (g.name) participants.push(g.name);
+                            g.sections.forEach(sec => collectParticipants(sec.statements));
+                        }
                     });
                 };
                 collectParticipants(stmts);
