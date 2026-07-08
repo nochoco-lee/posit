@@ -106,7 +106,12 @@ export class MermaidAstVisitor extends BaseVisitor {
     genericName(ctx: any): string {
         const children = Object.values(ctx).flat() as any[];
         return children.map(c => {
-            if (c.image) return c.image;
+            if (c.image) {
+                // Strip surrounding quotes from StringLiteral tokens
+                const img = c.image;
+                if (img.startsWith('"') && img.endsWith('"')) return img.slice(1, -1);
+                return img;
+            }
             return this.visit(c);
         }).join(" ");
     }
@@ -412,7 +417,9 @@ export class MermaidAstVisitor extends BaseVisitor {
                 }
                 
                 let label: string | undefined = undefined;
-                if (ctx.inlineLabel && i === 0) label = ctx.inlineLabel[0].image;
+                if (ctx.inlineLabel && ctx.inlineLabel.length > 0 && i === 0) {
+                    label = ctx.inlineLabel.map((t: any) => t.image).join(' ');
+                }
                 if (ctx.edgeLabel && ctx.edgeLabel[i]) label = this.visit(ctx.edgeLabel[i]);
                 if (ctx.edgeLabel2 && i === ctx.to.length - 1) label = this.visit(ctx.edgeLabel2[0]);
                 if (ctx.payload && i === ctx.to.length - 1) label = this.visit(ctx.payload[0]);
@@ -514,6 +521,7 @@ export class MermaidAstVisitor extends BaseVisitor {
         return {
             type: "group",
             keyword: "subgraph",
+            name: id,
             label,
             sections: [{ label, statements }]
         } as any;

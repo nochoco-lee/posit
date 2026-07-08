@@ -500,8 +500,20 @@ class MermaidParser extends CstParser {
                 });
                 // Detect inline label between two arrows: e.g. `-. text .->` or `== text ==>`
                 this.OPTION4(() => {
-                    if (this.LA(1).tokenType === Identifier && this.LA(2).tokenType === Arrow) {
-                        this.CONSUME(Identifier, { LABEL: "inlineLabel" });
+                    // Scan ahead to find if there's an Arrow after some identifiers
+                    let la = 1;
+                    let t = this.LA(la);
+                    // Skip initial Identifier(s) that are the label
+                    while (t.tokenType === Identifier || t.tokenType === Keyword || t.tokenType === StringLiteral || t.tokenType === BacktickIdentifier) {
+                        la++; t = this.LA(la);
+                    }
+                    // If we hit an Arrow, consume all preceding label tokens
+                    if (t.tokenType === Arrow) {
+                        // Consume label tokens (identifiers, keywords, etc.) until we hit the Arrow
+                        const labelTokens: any[] = [];
+                        while (this.LA(1).tokenType !== Arrow && this.LA(1).tokenType !== Newline && this.LA(1).tokenType !== EOF) {
+                            labelTokens.push(this.SUBRULE(this.anyToken, { LABEL: "inlineLabel" }));
+                        }
                         this.CONSUME1(Arrow, { LABEL: "arrow2" });
                     }
                 });

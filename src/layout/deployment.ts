@@ -36,6 +36,7 @@ export class DeploymentLayoutManager {
                 if (!s) return;
                 if (s.type === 'group') {
                     const g = s as IRGroup;
+                    if (g.name) this.groupNames.add(g.name);
                     this.groupNames.add(g.label);
                     collectGroupNames(g.sections[0].statements);
                 } else if (s.type === 'container') {
