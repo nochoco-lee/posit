@@ -708,7 +708,10 @@ export class DeploymentRenderer {
                 const colors = this.getShapeColors(groupDef.keyword, groupDef.color);
                 const newShape = this.createShape(groupDef.keyword, groupDef.size.width, groupDef.size.height, colors);
                 if (newShape instanceof Konva.Rect && (groupDef.keyword === 'folder' || groupDef.keyword === 'package')) newShape.dash([5, 5]);
-                group.replaceChildren(newShape, group.getChildren()[1]);
+                const label = group.getChildren()[1]; // preserve label
+                group.destroyChildren();
+                group.add(newShape);
+                if (label) group.add(label);
                 const visual = this.groupVisuals.find(v => v.def === groupDef);
                 if (visual) visual.shape = newShape;
                 this.cascadeGroupResize(groupDef);
@@ -798,7 +801,10 @@ export class DeploymentRenderer {
             const colors = this.getShapeColors(groupDef.keyword, groupDef.color);
             const newShape = this.createShape(groupDef.keyword, groupDef.size.width, groupDef.size.height, colors);
             if (newShape instanceof Konva.Rect && (groupDef.keyword === 'folder' || groupDef.keyword === 'package')) newShape.dash([5, 5]);
-            visual.group.replaceChildren(newShape, visual.group.getChildren()[1]);
+            const label = visual.group.getChildren()[1]; // preserve label
+            visual.group.destroyChildren();
+            visual.group.add(newShape);
+            if (label) visual.group.add(label);
             visual.shape = newShape;
         }
     }
@@ -831,7 +837,10 @@ export class DeploymentRenderer {
                         const colors = this.getShapeColors(outer.keyword, outer.color);
                         const newShape = this.createShape(outer.keyword, outer.size.width, outer.size.height, colors);
                         if (newShape instanceof Konva.Rect && (outer.keyword === 'folder' || outer.keyword === 'package')) newShape.dash([5, 5]);
-                        visual.group.replaceChildren(newShape, visual.group.getChildren()[1]);
+                        const label = visual.group.getChildren()[1]; // preserve label
+                        visual.group.destroyChildren();
+                        visual.group.add(newShape);
+                        if (label) visual.group.add(label);
                         visual.shape = newShape;
                         current = outer; expanded = true; break;
                     }
