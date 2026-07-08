@@ -767,6 +767,8 @@ export class DeploymentRenderer {
 
     private recalcGroupBounds(groupDef: LayoutGroup) {
         if (!this.map || !groupDef.participants || groupDef.participants.length === 0) return;
+        // Label area height: fontSize(12) + padding(5*2) + margin(2) = 24
+        const LABEL_AREA_HEIGHT = 24;
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         for (const pId of groupDef.participants) {
             const ng = this.nodeGroups[pId];
@@ -794,9 +796,9 @@ export class DeploymentRenderer {
             }
         }
         groupDef.position.x = minX - groupDef.pad.x;
-        groupDef.position.y = minY - groupDef.pad.y;
+        groupDef.position.y = minY - groupDef.pad.y - LABEL_AREA_HEIGHT;
         groupDef.size.width = Math.max(100, (maxX - minX) + 2 * groupDef.pad.x);
-        groupDef.size.height = Math.max(50, (maxY - minY) + 2 * groupDef.pad.y);
+        groupDef.size.height = Math.max(50, (maxY - minY) + 2 * groupDef.pad.y + LABEL_AREA_HEIGHT);
         // Update visuals WITHOUT calling group.position() to avoid conflict with Konva drag
         const visual = this.groupVisuals.find(v => v.def === groupDef);
         if (visual) {
@@ -819,6 +821,8 @@ export class DeploymentRenderer {
 
     private cascadeGroupResize(changedDef: LayoutGroup) {
         if (!this.map) return;
+        // Label area height: fontSize(12) + padding(5*2) + margin(2) = 24
+        const LABEL_AREA_HEIGHT = 24;
         let current = changedDef;
         let iterations = 0;
         while (iterations < 10) {
@@ -833,7 +837,7 @@ export class DeploymentRenderer {
                     // Current is inside outer - resize outer if needed
                     let needsResize = false;
                     if (current.position.x < outer.position.x + 1) { outer.position.x = current.position.x - outer.pad.x; outer.size.width += (outer.position.x + outer.size.width - current.position.x); needsResize = true; }
-                    if (current.position.y < outer.position.y + 1) { outer.position.y = current.position.y - outer.pad.y; outer.size.height += (outer.position.y + outer.size.height - current.position.y); needsResize = true; }
+                    if (current.position.y < outer.position.y + LABEL_AREA_HEIGHT + 1) { outer.position.y = current.position.y - outer.pad.y - LABEL_AREA_HEIGHT; outer.size.height += (outer.position.y + outer.size.height - current.position.y); needsResize = true; }
                     const currentRight = current.position.x + current.size.width;
                     const currentBottom = current.position.y + current.size.height;
                     const outerRight = outer.position.x + outer.size.width;
