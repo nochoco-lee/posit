@@ -502,32 +502,35 @@ export class DeploymentRenderer {
         const targetNode = this.map.nodes[conn.to];
         if (!originNode || !targetNode) return;
 
-        // Debug: warn if arrow points to a node at origin or with zero size
-        if ((targetNode.position.x === 0 && targetNode.position.y === 0) ||
-            targetNode.size.width === 0 || targetNode.size.height === 0) {
-            console.warn(`[posit] Suspicious arrow: ${conn.from} -> ${conn.to}`, {
-                targetPos: targetNode.position, targetSize: targetNode.size
-            });
-        }
-
         // Parse bracket styles from arrow type
         const bracketMatch = conn.type.match(/\[([^\]]+)\]/);
         const bracketStyle = bracketMatch ? bracketMatch[1].toLowerCase() : '';
         if (bracketStyle === 'hidden') return; // Don't draw hidden connections
 
-        // Calculate centers
-        const originCenterX = originNode.position.x + (originNode.size.width / 2);
-        const originCenterY = originNode.position.y + (originNode.size.height / 2);
+        // For group_center nodes (zero-size), use the actual group's rect for intersection
+        const resolveRect = (node: LayoutNode): { rect: { x: number; y: number; width: number; height: number }; cx: number; cy: number } => {
+            if (node.type === 'group_center') {
+                const group = this.map!.groups.find(g => g.label === node.origName || g.id === node.origName);
+                if (group) {
+                    return {
+                        rect: { x: group.position.x, y: group.position.y, width: group.size.width, height: group.size.height },
+                        cx: group.position.x + group.size.width / 2,
+                        cy: group.position.y + group.size.height / 2
+                    };
+                }
+            }
+            return {
+                rect: { x: node.position.x, y: node.position.y, width: node.size.width, height: node.size.height },
+                cx: node.position.x + node.size.width / 2,
+                cy: node.position.y + node.size.height / 2
+            };
+        };
 
-        const targetCenterX = targetNode.position.x + (targetNode.size.width / 2);
-        const targetCenterY = targetNode.position.y + (targetNode.size.height / 2);
+        const origin = resolveRect(originNode);
+        const target = resolveRect(targetNode);
 
-        // Calculate border intersection points for arrow start/end
-        const originRect = { x: originNode.position.x, y: originNode.position.y, width: originNode.size.width, height: originNode.size.height };
-        const targetRect = { x: targetNode.position.x, y: targetNode.position.y, width: targetNode.size.width, height: targetNode.size.height };
-
-        const originPt = getIntersection({ x: targetCenterX, y: targetCenterY }, { x: originCenterX, y: originCenterY }, originRect);
-        const targetPt = getIntersection({ x: originCenterX, y: originCenterY }, { x: targetCenterX, y: targetCenterY }, targetRect);
+        const originPt = getIntersection({ x: target.cx, y: target.cy }, { x: origin.cx, y: origin.cy }, origin.rect);
+        const targetPt = getIntersection({ x: origin.cx, y: origin.cy }, { x: target.cx, y: target.cy }, target.rect);
 
         // Determine visual properties from bracket style
         const isDashed = bracketStyle === 'dashed' || conn.type.includes('..');
