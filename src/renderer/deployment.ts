@@ -507,15 +507,21 @@ export class DeploymentRenderer {
         const bracketStyle = bracketMatch ? bracketMatch[1].toLowerCase() : '';
         if (bracketStyle === 'hidden') return; // Don't draw hidden connections
 
-        // For group_center nodes (zero-size), use the actual group's rect for intersection
+        // For group_center nodes (zero-size), use the actual group's shape rect for intersection
+        // (exclude the label area at the top so arrows stop at the visible border)
         const resolveRect = (node: LayoutNode): { rect: { x: number; y: number; width: number; height: number }; cx: number; cy: number } => {
             if (node.type === 'group_center') {
                 const group = this.map!.groups.find(g => g.label === node.origName || g.id === node.origName);
                 if (group) {
+                    // Get label height from the Konva group's label text
+                    const visual = this.groupVisuals.find(v => v.def === group);
+                    const labelNode = visual ? visual.group.getChildren()[1] : null;
+                    const labelH = (labelNode && 'height' in labelNode) ? (labelNode as any).height() : 24;
+                    // Shape rect starts below the label area
                     return {
-                        rect: { x: group.position.x, y: group.position.y, width: group.size.width, height: group.size.height },
+                        rect: { x: group.position.x, y: group.position.y + labelH, width: group.size.width, height: group.size.height - labelH },
                         cx: group.position.x + group.size.width / 2,
-                        cy: group.position.y + group.size.height / 2
+                        cy: group.position.y + labelH + (group.size.height - labelH) / 2
                     };
                 }
             }
@@ -641,6 +647,44 @@ export class DeploymentRenderer {
         for (const v of this.groupVisuals) this.cascadeGroupResize(v.def);
     }
 
+    private updateSingleConnection(conn: { originId: string; targetId: string; konvaObj: any; labelObj?: Konva.Text }) {
+        if (!this.map) return;
+        const resolveNode = (id: string) => {
+            const kg = this.nodeGroups[id];
+            const base = this.map!.nodes[id];
+            if (kg && base) {
+                return { rect: { x: kg.x(), y: kg.y(), width: base.size.width, height: base.size.height }, cx: kg.x() + base.size.width / 2, cy: kg.y() + base.size.height / 2 };
+            }
+            // Fallback: group_center or layout-only node
+            if (base && base.type === 'group_center') {
+                const group = this.map!.groups.find(g => g.label === base.origName || g.id === base.origName);
+                if (group) {
+                    const visual = this.groupVisuals.find(v => v.def === group);
+                    const labelNode = visual ? visual.group.getChildren()[1] : null;
+                    const labelH = (labelNode && 'height' in labelNode) ? (labelNode as any).height() : 24;
+                    return { rect: { x: group.position.x, y: group.position.y + labelH, width: group.size.width, height: group.size.height - labelH }, cx: group.position.x + group.size.width / 2, cy: group.position.y + labelH + (group.size.height - labelH) / 2 };
+                }
+            }
+            if (base) {
+                return { rect: { x: base.position.x, y: base.position.y, width: base.size.width, height: base.size.height }, cx: base.position.x + base.size.width / 2, cy: base.position.y + base.size.height / 2 };
+            }
+            return null;
+        };
+        const origin = resolveNode(conn.originId);
+        const target = resolveNode(conn.targetId);
+        if (!origin || !target) return;
+
+        const originPt = getIntersection({ x: target.cx, y: target.cy }, { x: origin.cx, y: origin.cy }, origin.rect);
+        const targetPt = getIntersection({ x: origin.cx, y: origin.cy }, { x: target.cx, y: target.cy }, target.rect);
+
+        (conn.konvaObj as Konva.Arrow).points([originPt.x, originPt.y, targetPt.x, targetPt.y]);
+        if (conn.labelObj) {
+            const midX = (originPt.x + targetPt.x) / 2;
+            const midY = (originPt.y + targetPt.y) / 2;
+            conn.labelObj.position({ x: midX + 5, y: midY - 15 });
+        }
+    }
+
     private drawGroup(groupDef: LayoutGroup) {
         const BORDER_THRESHOLD = 8;
         const group = new Konva.Group({ x: groupDef.position.x, y: groupDef.position.y, draggable: true, id: groupDef.id });
@@ -754,6 +798,19 @@ export class DeploymentRenderer {
                         v.group.position(v.def.position);
                     }
                 });
+                // Update __group_center_ node for this group so arrows to/from the group move
+                const centerId = `__group_center_${groupDef.id}`;
+                const centerNode = this.map?.nodes[centerId];
+                if (centerNode) {
+                    centerNode.position.x += deltaX;
+                    centerNode.position.y += deltaY;
+                }
+                // Update all connections that reference this group
+                this.connectionArrows.forEach(c => {
+                    if (c.originId === centerId || c.targetId === centerId) {
+                        this.updateSingleConnection(c);
+                    }
+                });
                 // Note: do NOT call cascadeGroupResize here - it modifies group.position()
                 // which conflicts with Konva's drag tracking. Defer to dragend.
             }
@@ -769,6 +826,13 @@ export class DeploymentRenderer {
             if (groupDef.participants) {
                 groupDef.participants.forEach(pId => this.updateConnections(pId));
             }
+            // Sync connections to/from this group itself
+            const centerId = `__group_center_${groupDef.id}`;
+            this.connectionArrows.forEach(c => {
+                if (c.originId === centerId || c.targetId === centerId) {
+                    this.updateSingleConnection(c);
+                }
+            });
         });
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'default'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; dragEdge = null; });
