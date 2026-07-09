@@ -703,7 +703,7 @@ export class DeploymentRenderer {
         }
         const label = new Konva.Text({
             text: labelText,
-            fontSize: 12, fontStyle: THEME.fontWeightHeader, padding: 5, fill: THEME.text,
+            fontSize: 12, fontStyle: THEME.fontWeightHeader, padding: 8, fill: THEME.text,
             fontFamily: THEME.fontFamily,
         });
         group.add(label);
