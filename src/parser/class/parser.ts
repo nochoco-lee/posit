@@ -421,8 +421,13 @@ export class ClassParser extends CstParser {
             { GATE: () => this.LA(1).tokenType === common.Colon,
               ALT: () => {
                 this.CONSUME(common.Colon);
-                this.MANY(() => {
-                    this.SUBRULE(this.anyToken);
+                this.MANY({
+                    GATE: () => {
+                        const t = this.LA(1).tokenType;
+                        if (t === common.Newline || t === lexer.Note || t === common.EndUml || t === EOF) return false;
+                        return true;
+                    },
+                    DEF: () => this.SUBRULE(this.anyToken)
                 });
             }},
             { GATE: () => this.LA(1).tokenType === common.Newline,
