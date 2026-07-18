@@ -479,9 +479,8 @@ export class ClassRenderer {
                 if (dragEdge.bottom || dragEdge.top) groupDef.pad.y = Math.max(0, origPadY + (dragEdge.bottom ? dy : -dy));
                 groupDef.size.width = Math.max(100, origW + (dragEdge.right ? dx : dragEdge.left ? -dx : 0));
                 groupDef.size.height = Math.max(50, origH + (dragEdge.bottom ? dy : dragEdge.top ? -dy : 0));
-                groupDef.position.x = origGX + (dragEdge.left ? dx : 0);
-                groupDef.position.y = origGY + (dragEdge.top ? dy : 0);
-                group.position({ x: groupDef.position.x, y: groupDef.position.y });
+                groupDef.position.x = curGX;
+                groupDef.position.y = curGY;
                 rect.width(groupDef.size.width); rect.height(groupDef.size.height);
                 const children = group.getChildren();
                 for (let i = 0; i < children.length; i++) {
