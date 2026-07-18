@@ -1,6 +1,6 @@
-import { parsePlantUml, warmUpParsers, warmUpParser } from "./parser";
-import { parseMermaid } from "./mermaid/index";
+import { parserClient } from "./parserClient";
 import { detectLanguage, Language } from "./detector";
+import { PlantUmlScanner } from "./parser/scanner";
 import { LayoutManager } from "./layout/engine";
 import { LayoutPumlRenderer } from "./renderer/renderer";
 import { LayoutPumlSvgRenderer } from "./renderer/svg_renderer";
@@ -41,6 +41,21 @@ let currentAst: any = null;
 let currentLayoutMap: any = null;
 let currentText: string = "";
 let currentLanguage: Language = Language.Unknown;
+
+/**
+ * Lightweight PlantUML type detection (regex scan only, no parser).
+ * Used when forcedPumlType is not set and we need to choose the right worker parse target.
+ */
+function detectPumlType(text: string): 'sequence' | 'class' | 'deployment' {
+    const scanner = new PlantUmlScanner();
+    const detected = scanner.scan(text);
+    if (detected === 'unknown') {
+        // Default to sequence if detection fails — the parser will surface a real error
+        return 'sequence';
+    }
+    return detected;
+}
+
 
 function showError(message: string | null) {
     if (message) {
@@ -117,10 +132,12 @@ async function refreshDiagram() {
         t1 = performance.now();
 
         if (currentLanguage === Language.Mermaid) {
-            currentAst = await parseMermaid(text);
+            currentAst = await parserClient.parse('mermaid', text);
         } else {
-            // Pass forcedPumlType so parsePlantUml can skip its scanner entirely
-            currentAst = await parsePlantUml(text, forcedPumlType);
+            // forcedPumlType is 'sequence' | 'class' | 'deployment' | undefined
+            // Worker handles PlantUML type detection internally when type is unknown
+            const pumlType = forcedPumlType ?? await detectPumlType(text);
+            currentAst = await parserClient.parse(pumlType, text);
         }
         phases.push({ name: 'Parse', ms: performance.now() - t1 });
 
@@ -150,6 +167,22 @@ async function refreshDiagram() {
     }
 }
 
+// ── URL parameter: ?type=mermaid|sequence|class|deployment ────────────────────
+// Reads on page load — works on GitHub Pages (purely client-side).
+// Sets the dropdown and puts the requested parser at the front of the warm queue.
+const VALID_TYPES = ['mermaid', 'puml-sequence', 'puml-class', 'puml-deployment'] as const;
+type SelectValue = typeof VALID_TYPES[number] | 'auto';
+
+function parseTypeParam(): SelectValue | null {
+    const raw = new URLSearchParams(window.location.search).get('type');
+    if (!raw) return null;
+    // Accept both "mermaid" and "puml-mermaid" style, and bare PlantUML names
+    const normalized = raw.startsWith('puml-') ? raw : raw === 'mermaid' ? 'mermaid' : `puml-${raw}`;
+    return (VALID_TYPES as readonly string[]).includes(normalized)
+        ? normalized as SelectValue
+        : null;
+}
+
 // Dismiss the loading overlay immediately — the editor starts empty so there
 // is nothing to parse on startup. Parsers are loaded on-demand when the user
 // first types. Use requestAnimationFrame so the app frame is painted first.
@@ -159,15 +192,38 @@ requestAnimationFrame(() => {
         loadingOverlay.classList.add('hidden');
         loadingOverlay.addEventListener('transitionend', () => loadingOverlay.remove(), { once: true });
     }
+
+    // Apply ?type= param if present
+    const urlType = parseTypeParam();
+    if (urlType) {
+        diagramTypeSelect.value = urlType;
+        console.log(`[Posit] URL param ?type=${urlType} → pre-selecting dropdown`);
+    }
+
+    // Build warm-up queue: requested type first, rest follow in default order.
+    // The worker loads them sequentially off the main thread — zero UI freeze.
+    const allTypes: Array<'sequence' | 'class' | 'deployment' | 'mermaid'> =
+        ['sequence', 'class', 'deployment', 'mermaid'];
+
+    let warmOrder: Array<'sequence' | 'class' | 'deployment' | 'mermaid'>;
+    if (urlType && urlType !== 'auto') {
+        const priorityType = urlType.replace('puml-', '') as 'sequence' | 'class' | 'deployment' | 'mermaid';
+        warmOrder = [priorityType, ...allTypes.filter(t => t !== priorityType)];
+    } else {
+        warmOrder = allTypes;
+    }
+
+    parserClient.startWarmQueue(warmOrder);
 });
 
-// Diagram-type selector: immediately warm the chosen parser and re-render
+
+// Diagram-type selector: prioritize the selected parser in the worker queue
 diagramTypeSelect.addEventListener('change', () => {
     const sel = diagramTypeSelect.value;
-    if (sel !== 'auto' && sel !== 'mermaid') {
-        // Warm the specific parser right now — no delay — so the next
-        // refreshDiagram() call doesn't pay the cold-start cost.
-        warmUpParser(sel.replace('puml-', '') as 'sequence' | 'class' | 'deployment');
+    if (sel === 'mermaid') {
+        parserClient.prioritize('mermaid');
+    } else if (sel !== 'auto') {
+        parserClient.prioritize(sel.replace('puml-', '') as 'sequence' | 'class' | 'deployment');
     }
     refreshDiagram();
 });
@@ -177,21 +233,8 @@ diagramTypeSelect.addEventListener('change', () => {
 // On the very first keystroke, pre-warm the parser for the currently selected
 // type immediately (before the debounce fires) so it loads in parallel with
 // the user's initial typing — minimising the cold-start delay on first render.
-let hasStartedTyping = false;
 let debounceTimer: any = null;
 editor.addEventListener('input', () => {
-    if (!hasStartedTyping) {
-        hasStartedTyping = true;
-        const sel = diagramTypeSelect.value;
-        if (sel !== 'auto' && sel !== 'mermaid') {
-            // Specific type selected — warm exactly that one, right now
-            warmUpParser(sel.replace('puml-', '') as 'sequence' | 'class' | 'deployment');
-        } else if (sel === 'auto') {
-            // Auto-detect — warm all three staggered so they're ready when
-            // the user switches diagram types later in the session
-            warmUpParsers(0); // 0ms initial delay: user is already interacting
-        }
-    }
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
         refreshDiagram();
@@ -254,7 +297,8 @@ async function syncLayoutToSource() {
         // Update the actual text area payload
         editor.value = updatedSource;
         currentText = updatedSource;
-        currentAst = await parsePlantUml(currentText, forcedPumlType);
+        const syncPumlType = forcedPumlType ?? await detectPumlType(currentText);
+        currentAst = await parserClient.parse(syncPumlType, currentText);
         showError(null);
     } catch (e: any) {
         console.error("Emitter Error on Sync:", e.message);
