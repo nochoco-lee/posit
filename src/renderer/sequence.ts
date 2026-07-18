@@ -23,6 +23,10 @@ export class SequenceRenderer {
         startHeadObj?: Konva.Shape,
         selfMessageWidth?: number
     }[] = [];
+    /** Maps map.connections index → connectionArrows index. Built during render to handle
+     *  the case where drawConnection skips a connection (early return), which would otherwise
+     *  misalign the two arrays. */
+    protected connectionArrowIndex: Map<number, number> = new Map();
     protected lifelines: Record<string, Konva.Line> = {};
     protected activationRects: Record<string, { rect: Konva.Rect, def: LayoutActivation, destroyX1?: Konva.Line, destroyX2?: Konva.Line }[]> = {};
     protected groupVisuals: { group: Konva.Group, rect: Konva.Rect, dividers: Konva.Line[], labels: Konva.Text[], def: LayoutGroup }[] = [];
@@ -57,6 +61,7 @@ export class SequenceRenderer {
         this.layer.destroyChildren();
         this.nodeGroups = {};
         this.connectionArrows = [];
+        this.connectionArrowIndex = new Map();
         this.lifelines = {};
         this.activationRects = {};
         this.groupVisuals = [];
@@ -78,8 +83,11 @@ export class SequenceRenderer {
     public syncPositions(map: LayoutMap) {
         this.map = map;
         map.connections.forEach((conn, index) => {
-            const visual = this.connectionArrows[index];
-            if (visual && conn.calculatedY !== undefined) visual.group.y(conn.calculatedY);
+            const arrowIndex = this.connectionArrowIndex.get(index);
+            if (arrowIndex !== undefined) {
+                const visual = this.connectionArrows[arrowIndex];
+                if (visual && conn.calculatedY !== undefined) visual.group.y(conn.calculatedY);
+            }
         });
         Object.values(map.nodes).forEach(node => {
             const group = this.nodeGroups[node.id];
@@ -322,7 +330,7 @@ export class SequenceRenderer {
 
         const arrowInfo = this.getArrowHeadType(conn.type);
         const connIndex = this.map.connections.indexOf(conn);
-        const connGroup = new Konva.Group({ x: 0, y: yPos, draggable: true, id: safeId(`conn-${conn.from}-${conn.to}-${conn.label || ''}`) });
+        const connGroup = new Konva.Group({ x: 0, y: yPos, draggable: true, id: `conn-${connIndex}` });
         
         connGroup.dragBoundFunc((pos: {x: number, y: number}): {x: number, y: number} => {
             const absoluteX = connGroup.getAbsolutePosition().x;
@@ -333,11 +341,13 @@ export class SequenceRenderer {
             }
             let minY = participantsBottom + 10; let maxY = 5000;
             if (connIndex > 0) {
-                const prevGroup = this.connectionArrows[connIndex - 1]?.group;
+                const prevArrowIdx = this.connectionArrowIndex.get(connIndex - 1);
+                const prevGroup = prevArrowIdx !== undefined ? this.connectionArrows[prevArrowIdx]?.group : undefined;
                 if (prevGroup) { minY = Math.max(minY, prevGroup.y() + 10); if (this.map!.connections[connIndex - 1].from === this.map!.connections[connIndex - 1].to) minY += 20; }
             }
             if (connIndex < this.map!.connections.length - 1) {
-                const nextGroup = this.connectionArrows[connIndex + 1]?.group;
+                const nextArrowIdx = this.connectionArrowIndex.get(connIndex + 1);
+                const nextGroup = nextArrowIdx !== undefined ? this.connectionArrows[nextArrowIdx]?.group : undefined;
                 if (nextGroup) maxY = nextGroup.y() - 10;
             }
             return { x: absoluteX, y: Math.max(minY, Math.min(maxY, pos.y)) };
@@ -391,6 +401,7 @@ export class SequenceRenderer {
         }
         this.layer.add(connGroup);
         this.connectionArrows.push({ originId: conn.from, targetId: conn.to, konvaObj: visualArrow, labelObj: labelTextObj, group: connGroup, headObj, startHeadObj, selfMessageWidth: (conn as any).selfMessageWidth });
+        this.connectionArrowIndex.set(connIndex, this.connectionArrows.length - 1);
     }
 
     private drawDivider(div: LayoutDivider) {
@@ -461,8 +472,8 @@ export class SequenceRenderer {
             const entries = this.activationRects[targetId] || [];
             const activeAtY = entries.filter(entry => {
                 const a = entry.def; let startY = a.startPosition.y; let endY = startY + a.size.height;
-                if (a.startMessageIndex !== undefined && this.connectionArrows[a.startMessageIndex]) startY = this.connectionArrows[a.startMessageIndex].group.y();
-                if (a.endMessageIndex !== undefined && this.connectionArrows[a.endMessageIndex]) endY = this.connectionArrows[a.endMessageIndex].group.y();
+                if (a.startMessageIndex !== undefined) { const ai = this.connectionArrowIndex.get(a.startMessageIndex); if (ai !== undefined && this.connectionArrows[ai]) startY = this.connectionArrows[ai].group.y(); }
+                if (a.endMessageIndex !== undefined) { const ai = this.connectionArrowIndex.get(a.endMessageIndex); if (ai !== undefined && this.connectionArrows[ai]) endY = this.connectionArrows[ai].group.y(); }
                 return yPos >= startY && yPos <= endY;
             });
             if (activeAtY.length === 0) return centerX;
@@ -788,8 +799,8 @@ export class SequenceRenderer {
             const { rect, def, destroyX1, destroyX2 } = item;
             rect.x(centerX - rect.width() / 2 + (def.depth || 0) * 5);
             let startY = def.startPosition.y; let endY = startY + def.size.height;
-            if (def.startMessageIndex !== undefined && this.connectionArrows[def.startMessageIndex]) startY = this.connectionArrows[def.startMessageIndex].group.y();
-            if (def.endMessageIndex !== undefined && this.connectionArrows[def.endMessageIndex]) endY = this.connectionArrows[def.endMessageIndex].group.y();
+            if (def.startMessageIndex !== undefined) { const ai = this.connectionArrowIndex.get(def.startMessageIndex); if (ai !== undefined && this.connectionArrows[ai]) startY = this.connectionArrows[ai].group.y(); }
+            if (def.endMessageIndex !== undefined) { const ai = this.connectionArrowIndex.get(def.endMessageIndex); if (ai !== undefined && this.connectionArrows[ai]) endY = this.connectionArrows[ai].group.y(); }
             rect.y(startY); rect.height(Math.max(5, endY - startY));
             if (destroyX1 && destroyX2) {
                 const size = 20; const x1 = centerX - size / 2; const x2 = centerX + size / 2; const y1 = endY - size / 2; const y2 = endY + size / 2;

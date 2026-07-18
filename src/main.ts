@@ -253,17 +253,10 @@ renderer.onDragEnd((id, newX, newY) => {
         const group = currentLayoutMap.groups.find((g: any) => g.id === id);
         if (group) group.position = { x: newX, y: newY };
     } else if (id.startsWith('conn-')) {
-        // ID format: `conn-${conn.from}-${conn.to}-${conn.label || ''}`
-        const parts = id.split('-');
-        const from = parts[1];
-        const to = parts[2];
-        const label = parts.slice(3).join('-') || null;
+        // ID format: `conn-${connIndex}` (index into currentLayoutMap.connections)
+        const connIndex = parseInt(id.substring(5), 10);
 
-        const connIndex = currentLayoutMap.connections.findIndex((c: any) => 
-            c.from === from && c.to === to && (c.label === label || (!c.label && !label))
-        );
-
-        if (connIndex !== -1) {
+        if (!isNaN(connIndex) && connIndex >= 0 && connIndex < currentLayoutMap.connections.length) {
             // Clamping logic: Dragged message cannot go above the previous one + MIN_GAP
             let clampedY = newY;
             if (connIndex > 0) {
