@@ -498,42 +498,15 @@ export class DeploymentRenderer {
 
     private drawConnection(conn: LayoutConnection) {
         if (!this.map) return;
-        const originNode = this.map.nodes[conn.from];
-        const targetNode = this.map.nodes[conn.to];
-        if (!originNode || !targetNode) return;
 
         // Parse bracket styles from arrow type
         const bracketMatch = conn.type.match(/\[([^\]]+)\]/);
         const bracketStyle = bracketMatch ? bracketMatch[1].toLowerCase() : '';
         if (bracketStyle === 'hidden') return; // Don't draw hidden connections
 
-        // For group_center nodes (zero-size), use the actual group's shape rect for intersection
-        // (exclude the label area at the top so arrows stop at the visible border)
-        const resolveRect = (node: LayoutNode): { rect: { x: number; y: number; width: number; height: number }; cx: number; cy: number } => {
-            if (node.type === 'group_center') {
-                const group = this.map!.groups.find(g => g.label === node.origName || g.id === node.origName);
-                if (group) {
-                    // Get label height from the Konva group's label text
-                    const visual = this.groupVisuals.find(v => v.def === group);
-                    const labelNode = visual ? visual.group.getChildren()[1] : null;
-                    const labelH = (labelNode && 'height' in labelNode) ? (labelNode as any).height() : 24;
-                    // Shape rect starts below the label area
-                    return {
-                        rect: { x: group.position.x, y: group.position.y + labelH, width: group.size.width, height: group.size.height - labelH },
-                        cx: group.position.x + group.size.width / 2,
-                        cy: group.position.y + labelH + (group.size.height - labelH) / 2
-                    };
-                }
-            }
-            return {
-                rect: { x: node.position.x, y: node.position.y, width: node.size.width, height: node.size.height },
-                cx: node.position.x + node.size.width / 2,
-                cy: node.position.y + node.size.height / 2
-            };
-        };
-
-        const origin = resolveRect(originNode);
-        const target = resolveRect(targetNode);
+        const origin = this.resolveNodePos(conn.from);
+        const target = this.resolveNodePos(conn.to);
+        if (!origin || !target) return;
 
         const originPt = getIntersection({ x: target.cx, y: target.cy }, { x: origin.cx, y: origin.cy }, origin.rect);
         const targetPt = getIntersection({ x: origin.cx, y: origin.cy }, { x: target.cx, y: target.cy }, target.rect);
@@ -585,28 +558,40 @@ export class DeploymentRenderer {
         });
     }
 
+    private resolveNodePos(id: string): { rect: { x: number; y: number; width: number; height: number }; cx: number; cy: number } | null {
+        if (!this.map) return null;
+        const kg = this.nodeGroups[id];
+        const base = this.map.nodes[id];
+        if (kg && base) {
+            return { rect: { x: kg.x(), y: kg.y(), width: base.size.width, height: base.size.height }, cx: kg.x() + base.size.width / 2, cy: kg.y() + base.size.height / 2 };
+        }
+        if (base && base.type === 'group_center') {
+            const group = this.map.groups.find(g => g.label === base.origName || g.id === base.origName);
+            if (group) {
+                const visual = this.groupVisuals.find(v => v.def === group);
+                const labelNode = visual ? visual.group.getChildren()[1] : null;
+                const labelH = (labelNode && 'height' in labelNode) ? (labelNode as any).height() : 24;
+                return { rect: { x: group.position.x, y: group.position.y + labelH, width: group.size.width, height: group.size.height - labelH }, cx: group.position.x + group.size.width / 2, cy: group.position.y + labelH + (group.size.height - labelH) / 2 };
+            }
+        }
+        if (base) {
+            return { rect: { x: base.position.x, y: base.position.y, width: base.size.width, height: base.size.height }, cx: base.position.x + base.size.width / 2, cy: base.position.y + base.size.height / 2 };
+        }
+        return null;
+    }
+
     private updateConnections(nodeId: string) {
         if (!this.map) return;
-        const draggedGroup = this.nodeGroups[nodeId];
-        const draggedNodeBase = this.map.nodes[nodeId];
-
-        if (!draggedGroup || !draggedNodeBase) return;
-
-        const draggedCenterX = draggedGroup.x() + (draggedNodeBase.size.width / 2);
-        const draggedCenterY = draggedGroup.y() + (draggedNodeBase.size.height / 2);
-        const draggedRect = { x: draggedGroup.x(), y: draggedGroup.y(), width: draggedNodeBase.size.width, height: draggedNodeBase.size.height };
+        const dragged = this.resolveNodePos(nodeId);
+        if (!dragged) return;
 
         this.connectionArrows.forEach(conn => {
             if (conn.originId === nodeId) {
-                const targetBase = this.map!.nodes[conn.targetId];
-                const targetGroup = this.nodeGroups[conn.targetId];
-                if (!targetGroup || !targetBase) return;
-                const targetCenterX = targetGroup.x() + (targetBase.size.width / 2);
-                const targetCenterY = targetGroup.y() + (targetBase.size.height / 2);
-                const targetRect = { x: targetGroup.x(), y: targetGroup.y(), width: targetBase.size.width, height: targetBase.size.height };
+                const target = this.resolveNodePos(conn.targetId);
+                if (!target) return;
 
-                const originPt = getIntersection({ x: targetCenterX, y: targetCenterY }, { x: draggedCenterX, y: draggedCenterY }, draggedRect);
-                const targetPt = getIntersection({ x: draggedCenterX, y: draggedCenterY }, { x: targetCenterX, y: targetCenterY }, targetRect);
+                const originPt = getIntersection({ x: target.cx, y: target.cy }, { x: dragged.cx, y: dragged.cy }, dragged.rect);
+                const targetPt = getIntersection({ x: dragged.cx, y: dragged.cy }, { x: target.cx, y: target.cy }, target.rect);
 
                 (conn.konvaObj as Konva.Arrow).points([originPt.x, originPt.y, targetPt.x, targetPt.y]);
 
@@ -616,16 +601,11 @@ export class DeploymentRenderer {
                     conn.labelObj.position({ x: midX + 5, y: midY - 15 });
                 }
             } else if (conn.targetId === nodeId) {
-                const originBase = this.map!.nodes[conn.originId];
-                const originGroup = this.nodeGroups[conn.originId];
+                const origin = this.resolveNodePos(conn.originId);
+                if (!origin) return;
 
-                if (!originGroup || !originBase) return;
-                const originCenterX = originGroup.x() + (originBase.size.width / 2);
-                const originCenterY = originGroup.y() + (originBase.size.height / 2);
-                const originRect = { x: originGroup.x(), y: originGroup.y(), width: originBase.size.width, height: originBase.size.height };
-
-                const originPt = getIntersection({ x: draggedCenterX, y: draggedCenterY }, { x: originCenterX, y: originCenterY }, originRect);
-                const targetPt = getIntersection({ x: originCenterX, y: originCenterY }, { x: draggedCenterX, y: draggedCenterY }, draggedRect);
+                const originPt = getIntersection({ x: dragged.cx, y: dragged.cy }, { x: origin.cx, y: origin.cy }, origin.rect);
+                const targetPt = getIntersection({ x: origin.cx, y: origin.cy }, { x: dragged.cx, y: dragged.cy }, dragged.rect);
 
                 (conn.konvaObj as Konva.Arrow).points([originPt.x, originPt.y, targetPt.x, targetPt.y]);
 
@@ -649,29 +629,8 @@ export class DeploymentRenderer {
 
     private updateSingleConnection(conn: { originId: string; targetId: string; konvaObj: any; labelObj?: Konva.Text }) {
         if (!this.map) return;
-        const resolveNode = (id: string) => {
-            const kg = this.nodeGroups[id];
-            const base = this.map!.nodes[id];
-            if (kg && base) {
-                return { rect: { x: kg.x(), y: kg.y(), width: base.size.width, height: base.size.height }, cx: kg.x() + base.size.width / 2, cy: kg.y() + base.size.height / 2 };
-            }
-            // Fallback: group_center or layout-only node
-            if (base && base.type === 'group_center') {
-                const group = this.map!.groups.find(g => g.label === base.origName || g.id === base.origName);
-                if (group) {
-                    const visual = this.groupVisuals.find(v => v.def === group);
-                    const labelNode = visual ? visual.group.getChildren()[1] : null;
-                    const labelH = (labelNode && 'height' in labelNode) ? (labelNode as any).height() : 24;
-                    return { rect: { x: group.position.x, y: group.position.y + labelH, width: group.size.width, height: group.size.height - labelH }, cx: group.position.x + group.size.width / 2, cy: group.position.y + labelH + (group.size.height - labelH) / 2 };
-                }
-            }
-            if (base) {
-                return { rect: { x: base.position.x, y: base.position.y, width: base.size.width, height: base.size.height }, cx: base.position.x + base.size.width / 2, cy: base.position.y + base.size.height / 2 };
-            }
-            return null;
-        };
-        const origin = resolveNode(conn.originId);
-        const target = resolveNode(conn.targetId);
+        const origin = this.resolveNodePos(conn.originId);
+        const target = this.resolveNodePos(conn.targetId);
         if (!origin || !target) return;
 
         const originPt = getIntersection({ x: target.cx, y: target.cy }, { x: origin.cx, y: origin.cy }, origin.rect);
