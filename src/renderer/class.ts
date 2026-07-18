@@ -54,8 +54,8 @@ export class ClassRenderer {
         });
 
         // 2. Sync Notes
-        map.notes.forEach(noteDef => {
-            const noteId = safeId(`note-${noteDef.text.substring(0, 10)}`);
+        map.notes.forEach((noteDef, i) => {
+            const noteId = `note-${i}`;
             const group = this.layer.findOne(`#${noteId}`) as Konva.Group;
             if (group) {
                 group.position(noteDef.position);
@@ -90,7 +90,7 @@ export class ClassRenderer {
             Object.values(map.nodes).forEach(node => this.drawNode(node));
 
             // 4. Draw Notes
-            map.notes.forEach(note => this.drawNote(note));
+            map.notes.forEach((note, i) => this.drawNote(note, i));
         } finally {
             Konva.autoDrawEnabled = prevAutoDraw;
         }
@@ -544,12 +544,12 @@ export class ClassRenderer {
         }
     }
 
-    private drawNote(noteDef: LayoutNote) {
+    private drawNote(noteDef: LayoutNote, index: number) {
         const group = new Konva.Group({ 
             x: noteDef.position.x, 
             y: noteDef.position.y,
             draggable: true,
-            id: safeId(`note-${noteDef.text.substring(0, 10)}`)
+            id: `note-${index}`
         });
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });
