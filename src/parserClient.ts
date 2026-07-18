@@ -25,6 +25,8 @@ class ParserClient {
     private pending = new Map<string, PendingResolve>();
     private nextId = 0;
     private readyCallbacks: Partial<Record<ParserType, Array<() => void>>> = {};
+    /** Set of parser types whose bundles have been fully loaded in the worker. */
+    private warmedParsers = new Set<ParserType>();
 
     constructor() {
         // Vite handles the ?worker suffix and bundles the worker correctly
@@ -39,6 +41,7 @@ class ParserClient {
                 console[msg.level as 'log' | 'warn' | 'error']?.(msg.message);
                 break;
             case 'READY': {
+                this.warmedParsers.add(msg.parser as ParserType);
                 const cbs = this.readyCallbacks[msg.parser as ParserType] ?? [];
                 this.readyCallbacks[msg.parser as ParserType] = [];
                 cbs.forEach(cb => cb());
@@ -55,6 +58,11 @@ class ParserClient {
                 break;
             }
         }
+    }
+
+    /** Returns true if the parser bundle for the given type is already loaded in the worker. */
+    isWarm(parserType: ParserType): boolean {
+        return this.warmedParsers.has(parserType);
     }
 
     /** Begin background pre-warming in the given order. */

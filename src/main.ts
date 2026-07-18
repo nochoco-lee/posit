@@ -41,6 +41,8 @@ let currentAst: any = null;
 let currentLayoutMap: any = null;
 let currentText: string = "";
 let currentLanguage: Language = Language.Unknown;
+/** Cached PlantUML sub-type from the last successful detection/parse in 'auto' mode. */
+let currentPumlType: 'sequence' | 'class' | 'deployment' | undefined = undefined;
 
 /**
  * Lightweight PlantUML type detection (regex scan only, no parser).
@@ -95,6 +97,7 @@ async function refreshDiagram() {
         currentAst = null;
         currentLayoutMap = null;
         currentLanguage = Language.Unknown;
+        currentPumlType = undefined;
         renderer.clear();
         showError(null);
         timingPanel.classList.remove('visible');
@@ -126,18 +129,41 @@ async function refreshDiagram() {
             ? sel.replace('puml-', '') as 'sequence' | 'class' | 'deployment'
             : undefined;
 
-        // ── Phase 2: Parse (includes parser bundle load on first call) ──
-        const parserLabel = currentLanguage === Language.Mermaid ? 'Mermaid' : `PlantUML${forcedPumlType ? '/' + forcedPumlType : ''}`;
-        showTimingPhase(`Loading ${parserLabel} parser`);
+        // ── Phase 2: Parse ──
+        // Determine which parser type will be used so we can show the right label.
+        let pumlType: 'sequence' | 'class' | 'deployment' | undefined;
+        if (currentLanguage !== Language.Mermaid) {
+            if (forcedPumlType) {
+                pumlType = forcedPumlType;
+            } else {
+                // In auto mode: re-scan only when we don't have a cached type.
+                // This avoids the scanner mis-classifying incomplete/partial edits
+                // of a class diagram as 'sequence' (the scanner's fallback).
+                const detected = detectPumlType(text);
+                // Trust the scanner result; fall back to the last known good type
+                // only when detection returns the generic sequence fallback AND we
+                // already know the diagram is something else.
+                if (detected !== 'sequence' || !currentPumlType) {
+                    pumlType = detected;
+                } else {
+                    pumlType = currentPumlType;
+                }
+            }
+        }
+
+        const parserLabel = currentLanguage === Language.Mermaid ? 'Mermaid' : `PlantUML/${pumlType}`;
+        const isAlreadyWarm = currentLanguage === Language.Mermaid
+            ? parserClient.isWarm('mermaid')
+            : (pumlType ? parserClient.isWarm(pumlType) : false);
+        showTimingPhase(isAlreadyWarm ? `Parsing ${parserLabel}` : `Loading ${parserLabel} parser`);
         t1 = performance.now();
 
         if (currentLanguage === Language.Mermaid) {
             currentAst = await parserClient.parse('mermaid', text);
         } else {
-            // forcedPumlType is 'sequence' | 'class' | 'deployment' | undefined
-            // Worker handles PlantUML type detection internally when type is unknown
-            const pumlType = forcedPumlType ?? await detectPumlType(text);
-            currentAst = await parserClient.parse(pumlType, text);
+            currentAst = await parserClient.parse(pumlType!, text);
+            // Cache the successfully-used parser type for the next keystroke
+            currentPumlType = pumlType;
         }
         phases.push({ name: 'Parse', ms: performance.now() - t1 });
 
@@ -220,6 +246,8 @@ requestAnimationFrame(() => {
 // Diagram-type selector: prioritize the selected parser in the worker queue
 diagramTypeSelect.addEventListener('change', () => {
     const sel = diagramTypeSelect.value;
+    // Reset cached puml type — user may have switched between diagram families
+    currentPumlType = undefined;
     if (sel === 'mermaid') {
         parserClient.prioritize('mermaid');
     } else if (sel !== 'auto') {
