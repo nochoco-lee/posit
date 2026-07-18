@@ -207,11 +207,15 @@ export class ClassLayoutManager {
         const savedRowOccupancy = new Map(this.rowOccupancy);
         const savedNodesByRow = new Map(this.nodesByRow);
         const savedRowInfo = new Map(this.rowInfo);
+        const existingNodeIds = new Set(Object.keys(this.map.nodes));
         this.rowOccupancy.clear();
         this.nodesByRow.clear();
         this.rowInfo.clear();
 
         this.processStatementsPass1(container.statements, position.x + 20);
+
+        // Collect node IDs that were created inside this container
+        this.map.groups[groupIndex].participants = Object.keys(this.map.nodes).filter(id => !existingNodeIds.has(id));
 
         // Compute actual content width from local rowOccupancy
         let maxRowWidth = 0;
@@ -259,6 +263,7 @@ export class ClassLayoutManager {
         const savedRowOccupancy = new Map(this.rowOccupancy);
         const savedNodesByRow = new Map(this.nodesByRow);
         const savedRowInfo = new Map(this.rowInfo);
+        const existingNodeIds = new Set(Object.keys(this.map.nodes));
         this.rowOccupancy.clear();
         this.nodesByRow.clear();
         this.rowInfo.clear();
@@ -266,6 +271,9 @@ export class ClassLayoutManager {
         group.sections.forEach(section => {
             this.processStatementsPass1(section.statements, position.x + 20);
         });
+
+        // Collect node IDs that were created inside this group
+        this.map.groups[groupIndex].participants = Object.keys(this.map.nodes).filter(id => !existingNodeIds.has(id));
 
         // Compute actual content width from local rowOccupancy
         let maxRowWidth = 0;

@@ -117,6 +117,7 @@ export class ClassRenderer {
             if (this.onNodeMove) {
                 this.onNodeMove(nodeDef.id, newX, newY);
             }
+            this.syncGroupPositions();
         });
 
         group.on('dragmove', () => {
@@ -415,31 +416,11 @@ export class ClassRenderer {
         });
 
         // Resize groups that contain the dragged node
-        this.groupVisuals.forEach(visual => {
-            const { group, rect, def } = visual;
-            if (!def.participants || def.participants.indexOf(nodeId) === -1) return;
-            const nodes = def.participants.map(pId => ({ group: this.nodeGroups[safeId(pId)], base: this.map!.nodes[pId] })).filter(n => n.group && n.base);
-            if (nodes.length === 0) return;
-            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-            for (const n of nodes) {
-                const x = n.group.x(), y = n.group.y();
-                if (x < minX) minX = x; if (x + n.base.size.width > maxX) maxX = x + n.base.size.width;
-                if (y < minY) minY = y; if (y + n.base.size.height > maxY) maxY = y + n.base.size.height;
-            }
-            const newX = minX - def.pad.x;
-            const newY = minY - def.pad.y;
-            const newW = Math.max(100, (maxX - minX) + 2 * def.pad.x);
-            const newH = Math.max(50, (maxY - minY) + 2 * def.pad.y);
-            def.position.x = newX; def.position.y = newY;
-            def.size.width = newW; def.size.height = newH;
-            group.position({ x: newX, y: newY });
-            rect.width(newW); rect.height(newH);
-            const children = group.getChildren();
-            for (let i = 0; i < children.length; i++) {
-                const child = children[i];
-                if (child instanceof Konva.Text && child.align() === 'center') child.width(newW);
-            }
-        });
+        for (const visual of this.groupVisuals) {
+            const { def } = visual;
+            if (!def.participants || def.participants.indexOf(nodeId) === -1) continue;
+            this.recalcGroupBounds(def);
+        }
         // Cascade resize to parent groups
         for (const v of this.groupVisuals) this.cascadeGroupResize(v.def);
     }
@@ -458,10 +439,10 @@ export class ClassRenderer {
         });
         group.add(rect); group.add(label);
 
-        // Border drag to adjust pad
         let dragStartX = 0, dragStartY = 0;
         let dragEdge: { left: boolean; right: boolean; top: boolean; bottom: boolean } | null = null;
         let origPadX = 0, origPadY = 0, origW = 0, origH = 0, origGX = 0, origGY = 0;
+        let lastGX = 0, lastGY = 0;
 
         group.on('dragstart', () => {
             const pos = this.stage.getPointerPosition() || { x: 0, y: 0 };
@@ -470,39 +451,70 @@ export class ClassRenderer {
             origPadX = groupDef.pad.x; origPadY = groupDef.pad.y;
             origW = groupDef.size.width; origH = groupDef.size.height;
             origGX = group.x(); origGY = group.y();
+            lastGX = origGX; lastGY = origGY;
             const relX = pos.x - box.x, relY = pos.y - box.y;
             const nearLeft = relX < BORDER_THRESHOLD, nearRight = relX > box.width - BORDER_THRESHOLD;
             const nearTop = relY < BORDER_THRESHOLD, nearBottom = relY > box.height - BORDER_THRESHOLD;
             if (nearLeft || nearRight || nearTop || nearBottom) {
                 dragEdge = { left: nearLeft, right: nearRight, top: nearTop, bottom: nearBottom };
                 this.stage.container().style.cursor = 'nwse-resize';
-            } else { dragEdge = null; }
+            } else {
+                dragEdge = null;
+                this.stage.container().style.cursor = 'move';
+            }
         });
 
         group.on('dragmove', () => {
-            if (!dragEdge) return;
-            const pos = this.stage.getPointerPosition() || { x: 0, y: 0 };
-            const dx = pos.x - dragStartX, dy = pos.y - dragStartY;
-            if (dragEdge.right || dragEdge.left) groupDef.pad.x = Math.max(0, origPadX + (dragEdge.right ? dx : -dx));
-            if (dragEdge.bottom || dragEdge.top) groupDef.pad.y = Math.max(0, origPadY + (dragEdge.bottom ? dy : -dy));
-            // Recompute size from pad
-            groupDef.size.width = Math.max(100, origW + (dragEdge.right ? dx : dragEdge.left ? -dx : 0));
-            groupDef.size.height = Math.max(50, origH + (dragEdge.bottom ? dy : dragEdge.top ? -dy : 0));
-            groupDef.position.x = origGX + (dragEdge.left ? dx : 0);
-            groupDef.position.y = origGY + (dragEdge.top ? dy : 0);
-            group.position({ x: groupDef.position.x, y: groupDef.position.y });
-            rect.width(groupDef.size.width); rect.height(groupDef.size.height);
-            const children = group.getChildren();
-            for (let i = 0; i < children.length; i++) {
-                const child = children[i];
-                if (child instanceof Konva.Text && child.align() === 'center') child.width(groupDef.size.width);
+            const curGX = group.x();
+            const curGY = group.y();
+            const deltaX = curGX - lastGX;
+            const deltaY = curGY - lastGY;
+            lastGX = curGX;
+            lastGY = curGY;
+
+            if (dragEdge) {
+                const dx = curGX - origGX;
+                const dy = curGY - origGY;
+                if (dragEdge.right || dragEdge.left) groupDef.pad.x = Math.max(0, origPadX + (dragEdge.right ? dx : -dx));
+                if (dragEdge.bottom || dragEdge.top) groupDef.pad.y = Math.max(0, origPadY + (dragEdge.bottom ? dy : -dy));
+                groupDef.size.width = Math.max(100, origW + (dragEdge.right ? dx : dragEdge.left ? -dx : 0));
+                groupDef.size.height = Math.max(50, origH + (dragEdge.bottom ? dy : dragEdge.top ? -dy : 0));
+                groupDef.position.x = origGX + (dragEdge.left ? dx : 0);
+                groupDef.position.y = origGY + (dragEdge.top ? dy : 0);
+                group.position({ x: groupDef.position.x, y: groupDef.position.y });
+                rect.width(groupDef.size.width); rect.height(groupDef.size.height);
+                const children = group.getChildren();
+                for (let i = 0; i < children.length; i++) {
+                    const child = children[i];
+                    if (child instanceof Konva.Text && child.align() === 'center') child.width(groupDef.size.width);
+                }
+                this.cascadeGroupResize(groupDef);
+            } else {
+                groupDef.position.x = curGX;
+                groupDef.position.y = curGY;
+                if (groupDef.participants) {
+                    groupDef.participants.forEach(pId => {
+                        const nodeGroup = this.nodeGroups[safeId(pId)];
+                        const nodeDef = this.map?.nodes[pId];
+                        if (nodeGroup && nodeDef) {
+                            nodeDef.position.x += deltaX;
+                            nodeDef.position.y += deltaY;
+                            nodeGroup.position(nodeDef.position);
+                            this.updateConnections(pId);
+                        }
+                    });
+                }
             }
-            this.cascadeGroupResize(groupDef);
         });
 
-        group.on('dragend', (e: any) => {
+        group.on('dragend', () => {
             dragEdge = null;
             this.stage.container().style.cursor = 'default';
+            this.recalcGroupBounds(groupDef);
+            this.cascadeGroupResize(groupDef);
+            if (groupDef.participants) {
+                groupDef.participants.forEach(pId => this.updateConnections(pId));
+            }
         });
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'default'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; dragEdge = null; });
@@ -520,12 +532,27 @@ export class ClassRenderer {
             for (const visual of this.groupVisuals) {
                 const outer = visual.def;
                 if (outer === current) continue;
+                // Check if current is geometrically inside outer (with 2px tolerance)
+                if (current.position.x < outer.position.x - 2 || current.position.y < outer.position.y - 2 ||
+                    current.position.x + current.size.width > outer.position.x + outer.size.width + 2 ||
+                    current.position.y + current.size.height > outer.position.y + outer.size.height + 2) continue;
+                const outerLabelNode = visual.group.getChildren()[1];
+                const outerLabelH = (outerLabelNode && 'height' in outerLabelNode) ? (outerLabelNode as any).height() : 24;
+                let needsResize = false;
+                if (current.position.x < outer.position.x + 1) {
+                    outer.size.width += (outer.position.x + outer.size.width - current.position.x);
+                    outer.position.x = current.position.x - outer.pad.x;
+                    needsResize = true;
+                }
+                if (current.position.y < outer.position.y + outerLabelH + 1) {
+                    outer.size.height += (outer.position.y + outer.size.height - current.position.y);
+                    outer.position.y = current.position.y - outer.pad.y - outerLabelH;
+                    needsResize = true;
+                }
                 const cR = current.position.x + current.size.width;
                 const cB = current.position.y + current.size.height;
                 const oR = outer.position.x + outer.size.width;
                 const oB = outer.position.y + outer.size.height;
-                if (current.position.x < outer.position.x - 2 || cR > oR + 2 || current.position.y < outer.position.y - 2 || cB > oB + 2) continue;
-                let needsResize = false;
                 if (cR > oR + 1) { outer.size.width = cR - outer.position.x + outer.pad.x; needsResize = true; }
                 if (cB > oB + 1) { outer.size.height = cB - outer.position.y + outer.pad.y; needsResize = true; }
                 if (needsResize) {
@@ -542,6 +569,57 @@ export class ClassRenderer {
             if (!expanded) break;
             iterations++;
         }
+    }
+
+    private recalcGroupBounds(groupDef: LayoutGroup) {
+        if (!this.map || !groupDef.participants || groupDef.participants.length === 0) return;
+        const grpVisual = this.groupVisuals.find(v => v.def === groupDef);
+        const labelNode = grpVisual ? grpVisual.group.getChildren()[1] : null;
+        const LABEL_AREA_HEIGHT = (labelNode && 'height' in labelNode) ? (labelNode as any).height() : 24;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const pId of groupDef.participants) {
+            const ng = this.nodeGroups[safeId(pId)];
+            const nd = this.map.nodes[pId];
+            if (!ng || !nd) continue;
+            const x = ng.x(), y = ng.y();
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x + nd.size.width > maxX) maxX = x + nd.size.width;
+            if (y + nd.size.height > maxY) maxY = y + nd.size.height;
+        }
+        if (minX === Infinity) return;
+        for (const v of this.groupVisuals) {
+            if (v.def === groupDef) continue;
+            if (v.def.position.x >= groupDef.position.x && v.def.position.y >= groupDef.position.y &&
+                v.def.position.x + v.def.size.width <= groupDef.position.x + groupDef.size.width &&
+                v.def.position.y + v.def.size.height <= groupDef.position.y + groupDef.size.height) {
+                if (v.def.position.x < minX) minX = v.def.position.x;
+                if (v.def.position.y < minY) minY = v.def.position.y;
+                if (v.def.position.x + v.def.size.width > maxX) maxX = v.def.position.x + v.def.size.width;
+                if (v.def.position.y + v.def.size.height > maxY) maxY = v.def.position.y + v.def.size.height;
+            }
+        }
+        groupDef.position.x = minX - groupDef.pad.x;
+        groupDef.position.y = minY - groupDef.pad.y - LABEL_AREA_HEIGHT;
+        groupDef.size.width = Math.max(100, (maxX - minX) + 2 * groupDef.pad.x);
+        groupDef.size.height = Math.max(50, (maxY - minY) + 2 * groupDef.pad.y + LABEL_AREA_HEIGHT);
+        if (grpVisual) {
+            const newRect = new Konva.Rect({
+                width: groupDef.size.width, height: groupDef.size.height,
+                stroke: THEME.stroke, strokeWidth: THEME.strokeWidth, dash: [5, 5]
+            });
+            const label = grpVisual.group.getChildren()[1];
+            grpVisual.group.destroyChildren();
+            grpVisual.group.add(newRect);
+            if (label) grpVisual.group.add(label);
+            grpVisual.rect = newRect;
+        }
+    }
+
+    private syncGroupPositions() {
+        this.groupVisuals.forEach(v => {
+            v.group.position(v.def.position);
+        });
     }
 
     private drawNote(noteDef: LayoutNote, index: number) {
