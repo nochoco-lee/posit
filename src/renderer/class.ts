@@ -91,6 +91,14 @@ export class ClassRenderer {
 
             // 4. Draw Notes
             map.notes.forEach((note, i) => this.drawNote(note, i));
+
+            // 5. Recalculate group bounds from actual child positions
+            for (const group of map.groups) {
+                this.recalcGroupBounds(group);
+            }
+            for (const group of map.groups) {
+                this.cascadeGroupResize(group);
+            }
         } finally {
             Konva.autoDrawEnabled = prevAutoDraw;
         }
