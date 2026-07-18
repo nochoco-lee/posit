@@ -37,13 +37,16 @@ export class DeploymentRenderer {
         });
 
         // 2. Sync Notes
-        map.notes.forEach(noteDef => {
-            const noteId = `note-${noteDef.text.substring(0, 10)}`;
+        map.notes.forEach((noteDef, index) => {
+            const noteId = `note-${index}`;
             const group = this.layer.findOne(`#${noteId}`) as Konva.Group;
             if (group) {
                 group.position(noteDef.position);
             }
         });
+
+        // 3. Sync Groups
+        this.syncGroupPositions();
 
         this.layer.batchDraw();
     }
@@ -72,7 +75,7 @@ export class DeploymentRenderer {
             map.connections.forEach(conn => this.drawConnection(conn));
 
             // 4. Draw Notes
-            map.notes.forEach(note => this.drawNote(note));
+            map.notes.forEach((note, index) => this.drawNote(note, index));
 
             // 5. Recalculate group bounds from actual child positions
             for (const group of map.groups) {
@@ -800,6 +803,9 @@ export class DeploymentRenderer {
                     this.updateSingleConnection(c);
                 }
             });
+            if (this.onNodeMove) {
+                this.onNodeMove(groupDef.id, groupDef.position.x, groupDef.position.y);
+            }
         });
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'default'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; dragEdge = null; });
@@ -908,12 +914,12 @@ export class DeploymentRenderer {
         }
     }
 
-    private drawNote(noteDef: LayoutNote) {
+    private drawNote(noteDef: LayoutNote, index: number) {
         const group = new Konva.Group({ 
             x: noteDef.position.x, 
             y: noteDef.position.y,
             draggable: true,
-            id: `note-${noteDef.text.substring(0, 10)}`
+            id: `note-${index}`
         });
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; });

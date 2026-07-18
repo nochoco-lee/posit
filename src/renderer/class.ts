@@ -62,6 +62,9 @@ export class ClassRenderer {
             }
         });
 
+        // 3. Sync Groups
+        this.syncGroupPositions();
+
         this.layer.batchDraw();
     }
 
@@ -528,6 +531,9 @@ export class ClassRenderer {
                 groupDef.participants.forEach(pId => this.updateConnections(pId));
             }
             this.updateConnections(groupDef.id);
+            if (this.onNodeMove) {
+                this.onNodeMove(groupDef.id, groupDef.position.x, groupDef.position.y);
+            }
         });
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'default'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; dragEdge = null; });

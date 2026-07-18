@@ -93,6 +93,7 @@ export class LayoutPumlRenderer {
     }
 
     public async render(map: LayoutMap): Promise<void> {
+        this.adjustLayoutBounds(map);
         syncThemeFromCSS();
         if (map.diagramType === 'sequence') {
             const r = await this.getSequenceRenderer();
@@ -110,6 +111,118 @@ export class LayoutPumlRenderer {
         }
 
         this.fitStageToContent(map);
+    }
+
+    private adjustLayoutBounds(map: LayoutMap): { shiftX: number; shiftY: number } {
+        let minX = Infinity;
+        let minY = Infinity;
+
+        const nodes = Object.values(map.nodes);
+        nodes.forEach(n => {
+            minX = Math.min(minX, n.position.x);
+            minY = Math.min(minY, n.position.y);
+        });
+        if (map.notes) {
+            map.notes.forEach(n => {
+                minX = Math.min(minX, n.position.x);
+                minY = Math.min(minY, n.position.y);
+            });
+        }
+        if (map.groups) {
+            map.groups.forEach(g => {
+                minX = Math.min(minX, g.position.x);
+                minY = Math.min(minY, g.position.y);
+            });
+        }
+        if (map.connections) {
+            map.connections.forEach(c => {
+                if (c.position) {
+                    minX = Math.min(minX, c.position.x);
+                    minY = Math.min(minY, c.position.y);
+                }
+                if (c.calculatedY !== undefined) {
+                    minY = Math.min(minY, c.calculatedY);
+                }
+            });
+        }
+        if (map.dividers) {
+            map.dividers.forEach(d => {
+                minX = Math.min(minX, d.position.x);
+                minY = Math.min(minY, d.position.y);
+            });
+        }
+        if (map.delays) {
+            map.delays.forEach(d => {
+                minX = Math.min(minX, d.position.x);
+                minY = Math.min(minY, d.position.y);
+            });
+        }
+        if (map.activations) {
+            map.activations.forEach(a => {
+                minX = Math.min(minX, a.startPosition.x);
+                minY = Math.min(minY, a.startPosition.y);
+            });
+        }
+
+        if (minX === Infinity) {
+            return { shiftX: 0, shiftY: 0 };
+        }
+
+        const shiftX = minX < 0 ? -minX : 0;
+        const shiftY = minY < 0 ? -minY : 0;
+
+        if (shiftX > 0 || shiftY > 0) {
+            nodes.forEach(n => {
+                n.position.x += shiftX;
+                n.position.y += shiftY;
+                if (n.lifelineX !== undefined) n.lifelineX += shiftX;
+                if (n.lifelineY !== undefined) n.lifelineY += shiftY;
+            });
+            if (map.notes) {
+                map.notes.forEach(n => {
+                    n.position.x += shiftX;
+                    n.position.y += shiftY;
+                });
+            }
+            if (map.groups) {
+                map.groups.forEach(g => {
+                    g.position.x += shiftX;
+                    g.position.y += shiftY;
+                    if (g.contentStartY !== undefined) g.contentStartY += shiftY;
+                });
+            }
+            if (map.connections) {
+                map.connections.forEach(c => {
+                    if (c.position) {
+                        c.position.x += shiftX;
+                        c.position.y += shiftY;
+                    }
+                    if (c.calculatedY !== undefined) {
+                        c.calculatedY += shiftY;
+                    }
+                });
+            }
+            if (map.dividers) {
+                map.dividers.forEach(d => {
+                    d.position.x += shiftX;
+                    d.position.y += shiftY;
+                });
+            }
+            if (map.delays) {
+                map.delays.forEach(d => {
+                    d.position.x += shiftX;
+                    d.position.y += shiftY;
+                });
+            }
+            if (map.activations) {
+                map.activations.forEach(a => {
+                    a.startPosition.x += shiftX;
+                    a.startPosition.y += shiftY;
+                });
+            }
+        }
+
+        return { shiftX, shiftY };
     }
 
     private fitStageToContent(map: LayoutMap) {
@@ -154,8 +267,9 @@ export class LayoutPumlRenderer {
 
         this.stage.width(Math.max(this.contentWidth, containerW));
         this.stage.height(Math.max(this.contentHeight, containerH));
-        this.stage.offsetX(minX > 0 ? 0 : -minX + padding);
-        this.stage.offsetY(minY > 0 ? 0 : -minY + padding);
+        // Reset offsets when canvas auto-resizes / shifts elements inside fitStageToContent
+        this.stage.offsetX(0);
+        this.stage.offsetY(0);
     }
 
     /** Wipe the canvas — called when the editor is cleared */
@@ -165,6 +279,9 @@ export class LayoutPumlRenderer {
     }
 
     public syncPositions(map: LayoutMap) {
+        this.adjustLayoutBounds(map);
+        this.fitStageToContent(map);
+
         // Sub-renderers are guaranteed to exist here since syncPositions is only called
         // after a drag-end, which requires the diagram to already be rendered.
         if (map.diagramType === 'sequence' || map.diagramType === 'unknown') {

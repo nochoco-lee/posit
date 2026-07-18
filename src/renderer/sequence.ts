@@ -96,8 +96,13 @@ export class SequenceRenderer {
                 const lifeline = this.lifelines[node.id];
                 if (lifeline) {
                     const centerX = node.position.x + node.size.width / 2;
-                    const points = lifeline.points();
-                    points[0] = centerX; points[2] = centerX;
+                    let maxY = (map as any).totalHeight || 2000;
+                    maxY += 30;
+                    if (map.activations) {
+                        const destroyAct = map.activations.find(act => act.nodeId === node.id && act.isDestroy);
+                        if (destroyAct) maxY = destroyAct.startPosition.y + destroyAct.size.height;
+                    }
+                    const points = [centerX, node.lifelineY || 0, centerX, maxY];
                     lifeline.points(points);
                 }
             }
