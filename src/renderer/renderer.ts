@@ -259,8 +259,8 @@ export class LayoutPumlRenderer {
         });
 
         const padding = 40;
-        this.contentWidth = maxX - minX + padding * 2;
-        this.contentHeight = maxY - minY + padding * 2;
+        this.contentWidth = maxX + padding;
+        this.contentHeight = maxY + padding;
         const container = this.stage.container();
         const containerW = container.clientWidth || 1200;
         const containerH = container.clientHeight || 800;
