@@ -244,7 +244,11 @@ export class ClassLayoutManager {
         this.map.groups[groupIndex].size.height = Math.max(100, endY - (container.layout ? container.layout.y : startY));
         this.map.groups[groupIndex].size.width = Math.max(450, maxRowWidth + 40, labelWidth);
         if (!container.layout) {
-            this.currentClassY += 20;
+            // Ensure currentClassY clears the full rendered height of this container.
+            // Without this, an empty package whose height is governed by the 100px minimum
+            // would overlap the next sibling container (only +40 header padding was
+            // accumulated, but the group actually occupies startY+100).
+            this.currentClassY = Math.max(this.currentClassY, startY + this.map.groups[groupIndex].size.height) + 20;
         }
     }
 
@@ -302,7 +306,8 @@ export class ClassLayoutManager {
         this.map.groups[groupIndex].size.height = Math.max(100, endY - (group.layout ? group.layout.y : startY));
         this.map.groups[groupIndex].size.width = Math.max(450, maxRowWidth + 40, labelWidth);
         if (!group.layout) {
-            this.currentClassY += 20;
+            // Same as processContainerPass1: ensure we clear the full rendered height.
+            this.currentClassY = Math.max(this.currentClassY, (group.layout ? group.layout.y : startY) + this.map.groups[groupIndex].size.height) + 20;
         }
     }
 

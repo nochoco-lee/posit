@@ -423,11 +423,15 @@ export class ClassRenderer {
             }
         });
 
-        // Resize groups that contain the dragged node
+        // Resize groups that contain the dragged node, then update connections
+        // that reference those groups (e.g. package-to-package arrows).
         for (const visual of this.groupVisuals) {
             const { def } = visual;
             if (!def.participants || def.participants.indexOf(nodeId) === -1) continue;
             this.recalcGroupBounds(def);
+            // Update any connection whose endpoint is this group so that
+            // package-level arrows re-route when a child node moves.
+            this.updateConnections(def.id);
         }
         // Cascade resize to parent groups
         for (const v of this.groupVisuals) this.cascadeGroupResize(v.def);
