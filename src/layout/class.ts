@@ -8,6 +8,7 @@ export class ClassLayoutManager {
     private edges: IREdge[] = [];
     private rowOccupancy = new Map<number, number>();
     private nodeRanks = new Map<string, number>();
+    private containerNames = new Set<string>();
     private containerStartY: number | null = null;
 
     constructor() {
@@ -26,6 +27,7 @@ export class ClassLayoutManager {
 
     public process(ir: IRDiagram): LayoutMap {
         this.edges = [];
+        this.containerNames.clear();
         this.nodeRanks.clear();
         this.rowOccupancy.clear();
         this.nodesByRow.clear();
@@ -33,8 +35,8 @@ export class ClassLayoutManager {
         this.lastNodeId = null;
         this.currentClassY = DEFAULTS.CLASS_START_Y;
 
-        // Pass 0: Collect all edges for layout hints
-        this.collectEdges(ir.statements);
+        // Pass 0: Collect all edges and containers
+        this.collectContainersAndEdges(ir.statements);
         
         // Pass 0.5: Calculate ranks
         this.calculateRanks(ir.statements);
@@ -117,15 +119,23 @@ export class ClassLayoutManager {
         }
     }
 
-    private collectEdges(statements: IRStatement[]) {
+    private collectContainersAndEdges(statements: IRStatement[]) {
         statements.forEach((s: any) => {
             if (!s) return;
             if (s.type === 'edge') {
                 this.edges.push(s as IREdge);
             } else if (s.type === 'container') {
-                this.collectEdges((s as IRContainer).statements);
+                const container = s as IRContainer;
+                if (container.name) {
+                    this.containerNames.add(container.name);
+                }
+                this.collectContainersAndEdges(container.statements);
             } else if (s.type === 'group') {
-                (s as IRGroup).sections.forEach(sec => this.collectEdges(sec.statements));
+                const group = s as IRGroup;
+                if (group.label) {
+                    this.containerNames.add(group.label);
+                }
+                group.sections.forEach(sec => this.collectContainersAndEdges(sec.statements));
             }
         });
     }
@@ -165,10 +175,10 @@ export class ClassLayoutManager {
                 }
             } else if (statement.type === "edge") {
                 const edge = statement as IREdge;
-                if (!this.map.nodes[edge.from]) {
+                if (!this.map.nodes[edge.from] && !this.containerNames.has(edge.from)) {
                     this.processNode({ type: 'node', name: edge.from, shape: 'class' } as IRNode, x);
                 }
-                if (!this.map.nodes[edge.to]) {
+                if (!this.map.nodes[edge.to] && !this.containerNames.has(edge.to)) {
                     this.processNode({ type: 'node', name: edge.to, shape: 'class' } as IRNode, x);
                 }
             } else if (statement.type === "container") {

@@ -424,8 +424,8 @@ export class LayoutPumlSvgRenderer {
 
         // 5. Connections
         map.connections.forEach(c => {
-            const originNode = map.nodes[c.from];
-            const targetNode = map.nodes[c.to];
+            const originNode = map.nodes[c.from] || map.groups.find(g => g.id === c.from);
+            const targetNode = map.nodes[c.to] || map.groups.find(g => g.id === c.to);
             const fromExternal = c.from === "[" || c.from === "]";
             const toExternal = c.to === "[" || c.to === "]";
 

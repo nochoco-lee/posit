@@ -244,8 +244,8 @@ export class ClassRenderer {
 
     private drawConnection(conn: LayoutConnection) {
         if (!this.map) return;
-        const originNode = this.map.nodes[conn.from];
-        const targetNode = this.map.nodes[conn.to];
+        const originNode = this.map.nodes[conn.from] || this.map.groups.find(g => g.id === conn.from);
+        const targetNode = this.map.nodes[conn.to] || this.map.groups.find(g => g.id === conn.to);
         if (!originNode || !targetNode) return;
 
         const originCenterX = originNode.position.x + (originNode.size.width / 2);
@@ -368,18 +368,18 @@ export class ClassRenderer {
 
     private updateConnections(nodeId: string) {
         if (!this.map) return;
-        const draggedGroup = this.nodeGroups[safeId(nodeId)];
-        const draggedNodeBase = this.map.nodes[nodeId];
+        const draggedNodeBase = this.map.nodes[nodeId] || this.map.groups.find(g => g.id === nodeId);
+        const draggedGroup = this.nodeGroups[safeId(nodeId)] || this.groupVisuals.find(v => v.def.id === nodeId)?.group;
 
         if (!draggedGroup || !draggedNodeBase) return;
 
         this.connectionArrows.forEach(conn => {
             if (conn.originId !== nodeId && conn.targetId !== nodeId) return;
 
-            const originBase = this.map!.nodes[conn.originId];
-            const originGroup = this.nodeGroups[safeId(conn.originId)];
-            const targetBase = this.map!.nodes[conn.targetId];
-            const targetGroup = this.nodeGroups[safeId(conn.targetId)];
+            const originBase = this.map!.nodes[conn.originId] || this.map!.groups.find(g => g.id === conn.originId);
+            const originGroup = this.nodeGroups[safeId(conn.originId)] || this.groupVisuals.find(v => v.def.id === conn.originId)?.group;
+            const targetBase = this.map!.nodes[conn.targetId] || this.map!.groups.find(g => g.id === conn.targetId);
+            const targetGroup = this.nodeGroups[safeId(conn.targetId)] || this.groupVisuals.find(v => v.def.id === conn.targetId)?.group;
 
             if (!originGroup || !originBase || !targetGroup || !targetBase) return;
 
@@ -512,6 +512,7 @@ export class ClassRenderer {
                     });
                 }
             }
+            this.updateConnections(groupDef.id);
         });
 
         group.on('dragend', () => {
@@ -522,6 +523,7 @@ export class ClassRenderer {
             if (groupDef.participants) {
                 groupDef.participants.forEach(pId => this.updateConnections(pId));
             }
+            this.updateConnections(groupDef.id);
         });
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'default'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = 'default'; dragEdge = null; });
