@@ -835,7 +835,7 @@ export class DeploymentRenderer {
         groupDef.position.y = minY - groupDef.pad.y - LABEL_AREA_HEIGHT;
         groupDef.size.width = Math.max(100, (maxX - minX) + 2 * groupDef.pad.x);
         groupDef.size.height = Math.max(50, (maxY - minY) + 2 * groupDef.pad.y + LABEL_AREA_HEIGHT);
-        // Update visuals WITHOUT calling group.position() to avoid conflict with Konva drag
+        // Update visuals
         const visual = this.groupVisuals.find(v => v.def === groupDef);
         if (visual) {
             const colors = this.getShapeColors(groupDef.keyword, groupDef.color);
@@ -846,6 +846,7 @@ export class DeploymentRenderer {
             visual.group.add(newShape);
             if (label) visual.group.add(label);
             visual.shape = newShape;
+            visual.group.position(groupDef.position);
         }
     }
 
@@ -881,7 +882,6 @@ export class DeploymentRenderer {
                     if (currentRight > outerRight + 1) { outer.size.width = currentRight - outer.position.x + outer.pad.x; needsResize = true; }
                     if (currentBottom > outerBottom + 1) { outer.size.height = currentBottom - outer.position.y + outer.pad.y; needsResize = true; }
                     if (needsResize) {
-                        // Update shape only, NOT group.position() to avoid conflict with Konva drag
                         const colors = this.getShapeColors(outer.keyword, outer.color);
                         const newShape = this.createShape(outer.keyword, outer.size.width, outer.size.height, colors);
                         if (newShape instanceof Konva.Rect && (outer.keyword === 'folder' || outer.keyword === 'package')) newShape.dash([5, 5]);
@@ -890,6 +890,7 @@ export class DeploymentRenderer {
                         visual.group.add(newShape);
                         if (label) visual.group.add(label);
                         visual.shape = newShape;
+                        visual.group.position(outer.position);
                         current = outer; expanded = true; break;
                     }
                 }

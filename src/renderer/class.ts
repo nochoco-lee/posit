@@ -612,6 +612,7 @@ export class ClassRenderer {
             grpVisual.group.add(newRect);
             if (label) grpVisual.group.add(label);
             grpVisual.rect = newRect;
+            grpVisual.group.position(groupDef.position);
         }
     }
 
