@@ -9,6 +9,7 @@ import { DEFAULTS } from "./layout/types";
 
 const editor = document.getElementById('editor') as HTMLTextAreaElement;
 const errorPanel = document.getElementById('error-panel') as HTMLDivElement;
+const timingPanel = document.getElementById('timing-panel') as HTMLDivElement;
 const pngButton = document.getElementById('download-png') as HTMLButtonElement;
 const svgButton = document.getElementById('download-svg') as HTMLButtonElement;
 const syncButton = document.getElementById('sync-btn') as HTMLButtonElement;
@@ -51,6 +52,25 @@ function showError(message: string | null) {
     }
 }
 
+// ── Timing / Performance UI ──────────────────────────────────────────
+let _timingFadeTimer: any = null;
+
+function showTimingPhase(phase: string) {
+    if (_timingFadeTimer) { clearTimeout(_timingFadeTimer); _timingFadeTimer = null; }
+    timingPanel.classList.remove('fading');
+    timingPanel.classList.add('visible');
+    timingPanel.innerHTML = `<span class="phase">${phase}</span>…`;
+}
+
+function showTimingResult(phases: { name: string; ms: number }[], totalMs: number) {
+    const parts = phases.map(p => `<span class="time">${p.name}: ${p.ms}ms</span>`);
+    const total = `<span class="total">Total: ${totalMs.toFixed(0)}ms</span>`;
+    timingPanel.innerHTML = parts.join(' &nbsp;·&nbsp; ') + ' &nbsp;·&nbsp; ' + total;
+    _timingFadeTimer = setTimeout(() => { timingPanel.classList.add('fading'); }, 4000);
+}
+
+function fmt(ms: number) { return ms < 1000 ? `${ms.toFixed(0)}ms` : `${(ms / 1000).toFixed(2)}s`; }
+
 async function refreshDiagram() {
     const text = editor.value;
     currentText = text;
@@ -62,14 +82,21 @@ async function refreshDiagram() {
         currentLanguage = Language.Unknown;
         renderer.clear();
         showError(null);
+        timingPanel.classList.remove('visible');
         return;
     }
+
+    const t0 = performance.now();
+    const phases: { name: string; ms: number }[] = [];
 
     try {
 
         const sel = diagramTypeSelect.value; // 'auto' | 'puml-sequence' | 'puml-class' | 'puml-deployment' | 'mermaid'
 
-        // Resolve language — skip the regex detector when the user has forced a type
+        // ── Phase 1: Detect diagram type ──
+        showTimingPhase('Detecting type');
+        let t1 = performance.now();
+
         if (sel === 'mermaid') {
             currentLanguage = Language.Mermaid;
         } else if (sel !== 'auto') {
@@ -77,11 +104,17 @@ async function refreshDiagram() {
         } else {
             currentLanguage = detectLanguage(text);
         }
+        phases.push({ name: 'Detect', ms: performance.now() - t1 });
 
         // Extract the PlantUML sub-type from the select value, if forced
         const forcedPumlType = (sel !== 'auto' && sel !== 'mermaid')
             ? sel.replace('puml-', '') as 'sequence' | 'class' | 'deployment'
             : undefined;
+
+        // ── Phase 2: Parse (includes parser bundle load on first call) ──
+        const parserLabel = currentLanguage === Language.Mermaid ? 'Mermaid' : `PlantUML${forcedPumlType ? '/' + forcedPumlType : ''}`;
+        showTimingPhase(`Loading ${parserLabel} parser`);
+        t1 = performance.now();
 
         if (currentLanguage === Language.Mermaid) {
             currentAst = await parseMermaid(text);
@@ -89,14 +122,31 @@ async function refreshDiagram() {
             // Pass forcedPumlType so parsePlantUml can skip its scanner entirely
             currentAst = await parsePlantUml(text, forcedPumlType);
         }
+        phases.push({ name: 'Parse', ms: performance.now() - t1 });
 
+        // ── Phase 3: Layout ──
+        showTimingPhase('Layout');
+        t1 = performance.now();
         const layoutManager = new LayoutManager();
         currentLayoutMap = layoutManager.process(currentAst);
+        phases.push({ name: 'Layout', ms: performance.now() - t1 });
+
+        // ── Phase 4: Render ──
+        showTimingPhase('Render');
+        t1 = performance.now();
         await renderer.render(currentLayoutMap);
+        phases.push({ name: 'Render', ms: performance.now() - t1 });
+
         showError(null);
+
+        const totalMs = performance.now() - t0;
+        showTimingResult(phases, totalMs);
+        console.log(`[Posit] ${parserLabel} render:`, phases.map(p => `${p.name}=${fmt(p.ms)}`).join('  '), `  Total=${fmt(totalMs)}`);
     } catch (e: any) {
         console.error("Parse Error:", e.message);
         showError(e.message);
+        const totalMs = performance.now() - t0;
+        showTimingResult(phases, totalMs);
     }
 }
 

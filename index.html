@@ -287,6 +287,37 @@
       #error-panel.visible {
         display: block;
       }
+      #timing-panel {
+        display: none;
+        background: #1a2332;
+        color: #8bc34a;
+        padding: 6px 16px;
+        font-size: 11px;
+        font-family: 'Consolas', monospace;
+        border-top: 1px solid #333;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: opacity 0.5s ease;
+      }
+      #timing-panel.visible {
+        display: block;
+      }
+      #timing-panel.fading {
+        opacity: 0;
+      }
+      #timing-panel .phase {
+        color: #64b5f6;
+      }
+      #timing-panel .time {
+        color: #8bc34a;
+        font-weight: bold;
+      }
+      #timing-panel .total {
+        color: #ffb74d;
+        font-weight: bold;
+        margin-left: 8px;
+      }
       #canvas-container {
         flex: 1;
         position: relative;
@@ -399,6 +430,7 @@
         </div>
         <textarea id="editor" spellcheck="false"></textarea>
         <div id="error-panel"></div>
+        <div id="timing-panel"></div>
       </div>
       <div id="canvas-container"></div>
     </div>
