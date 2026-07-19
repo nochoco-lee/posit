@@ -7,9 +7,10 @@ import { LayoutManager } from "./src/layout/engine";
 import { LayoutPumlSvgRenderer } from "./src/renderer/svg_renderer";
 
 const testDirs = [
-    { name: "Sequence Diagrams", paths: ["test_scripts/plantuml_sequence", "test_scripts/gallery/plantuml_sequence"], mpaths: ["test_scripts/mermaid_sequence", "test_scripts/gallery/mermaid_sequence"], file: "gallery_sequence.html" },
-    { name: "Class Diagrams", paths: ["test_scripts/plantuml_class", "test_scripts/gallery/plantuml_class"], mpaths: ["test_scripts/mermaid_class", "test_scripts/gallery/mermaid_class"], file: "gallery_class.html" },
-    { name: "Deployment Diagrams", paths: ["test_scripts/plantuml_deployment", "test_scripts/gallery/plantuml_deployment"], mpaths: ["test_scripts/mermaid_flowchart", "test_scripts/gallery/mermaid_flowchart"], file: "gallery_deployment.html" }
+    { name: "Sequence Diagrams", paths: ["test_scripts/plantuml_sequence"], mpaths: ["test_scripts/mermaid_sequence"], file: "gallery_sequence.html" },
+    { name: "Class Diagrams", paths: ["test_scripts/plantuml_class"], mpaths: ["test_scripts/mermaid_class"], file: "gallery_class.html" },
+    { name: "Deployment Diagrams", paths: ["test_scripts/plantuml_deployment"], mpaths: ["test_scripts/mermaid_flowchart"], file: "gallery_deployment.html" },
+    { name: "Advanced Examples", paths: ["test_scripts/gallery/plantuml_sequence", "test_scripts/gallery/plantuml_class", "test_scripts/gallery/plantuml_deployment"], mpaths: ["test_scripts/gallery/mermaid_sequence", "test_scripts/gallery/mermaid_class", "test_scripts/gallery/mermaid_flowchart"], file: "gallery_advanced.html" }
 ];
 const localRenderDir = "local_renders";
 const ourRenderDir = path.join(localRenderDir, "our_renders");
@@ -275,7 +276,8 @@ for (const dirInfo of testDirs) {
     <div class="nav">
         <a href="gallery_sequence.html">Sequence</a> | 
         <a href="gallery_class.html">Class</a> | 
-        <a href="gallery_deployment.html">Deployment</a>
+        <a href="gallery_deployment.html">Deployment</a> |
+        <a href="gallery_advanced.html">Advanced</a>
     </div>
     <h1>${dirInfo.name} Evaluation Gallery</h1>
     <div id="gallery">
@@ -321,6 +323,7 @@ const indexHtml = `<!DOCTYPE html>
     <a href="gallery_sequence.html">Sequence Diagrams</a>
     <a href="gallery_class.html">Class Diagrams</a>
     <a href="gallery_deployment.html">Deployment Diagrams</a>
+    <a href="gallery_advanced.html">Advanced Examples</a>
 </body>
 </html>`;
 fs.writeFileSync("gallery.html", indexHtml);
