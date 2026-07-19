@@ -477,6 +477,9 @@ export class ClassParser extends CstParser {
             ]);
         });
         this.CONSUME(lexer.RBrace);
+        this.OPTION4(() => {
+            this.CONSUME1(common.PosComment, { LABEL: "layout" });
+        });
     });
 
     public ignoredStatement = this.RULE("ignoredStatement", () => {

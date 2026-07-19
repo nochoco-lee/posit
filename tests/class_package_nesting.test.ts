@@ -89,6 +89,36 @@ together {
         expect(classA.position.y).toBeGreaterThanOrEqual(pkg.position.y);
         expect(classA.position.y + classA.size.height).toBeLessThanOrEqual(pkg.position.y + pkg.size.height);
     });
+
+    it("should parse package layout comments placed after the closing brace", async () => {
+        const puml = `
+@startuml
+package foo1.foo2 {
+} /' @pos(351, 349) '/
+
+package foo1.foo2.foo3 {
+  class Object /' @pos(131, 123) '/
+} /' @pos(63, 91) '/
+@enduml
+`;
+        const ast = await parsePlantUml(puml);
+        const layout = new LayoutManager().process(ast);
+
+        expect(layout.groups.length).toBe(2);
+        
+        const pkg1 = layout.groups.find(g => g.label === "foo1.foo2");
+        const pkg2 = layout.groups.find(g => g.label === "foo1.foo2.foo3");
+
+        expect(pkg1).toBeDefined();
+        expect(pkg1!.position).toEqual({ x: 351, y: 349 });
+
+        expect(pkg2).toBeDefined();
+        expect(pkg2!.position).toEqual({ x: 63, y: 91 });
+
+        const obj = layout.nodes["Object"];
+        expect(obj).toBeDefined();
+        expect(obj.position).toEqual({ x: 131, y: 123 });
+    });
 });
 
 

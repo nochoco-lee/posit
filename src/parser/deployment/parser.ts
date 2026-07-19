@@ -316,6 +316,9 @@ export class DeploymentParser extends CstParser {
                 }}
             ]);
         });
+        this.OPTION4(() => {
+            this.CONSUME1(common.PosComment, { LABEL: "layout" });
+        });
     });
 
     public connectionDeclaration = this.RULE("connectionDeclaration", () => {
