@@ -1,0 +1,77 @@
+@startuml
+title Service Layer Architecture
+
+package "DTOs" {
+  class UserDTO {
+    -id: Long
+    -name: String
+    -email: String
+  }
+  class ProductDTO {
+    -id: Long
+    -name: String
+    -price: Double
+    -stock: Int
+  }
+  class OrderDTO {
+    -id: Long
+    -items: List<OrderItemDTO>
+    -total: Double
+    -status: String
+  }
+  class OrderItemDTO {
+    -productId: Long
+    -productName: String
+    -quantity: Int
+    -unitPrice: Double
+  }
+}
+
+package "Services" {
+  class UserService {
+    -userRepo: UserRepository
+    -eventBus: EventBus
+    +register(dto: UserDTO): UserDTO
+    +getProfile(userId: Long): UserDTO
+    +updateProfile(userId: Long, dto: UserDTO): void
+  }
+  class ProductService {
+    -productRepo: ProductRepository
+    +search(query: String): List<ProductDTO>
+    +getProduct(id: Long): ProductDTO
+    +updateStock(id: Long, delta: Int): void
+  }
+  class OrderService {
+    -orderRepo: OrderRepository
+    -productService: ProductService
+    -paymentService: PaymentService
+    -eventBus: EventBus
+    +createOrder(userId: Long, items: List<OrderItemDTO>): OrderDTO
+    +getOrder(orderId: Long): OrderDTO
+    +cancelOrder(orderId: Long): void
+  }
+  class PaymentService {
+    +charge(userId: Long, amount: Double): String
+    +refund(paymentId: String): void
+  }
+}
+
+package "Mappers" {
+  class UserMapper {
+    +toDTO(user: User): UserDTO
+    +toEntity(dto: UserDTO): User
+  }
+  class OrderMapper {
+    +toDTO(order: Order): OrderDTO
+    +toEntity(dto: OrderDTO): Order
+  }
+}
+
+UserService ..> UserDTO
+UserService ..> UserMapper
+ProductService ..> ProductDTO
+OrderService ..> OrderDTO
+OrderService ..> OrderMapper
+OrderService --> ProductService
+OrderService --> PaymentService
+@enduml

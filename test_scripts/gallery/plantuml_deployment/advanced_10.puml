@@ -1,0 +1,134 @@
+@startuml
+title Complete Production Infrastructure
+
+cloud "CloudFlare" as cf {
+  artifact "WAF" as waf
+  artifact "DDoS Protection" as ddos
+  artifact "SSL Termination" as ssl
+}
+
+cloud "CloudFront CDN" as cdn
+
+node "AWS Account" as aws {
+  node "VPC: 10.0.0.0/16" as vpc {
+    node "Public Subnet" as pub {
+      node "ALB" as alb
+      node "NAT Gateway" as nat
+    }
+
+    node "Private Subnet: App" as priv_app {
+      node "EKS Cluster" as eks {
+        package "ingress" {
+          node "nginx-ingress-controller" as ingress
+        }
+
+        package "shopstream (3 namespaces)" {
+          package "production" as prod_ns {
+            node "auth (3 replicas)" as auth_prod
+            node "catalog (3 replicas)" as cat_prod
+            node "cart (2 replicas)" as cart_prod
+            node "order (5 replicas)" as order_prod
+            node "payment (2 replicas)" as pay_prod
+            node "notification (2 replicas)" as notif_prod
+            node "shipping (2 replicas)" as ship_prod
+          }
+          package "staging" as staging_ns {
+            node "auth (1)" as auth_stg
+            node "catalog (1)" as cat_stg
+            node "order (1)" as order_stg
+          }
+          package "monitoring" as mon_ns {
+            node "Prometheus" as prom
+            node "Grafana" as grafana
+            node "Jaeger" as jaeger
+          }
+        }
+      }
+    }
+
+    node "Private Subnet: Data" as priv_data {
+      node "RDS Aurora Cluster" as aurora {
+        database "Writer" as writer
+        database "Reader 1" as reader1
+        database "Reader 2" as reader2
+      }
+
+      node "ElastiCache Redis" as elasticache {
+        database "Primary" as redis_primary
+        database "Replica" as redis_replica
+      }
+
+      node "Amazon OpenSearch" as opensearch {
+        database "Data Node 1" as os1
+        database "Data Node 2" as os2
+        database "Data Node 3" as os3
+      }
+    }
+
+    node "Private Subnet: Messaging" as priv_mq {
+      node "Amazon MSK (Kafka)" as kafka {
+        message_queue "Broker 1" as broker1
+        message_queue "Broker 2" as broker2
+        message_queue "Broker 3" as broker3
+      }
+
+      node "Amazon SQS" as sqs {
+        message_queue "order-queue" as oq
+        message_queue "payment-queue" as pq
+        message_queue "notification-queue" as nq
+      }
+    }
+  }
+
+  node "CloudWatch" as cw {
+    artifact "Logs" as logs
+    artifact "Metrics" as metrics
+    artifact "Alarms" as alarms
+  }
+
+  node "S3" as s3 {
+    artifact "assets bucket" as assets
+    artifact "backup bucket" as backups
+  }
+
+  node "Route 53" as r53
+}
+
+cf --> cdn : DNS
+cdn --> alb : HTTPS
+alb --> ingress : HTTP
+ingress --> auth_prod
+ingress --> cat_prod
+ingress --> cart_prod
+ingress --> order_prod
+ingress --> pay_prod
+
+auth_prod --> writer : JDBC
+cat_prod --> writer : JDBC
+cart_prod --> redis_primary : Cache
+order_prod --> writer : JDBC
+order_prod --> redis_primary : Cache
+pay_prod --> writer : JDBC
+notif_prod --> kafka : Produce
+ship_prod --> writer : JDBC
+
+writer --> reader1 : Replication
+writer --> reader2 : Replication
+redis_primary --> redis_replica : Replication
+
+order_prod --> kafka : events
+kafka --> notif_prod : consume
+kafka --> sqs : bridge
+sqs --> oq
+sqs --> pq
+sqs --> nq
+
+cat_prod --> opensearch : search
+os1 --> os2 : cluster
+os2 --> os3 : cluster
+
+eks --> cw : logs/metrics
+cw --> alarms : alert
+order_prod --> s3 : backup
+r53 --> cf : DNS
+@enduml

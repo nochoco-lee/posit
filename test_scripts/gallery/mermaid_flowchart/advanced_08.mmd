@@ -1,0 +1,35 @@
+flowchart TD
+    title Notification Routing Flow
+
+    A[Event Received] --> B{Event Type?}
+    B -->|Order Placed| C[Template: order_confirmation]
+    B -->|Payment Failed| D[Template: payment_failed]
+    B -->|Item Shipped| E[Template: shipping_update]
+    B -->|Refund Processed| F[Template: refund_receipt]
+    B -->|Low Stock| G[Template: low_stock_admin]
+
+    C --> H[Load User Preferences]
+    D --> H
+    E --> H
+    F --> H
+    G --> H
+
+    H --> I{Channel Preference?}
+    I -->|Email| J[Send via Email Service]
+    I -->|Push| K[Send via Push Service]
+    I -->|SMS| L[Send via SMS Service]
+    I -->|All| M[Send via All Channels]
+
+    J --> N[Log Delivery Status]
+    K --> N
+    L --> N
+    M --> N
+
+    N --> O{Delivery Success?}
+    O -->|Yes| P[Mark as Delivered]
+    O -->|No| Q{Retry Count < 3?}
+    Q -->|Yes| R[Queue for Retry]
+    R --> S[Wait Backoff Period]
+    S --> I
+    Q -->|No| T[Mark as Failed]
+    T --> U[Log Failure]

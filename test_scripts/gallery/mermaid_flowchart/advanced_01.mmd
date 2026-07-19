@@ -1,0 +1,13 @@
+flowchart TD
+    title User Login Flow
+
+    A[Enter Email & Password] --> B{Valid Format?}
+    B -->|No| C[Show Validation Error]
+    B -->|Yes| D[Call Auth API]
+    D --> E{User Exists?}
+    E -->|No| F[Show "User Not Found"]
+    E -->|Yes| G[Verify Password]
+    G --> H{Password OK?}
+    H -->|No| I[Show "Invalid Password"]
+    H -->|Yes| J[Generate JWT Token]
+    J --> K[Return Token]

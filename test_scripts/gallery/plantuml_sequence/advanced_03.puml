@@ -1,0 +1,14 @@
+@startuml
+title Product Search with Filters
+
+actor       User       as user
+participant "Search API" as search
+database    "Products DB" as db
+
+user -> search : GET /products?q=phone&cat=electronics&sort=price
+search -> db : query(q, category, sort)
+db --> search : results[0..20]
+search -> search : enrichWithRatings()
+search -> search : applyPagination()
+search --> user : 200 OK {products, total, page}
+@enduml

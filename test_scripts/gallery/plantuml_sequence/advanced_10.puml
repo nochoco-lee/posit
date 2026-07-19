@@ -1,0 +1,66 @@
+@startuml
+title Complete E-Commerce Flow
+
+actor  User       as user
+participant "API Gateway" as gw
+participant "Auth Svc"    as auth
+participant "Catalog Svc" as cat
+participant "Cart Svc"    as cart
+participant "Order Svc"   as order
+participant "Inventory Svc" as inv
+participant "Payment Svc" as pay
+participant "Shipping Svc" as ship
+participant "Notification Svc" as notif
+
+== Authentication ==
+
+user -> gw : POST /auth/login
+gw -> auth : authenticate(email, pass)
+auth --> gw : token
+gw --> user : {token}
+
+== Browse & Add to Cart ==
+
+user -> gw : GET /products?q=laptop
+gw -> cat : search(query)
+cat --> gw : products[]
+gw --> user : products[]
+
+user -> gw : POST /cart {productId: 42, qty: 1}
+gw -> cart : addItem(userId, productId, qty)
+cart -> cat : getProduct(42)
+cat --> cart : {price, stock}
+cart --> gw : {cartTotal: 999.99}
+gw --> user : cart updated
+
+== Checkout ==
+
+user -> gw : POST /checkout {addressId: 7}
+gw -> order : createOrder(cartId, userId, addressId)
+
+order -> cart : getCart(cartId)
+cart --> order : items[]
+
+order -> inv : reserve(items[])
+inv --> order : reservationId
+
+order -> pay : charge(userId, 999.99)
+pay --> order : paymentId
+
+order -> ship : createShipment(address, items[])
+ship --> order : trackingNumber
+
+order -> notif : sendConfirmation(userId, orderId, tracking)
+
+order --> gw : {orderId: 1001, tracking}
+gw --> user : Order confirmed
+
+== Track Order ==
+
+user -> gw : GET /orders/1001
+gw -> order : getOrder(1001)
+order -> ship : getTracking(trackingNumber)
+ship --> order : {status: "in_transit", eta: "2026-07-22"}
+order --> gw : {order, tracking}
+gw --> user : order details
+@enduml

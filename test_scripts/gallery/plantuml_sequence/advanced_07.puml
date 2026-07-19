@@ -1,0 +1,30 @@
+@startuml
+title Order Processing with Inventory Check
+
+actor       User        as user
+participant "Order API"  as order
+participant "Inventory API" as inv
+participant "Payment API" as pay
+participant "Notification API" as notif
+database    "Orders DB"  as db
+
+user -> order : POST /orders {cartId, address}
+order -> inv : checkStock(cartItems)
+inv --> order : inStock
+
+order -> inv : reserveItems(cartItems)
+alt Reservation successful
+    order -> pay : charge(userId, total)
+    alt Payment successful
+        order -> db : createOrder(status: CONFIRMED)
+        db --> order : orderId
+        order -> notif : sendOrderConfirmation(userId, orderId)
+        order --> user : 201 Created {orderId}
+    else Payment failed
+        order -> inv : releaseReservation(cartItems)
+        order --> user : 402 Payment Required
+    end
+else Out of stock
+    order -> user : 409 Conflict {unavailable: [...]}
+end
+@enduml

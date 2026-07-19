@@ -1,0 +1,18 @@
+@startuml
+title Shopping Cart Operations
+
+actor       User       as user
+participant "Cart API"  as cart
+participant "Catalog API" as catalog
+database    "Cart DB"   as db
+
+user -> cart : POST /cart/items {productId, qty}
+cart -> catalog : getProduct(productId)
+catalog --> cart : {name, price, stock}
+cart -> cart : validateStock(qty)
+cart -> db : upsertItem(userId, productId, qty)
+db --> cart : ok
+cart -> db : recalculateTotal(userId)
+db --> cart : total
+cart --> user : 200 OK {item, total}
+@enduml

@@ -1,0 +1,56 @@
+classDiagram
+    title Product Hierarchy
+
+    class Searchable {
+        <<interface>>
+        +matches(query String) Boolean
+    }
+
+    class Pricable {
+        <<interface>>
+        +getPrice() Money
+        +applyDiscount(pct Double) Money
+    }
+
+    class Product {
+        <<abstract>>
+        #Long id
+        #String name
+        #String description
+        #Money price
+        #ProductStatus status
+        +matches(query String) Boolean
+        +getPrice() Money
+    }
+
+    class PhysicalProduct {
+        -Double weight
+        -Dimensions dimensions
+        +applyDiscount(pct Double) Money
+    }
+
+    class DigitalProduct {
+        -Long fileSize
+        -String downloadUrl
+        +applyDiscount(pct Double) Money
+    }
+
+    class ProductStatus {
+        <<enumeration>>
+        DRAFT
+        ACTIVE
+        ARCHIVED
+    }
+
+    class Money {
+        -BigDecimal amount
+        -String currency
+        +add(other Money) Money
+    }
+
+    Product ..|> Searchable
+    Product ..|> Pricable
+    PhysicalProduct --|> Product
+    DigitalProduct --|> Product
+    Product --> ProductStatus
+    Product --> Money

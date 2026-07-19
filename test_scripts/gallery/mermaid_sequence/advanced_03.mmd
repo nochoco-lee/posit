@@ -1,0 +1,13 @@
+sequenceDiagram
+    title Product Search with Filters
+
+    actor User
+    participant Search as Search API
+    participant DB as Products DB
+
+    User->>Search: GET /products?q=phone&cat=electronics&sort=price
+    Search->>DB: query(q, category, sort)
+    DB-->>Search: results[0..20]
+    Search->>Search: enrichWithRatings()
+    Search->>Search: applyPagination()
+    Search-->>User: 200 OK {products, total, page}

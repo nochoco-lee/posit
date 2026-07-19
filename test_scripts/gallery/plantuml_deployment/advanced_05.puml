@@ -1,0 +1,73 @@
+@startuml
+title Full Production Stack
+
+cloud "Internet" as inet
+
+node "CDN" as cdn {
+  artifact "CloudFront" as cf
+}
+
+node "Load Balancer" as lb {
+  artifact "ALB" as alb
+}
+
+node "Kubernetes Cluster" as k8s {
+  node "Ingress Controller" as ingress {
+    artifact "nginx-ingress" as nginx
+  }
+
+  package "shopstream namespace" {
+    node "Auth Pod" as auth_pod {
+      artifact "auth:2.1.0" as auth_app
+    }
+    node "Catalog Pod" as cat_pod {
+      artifact "catalog:3.4.1" as cat_app
+    }
+    node "Cart Pod" as cart_pod {
+      artifact "cart:1.8.0" as cart_app
+    }
+    node "Order Pod" as order_pod {
+      artifact "order:4.2.0" as order_app
+    }
+    node "Payment Pod" as pay_pod {
+      artifact "payment:2.0.3" as pay_app
+    }
+    node "Notification Pod" as notif_pod {
+      artifact "notification:1.5.0" as notif_app
+    }
+  }
+}
+
+database "PostgreSQL Cluster" as pg {
+  database "Primary" as pg_primary
+  database "Replica 1" as pg_rep1
+  database "Replica 2" as pg_rep2
+}
+
+database "Redis Cluster" as redis {
+  database "Master" as redis_m
+  database "Slave 1" as redis_s1
+}
+
+message_queue "RabbitMQ" as mq
+
+inet --> cdn : HTTPS
+cdn --> cf : static assets
+cf --> lb : HTTPS
+lb --> alb : TCP
+alb --> ingress : HTTP
+nginx --> auth_svc : gRPC
+nginx --> cat_svc : gRPC
+nginx --> cart_svc : gRPC
+nginx --> order_svc : gRPC
+auth_app --> pg_primary : JDBC
+cat_app --> pg_primary : JDBC
+cart_app --> redis_m : GET/SET
+order_app --> pg_primary : JDBC
+order_app --> mq : AMQP
+pay_app --> pg_primary : JDBC
+notif_app --> mq : AMQP
+pg_primary --> pg_rep1 : Replication
+pg_primary --> pg_rep2 : Replication
+redis_m --> redis_s1 : Replication
+@enduml

@@ -1,0 +1,13 @@
+@startuml
+title Web Server + Database + Cache
+
+node "Application Server" {
+  artifact "Spring Boot App" as app
+}
+
+database "PostgreSQL" as db
+database "Redis Cache" as cache
+
+app --> db : JDBC
+app --> cache : Redis Protocol
+@enduml

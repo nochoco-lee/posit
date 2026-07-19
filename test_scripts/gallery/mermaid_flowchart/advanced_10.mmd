@@ -1,0 +1,77 @@
+flowchart TD
+    title Complete E-Commerce Workflow
+
+    A[Customer Visits Site] --> B[Load Homepage]
+    B --> C{Has Account?}
+    C -->|No| D[Register / Login]
+    C -->|Yes| E[Browse Catalog]
+
+    D --> F{Registration Valid?}
+    F -->|No| G[Show Errors]
+    G --> D
+    F -->|Yes| H[Create Account]
+    H --> I[Send Welcome Email]
+    I --> E
+
+    E --> J[Search Products]
+    J --> K[Apply Filters]
+    K --> L[View Product Details]
+    L --> M{Add to Cart?}
+    M -->|No| E
+    M -->|Yes| N[Add to Cart]
+    N --> O[Update Cart Badge]
+    O --> P{Continue Shopping?}
+    P -->|Yes| E
+    P -->|No| Q[View Cart]
+
+    Q --> R[Review Items]
+    R --> S[Apply Coupon]
+    S --> T[Calculate Total]
+    T --> U[Proceed to Checkout]
+
+    U --> V[Select Address]
+    V --> W{Address OK?}
+    W -->|No| X[Add Address]
+    X --> V
+    W -->|Yes| Y[Select Payment]
+
+    Y --> Z{Payment Method?}
+    Z -->|Card| AA[Enter Card Details]
+    Z -->|PayPal| AB[PayPal Flow]
+    Z -->|Crypto| AC[Crypto Flow]
+
+    AA --> AD[Validate Card]
+    AD -->|Invalid| AE[Show Error]
+    AE --> Y
+    AD -->|Valid| AF[Reserve Stock]
+
+    AF --> AG{Stock OK?}
+    AG -->|No| AH[Show Out of Stock]
+    AH --> Q
+    AG -->|Yes| AI[Process Payment]
+
+    AI --> AJ{Payment OK?}
+    AJ -->|No| AK[Release Stock]
+    AK --> AL[Show Payment Error]
+    AL --> Y
+    AJ -->|Yes| AM[Create Order]
+
+    AM --> AN[Send Confirmation]
+    AN --> AO[Generate Invoice]
+    AO --> AP[Route to Fulfillment]
+
+    AP --> AQ[Pick & Pack]
+    AQ --> AR[Generate Shipping Label]
+    AR --> AS[Hand to Carrier]
+    AS --> AT[Send Tracking Email]
+
+    AT --> AU[Customer Receives]
+    AU --> AV{Satisfied?}
+    AV -->|Yes| AW[Leave Review]
+    AV -->|No| AX[Request Return]
+
+    AX --> AY{Return Valid?}
+    AY -->|No| AZ[Deny Return]
+    AY -->|Yes| BA[Process Refund]
+    BA --> BB[Restock Item]
+    BB --> BC[Send Refund Email]

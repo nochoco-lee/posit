@@ -1,0 +1,48 @@
+@startuml
+title Repository Pattern with Generics
+
+interface Repository<T, ID> {
+  +findById(id: ID): Optional<T>
+  +findAll(): List<T>
+  +save(entity: T): T
+  +deleteById(id: ID): void
+  +count(): Long
+}
+
+class UserRepository implements Repository<User, Long> {
+  +findByEmail(email: String): Optional<User>
+  +findById(id: Long): Optional<User>
+  +save(user: User): User
+}
+
+class ProductRepository implements Repository<Product, Long> {
+  +findByName(name: String): List<Product>
+  +findByCategory(cat: String): List<Product>
+  +findById(id: Long): Optional<Product>
+}
+
+class OrderRepository implements Repository<Order, Long> {
+  +findByUserId(userId: Long): List<Order>
+  +findByStatus(status: OrderStatus): List<Order>
+  +findById(id: Long): Optional<Order>
+}
+
+class User {
+  -id: Long
+  -email: String
+}
+
+class Product {
+  -id: Long
+  -name: String
+}
+
+class Order {
+  -id: Long
+  -status: OrderStatus
+}
+
+UserRepository ..> User
+ProductRepository ..> Product
+OrderRepository ..> Order
+@enduml

@@ -1,0 +1,56 @@
+@startuml
+title Event-Driven Notification System
+
+interface EventHandler {
+  +handle(event: DomainEvent): void
+}
+
+abstract class DomainEvent {
+  #eventId: String
+  #timestamp: DateTime
+  #aggregateId: Long
+  +getEventId(): String
+}
+
+class OrderPlacedEvent extends DomainEvent {
+  -orderId: Long
+  -userId: Long
+  -total: Money
+}
+
+class PaymentReceivedEvent extends DomainEvent {
+  -paymentId: String
+  -orderId: Long
+  -amount: Money
+}
+
+class ItemShippedEvent extends DomainEvent {
+  -trackingNumber: String
+  -orderId: Long
+}
+
+class EventBus {
+  -handlers: Map<String, List<EventHandler>>
+  +subscribe(eventType: String, handler: EventHandler): void
+  +publish(event: DomainEvent): void
+}
+
+class EmailNotificationHandler implements EventHandler {
+  -emailService: EmailService
+  +handle(event: DomainEvent): void
+}
+
+class PushNotificationHandler implements EventHandler {
+  -pushService: PushService
+  +handle(event: DomainEvent): void
+}
+
+class SmsNotificationHandler implements EventHandler {
+  -smsService: SmsService
+  +handle(event: DomainEvent): void
+}
+
+EventBus --> EventHandler : dispatches to >
+EventBus ..> DomainEvent : processes >
+EventHandler ..> DomainEvent : handles >
+@enduml

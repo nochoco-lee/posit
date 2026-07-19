@@ -1,0 +1,32 @@
+flowchart TD
+    title Inventory Management Flow
+
+    A[Stock Check Request] --> B{Check Type?}
+    B -->|Single Product| C[Query Stock Level]
+    B -->|Bulk Check| D[Query Multiple Stocks]
+    C --> E{In Stock?}
+    E -->|Yes| F[Return Available Qty]
+    E -->|No| G[Return Zero]
+    D --> H[Return Stock Map]
+
+    I[Reserve Stock] --> J{Reserve Items}
+    J --> K[Check Each Item]
+    K --> L{All Available?}
+    L -->|No| M[Release Previous Reservations]
+    M --> N[Return Failure]
+    L -->|Yes| O[Create Reservation]
+    O --> P[Set Expiry Timer]
+    P --> Q[Return Reservation ID]
+
+    R[Confirm Reservation] --> S[Convert to Sale]
+    S --> T[Decrement Stock]
+    T --> U[Cancel Expiry Timer]
+    U --> V[Return Success]
+
+    W[Release Reservation] --> X[Cancel Expiry Timer]
+    X --> Y[Restore Stock Levels]
+    Y --> Z[Return Released]
+
+    AA[Low Stock Alert] --> AB{Below Threshold?}
+    AB -->|Yes| AC[Send Alert Email]
+    AB -->|No| AD[No Action]

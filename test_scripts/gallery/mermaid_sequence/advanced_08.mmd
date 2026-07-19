@@ -1,0 +1,30 @@
+sequenceDiagram
+    title Microservice Order Orchestration
+
+    actor User
+    participant GW as API Gateway
+    participant Order as Order Svc
+    participant Cart as Cart Svc
+    participant Inv as Inventory Svc
+    participant Pay as Payment Svc
+    participant Notif as Notification Svc
+    participant Ship as Shipping Svc
+
+    User->>GW: POST /checkout
+    GW->>Order: createOrder(cartId, userId)
+
+    Order->>Cart: getCart(cartId)
+    Cart-->>Order: items[]
+
+    Order->>Inv: reserveItems(items[])
+    Inv-->>Order: reservationId
+
+    Order->>Pay: processPayment(userId, amount)
+    Pay-->>Order: paymentId
+
+    Order->>Ship: createShipment(address, items[])
+    Ship-->>Order: trackingNumber
+
+    Order->>Notif: sendConfirmation(userId, orderId, tracking)
+    Order-->>GW: 201 {orderId, tracking}
+    GW-->>User: 201 Created

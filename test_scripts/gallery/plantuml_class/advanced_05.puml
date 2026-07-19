@@ -1,0 +1,53 @@
+@startuml
+title Payment Strategy Pattern
+
+interface PaymentStrategy {
+  +pay(amount: Money): PaymentResult
+  +refund(transactionId: String): RefundResult
+  +supports(currency: String): Boolean
+}
+
+class CreditCardPayment implements PaymentStrategy {
+  -cardNumber: String
+  -expiry: String
+  +pay(amount: Money): PaymentResult
+  +refund(transactionId: String): RefundResult
+  +supports(currency: String): Boolean
+}
+
+class PayPalPayment implements PaymentStrategy {
+  -email: String
+  +pay(amount: Money): PaymentResult
+  +refund(transactionId: String): RefundResult
+  +supports(currency: String): Boolean
+}
+
+class CryptoPayment implements PaymentStrategy {
+  -walletAddress: String
+  +pay(amount: Money): PaymentResult
+  +refund(transactionId: String): RefundResult
+  +supports(currency: String): Boolean
+}
+
+class PaymentContext {
+  -strategy: PaymentStrategy
+  +setStrategy(s: PaymentStrategy): void
+  +processPayment(amount: Money): PaymentResult
+  +processRefund(txnId: String): RefundResult
+}
+
+class PaymentResult {
+  -success: Boolean
+  -transactionId: String
+  -message: String
+}
+
+class RefundResult {
+  -success: Boolean
+  -refundId: String
+}
+
+PaymentContext --> PaymentStrategy : uses >
+PaymentStrategy ..> PaymentResult
+PaymentStrategy ..> RefundResult
+@enduml

@@ -1,0 +1,11 @@
+@startuml
+title Single Server Deployment
+
+node "Web Server" {
+  artifact "ShopStream App" as app
+}
+
+database "PostgreSQL" as db
+
+app --> db : JDBC
+@enduml

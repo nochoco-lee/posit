@@ -1,0 +1,35 @@
+@startuml
+title Microservices with API Gateway
+
+cloud "Internet" as inet
+
+node "API Gateway" as gw {
+  artifact "Kong" as kong
+}
+
+node "Auth Service" as auth_svc {
+  artifact "auth-service" as auth_app
+}
+
+node "Catalog Service" as cat_svc {
+  artifact "catalog-service" as cat_app
+}
+
+node "Order Service" as order_svc {
+  artifact "order-service" as order_app
+}
+
+database "Users DB" as users_db
+database "Catalog DB" as cat_db
+database "Orders DB" as orders_db
+database "Redis" as redis
+
+inet --> gw : HTTPS
+gw --> auth_svc : gRPC
+gw --> cat_svc : gRPC
+gw --> order_svc : gRPC
+auth_svc --> users_db : JDBC
+cat_svc --> cat_db : JDBC
+order_svc --> orders_db : JDBC
+order_svc --> redis : Cache
+@enduml

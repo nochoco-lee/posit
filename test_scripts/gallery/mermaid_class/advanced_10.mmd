@@ -1,0 +1,224 @@
+classDiagram
+    title Complete System Architecture
+
+    class User {
+        -Long id
+        -String name
+        -String email
+        -String passwordHash
+        -List~Role~ roles
+        +verifyPassword(pw String) Boolean
+        +hasRole(name String) Boolean
+    }
+    class Role {
+        -String name
+        -Set~String~ permissions
+    }
+    class Authenticator {
+        <<interface>>
+        +authenticate(email String, pw String) Token
+        +validate(token String) Boolean
+    }
+    class JwtAuthenticator {
+        -String secret
+        -Long expiryMs
+    }
+
+    class Product {
+        <<abstract>>
+        #Long id
+        #String name
+        #String description
+        #Money price
+        #Int stock
+        #ProductStatus status
+        +isAvailable() Boolean
+        +reduceStock(qty Int) void
+    }
+    class PhysicalProduct {
+        -Double weight
+        -Dimensions dimensions
+    }
+    class DigitalProduct {
+        -String downloadUrl
+        -Long fileSize
+    }
+    class Category {
+        -Long id
+        -String name
+        -Category parent
+    }
+    class Money {
+        -BigDecimal amount
+        -String currency
+        +add(other Money) Money
+        +multiply(qty Int) Money
+    }
+    class ProductStatus {
+        <<enumeration>>
+        DRAFT
+        ACTIVE
+        ARCHIVED
+    }
+    class SearchEngine {
+        <<interface>>
+        +search(query String, filters Map) List~Product~
+    }
+
+    class Cart {
+        -Long id
+        -Long userId
+        -Map~Long,CartItem~ items
+        +addItem(product Product, qty Int) void
+        +removeItem(productId Long) void
+        +getTotal() Money
+        +clear() void
+    }
+    class CartItem {
+        -Product product
+        -Int quantity
+        +getSubtotal() Money
+    }
+
+    class Order {
+        -Long id
+        -Long userId
+        -List~OrderItem~ items
+        -OrderStatus status
+        -Money total
+        -DateTime createdAt
+        -DateTime updatedAt
+        +submit() void
+        +cancel() void
+        +markShipped(tracking String) void
+        +deliver() void
+    }
+    class OrderItem {
+        -Product product
+        -Int quantity
+        -Money unitPrice
+        +getSubtotal() Money
+    }
+    class OrderStatus {
+        <<enumeration>>
+        PENDING
+        CONFIRMED
+        PROCESSING
+        SHIPPED
+        DELIVERED
+        CANCELLED
+        REFUNDED
+    }
+
+    class PaymentProvider {
+        <<interface>>
+        +charge(amount Money, token String) Transaction
+        +refund(txnId String) Transaction
+    }
+    class StripeProvider {
+        -String apiKey
+    }
+    class PayPalProvider {
+        -String clientId
+        -String secret
+    }
+    class Transaction {
+        -String id
+        -Long orderId
+        -Money amount
+        -TxnStatus status
+        -String provider
+        -DateTime createdAt
+    }
+    class TxnStatus {
+        <<enumeration>>
+        PENDING
+        SUCCESS
+        FAILED
+        REFUNDED
+    }
+
+    class InventoryManager {
+        -Long reservationTTL
+        +reserve(orderId Long, items Map~Long,Int~) Reservation
+        +confirm(reservationId String) void
+        +release(reservationId String) void
+        +getStock(productId Long) Int
+    }
+    class Reservation {
+        -String id
+        -Long orderId
+        -Map~Long,Int~ items
+        -DateTime expiresAt
+        +isExpired() Boolean
+    }
+
+    class NotificationChannel {
+        <<interface>>
+        +send(userId Long, template String, data Map) void
+    }
+    class EmailChannel {
+        -String smtpHost
+        -String fromAddress
+    }
+    class PushChannel {
+        -String firebaseKey
+    }
+    class SmsChannel {
+        -String twilioSid
+        -String twilioToken
+    }
+    class NotificationService {
+        -List~NotificationChannel~ channels
+        +notify(userId Long, event String, data Map) void
+    }
+
+    class ShippingService {
+        +createShipment(orderId Long, address Address) Shipment
+        +getRates(address Address, weight Double) List~ShippingRate~
+        +track(trackingNumber String) ShipmentStatus
+    }
+    class Shipment {
+        -String trackingNumber
+        -String carrier
+        -ShipmentStatus status
+        -Date estimatedDelivery
+    }
+    class Address {
+        -String street
+        -String city
+        -String state
+        -String zip
+        -String country
+    }
+    class ShippingRate {
+        -String carrier
+        -String service
+        -Money cost
+        -Int days
+    }
+    class ShipmentStatus {
+        <<enumeration>>
+        PREPARING
+        IN_TRANSIT
+        DELIVERED
+        RETURNED
+    }
+
+    User "1" --> "*" Order : places
+    User "1" --> "*" Role : has
+    User "1" --> "0..1" Cart : owns
+    Product "1" --> "*" OrderItem : referenced in
+    Product "*" --> "*" Category : in
+    Cart "1" *-- "0..*" CartItem : contains
+    CartItem --> Product
+    Order "1" *-- "1..*" OrderItem : contains
+    OrderItem --> Money
+    Order --> OrderStatus
+    Order "1" --> "0..1" Transaction : paid by
+    Order "1" --> "0..1" Shipment : fulfilled by
+    Shipment --> Address
+    Shipment --> ShipmentStatus
+    InventoryManager ..> Reservation
+    Reservation --> Order
+    NotificationService --> NotificationChannel

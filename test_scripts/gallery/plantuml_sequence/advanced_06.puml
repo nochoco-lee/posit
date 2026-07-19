@@ -1,0 +1,22 @@
+@startuml
+title Order Status Tracking
+
+actor       User        as user
+participant "Order API"  as order
+participant "Shipping API" as ship
+database    "Orders DB"  as db
+
+user -> order : GET /orders/{id}
+order -> db : findOrder(id)
+db --> order : order record
+order -> ship : getTracking(trackingNumber)
+ship --> order : {status, location, eta}
+order --> user : 200 OK {order, tracking}
+
+== Status Update ==
+
+ship -> order : POST /webhooks/shipping {trackingNumber, status}
+order -> db : updateStatus(orderId, status)
+db --> order : ok
+order --> user : WebSocket: statusChanged
+@enduml

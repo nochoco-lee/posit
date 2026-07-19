@@ -1,0 +1,41 @@
+@startuml
+title Order and OrderItem
+
+class Order {
+  -id: Long
+  -userId: Long
+  -status: OrderStatus
+  -total: Money
+  -createdAt: DateTime
+  +addItem(product: Product, qty: Int): void
+  +removeItem(productId: Long): void
+  +getTotal(): Money
+  +submit(): void
+  +cancel(): void
+}
+
+class OrderItem {
+  -id: Long
+  -product: Product
+  -quantity: Int
+  -unitPrice: Money
+  +getSubtotal(): Money
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+class Money {
+  -amount: BigDecimal
+  -currency: String
+}
+
+Order "1" *-- "1..*" OrderItem : contains >
+Order --> OrderStatus
+OrderItem --> Money
+@enduml

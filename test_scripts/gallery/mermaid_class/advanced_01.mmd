@@ -1,0 +1,12 @@
+classDiagram
+    title User Profile
+
+    class User {
+        -Long id
+        -String name
+        -String email
+        -String passwordHash
+        -DateTime createdAt
+        +getEmail() String
+        +verifyPassword(pw String) Boolean
+    }

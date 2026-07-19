@@ -1,0 +1,69 @@
+sequenceDiagram
+    title Complete E-Commerce Flow
+
+    actor User
+    participant GW as API Gateway
+    participant Auth as Auth Svc
+    participant Cat as Catalog Svc
+    participant Cart as Cart Svc
+    participant Order as Order Svc
+    participant Inv as Inventory Svc
+    participant Pay as Payment Svc
+    participant Ship as Shipping Svc
+    participant Notif as Notification Svc
+
+    rect rgb(240, 248, 255)
+        Note over User,Auth: Authentication
+        User->>GW: POST /auth/login
+        GW->>Auth: authenticate(email, pass)
+        Auth-->>GW: token
+        GW-->>User: {token}
+    end
+
+    rect rgb(240, 255, 240)
+        Note over User,Cart: Browse and Add to Cart
+        User->>GW: GET /products?q=laptop
+        GW->>Cat: search(query)
+        Cat-->>GW: products[]
+        GW-->>User: products[]
+
+        User->>GW: POST /cart {productId: 42, qty: 1}
+        GW->>Cart: addItem(userId, productId, qty)
+        Cart->>Cat: getProduct(42)
+        Cat-->>Cart: {price, stock}
+        Cart-->>GW: {cartTotal: 999.99}
+        GW-->>User: cart updated
+    end
+
+    rect rgb(255, 248, 240)
+        Note over User,Notif: Checkout
+        User->>GW: POST /checkout {addressId: 7}
+        GW->>Order: createOrder(cartId, userId, addressId)
+
+        Order->>Cart: getCart(cartId)
+        Cart-->>Order: items[]
+
+        Order->>Inv: reserve(items[])
+        Inv-->>Order: reservationId
+
+        Order->>Pay: charge(userId, 999.99)
+        Pay-->>Order: paymentId
+
+        Order->>Ship: createShipment(address, items[])
+        Ship-->>Order: trackingNumber
+
+        Order->>Notif: sendConfirmation(userId, orderId, tracking)
+
+        Order-->>GW: {orderId: 1001, tracking}
+        GW-->>User: Order confirmed
+    end
+
+    rect rgb(248, 240, 255)
+        Note over User,Ship: Track Order
+        User->>GW: GET /orders/1001
+        GW->>Order: getOrder(1001)
+        Order->>Ship: getTracking(trackingNumber)
+        Ship-->>Order: {status: "in_transit", eta: "2026-07-22"}
+        Order-->>GW: {order, tracking}
+        GW-->>User: order details
+    end

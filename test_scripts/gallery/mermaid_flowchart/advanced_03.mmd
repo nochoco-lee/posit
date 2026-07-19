@@ -1,0 +1,21 @@
+flowchart TD
+    title Product Browsing Flow
+
+    A[Open Catalog] --> B{Has Search Query?}
+    B -->|No| C[Show Featured Products]
+    B -->|Yes| D[Parse Search Query]
+    D --> E[Apply Category Filter]
+    E --> F[Apply Price Range]
+    F --> G[Apply Rating Filter]
+    G --> H[Sort Results]
+    H --> I[Paginate]
+    I --> J[Enrich with Ratings]
+    J --> K[Return Product List]
+    C --> K
+
+    K --> L{User Clicks Product?}
+    L -->|No| M[End]
+    L -->|Yes| N[Load Product Detail]
+    N --> O[Load Reviews]
+    O --> P[Load Related Products]
+    P --> Q[Show Product Page]

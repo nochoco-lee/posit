@@ -1,0 +1,66 @@
+@startuml
+title Kubernetes Production with Services
+
+cloud "Internet" as inet
+
+node "AWS ALB" as lb
+
+node "EKS Cluster" as eks {
+  package "ingress-nginx" {
+    node "nginx-ingress" as ingress
+  }
+
+  package "shopstream" {
+    package "auth deployment" as auth_depl {
+      node "auth-abc123" as auth1
+      node "auth-def456" as auth2
+    }
+    package "catalog deployment" as cat_depl {
+      node "catalog-ghi789" as cat1
+      node "catalog-jkl012" as cat2
+    }
+    package "order deployment" as order_depl {
+      node "order-mno345" as order1
+      node "order-pqr678" as order2
+      node "order-stu901" as order3
+    }
+    package "payment deployment" as pay_depl {
+      node "pay-vwx234" as pay1
+    }
+  }
+
+  package "data" {
+    database "RDS PostgreSQL" as rds
+    database "ElastiCache Redis" as elasticache
+  }
+
+  package "messaging" {
+    message_queue "Amazon SQS" as sqs
+  }
+}
+
+inet --> lb : HTTPS :443
+lb --> ingress : HTTP :80
+ingress --> auth1 : /api/auth
+ingress --> auth2 : /api/auth
+ingress --> cat1 : /api/catalog
+ingress --> cat2 : /api/catalog
+ingress --> order1 : /api/orders
+ingress --> order2 : /api/orders
+ingress --> order3 : /api/orders
+auth1 --> rds : JDBC
+auth2 --> rds : JDBC
+cat1 --> rds : JDBC
+cat2 --> rds : JDBC
+order1 --> rds : JDBC
+order2 --> rds : JDBC
+order3 --> rds : JDBC
+order1 --> elasticache : Cache
+order2 --> elasticache : Cache
+order3 --> elasticache : Cache
+pay1 --> rds : JDBC
+order1 --> sqs : Send
+order2 --> sqs : Send
+order3 --> sqs : Send
+pay1 --> sqs : Receive
+@enduml

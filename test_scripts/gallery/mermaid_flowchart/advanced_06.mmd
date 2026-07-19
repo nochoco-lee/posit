@@ -1,0 +1,19 @@
+flowchart TD
+    title Order Tracking Flow
+
+    A[View Order History] --> B[Load User Orders]
+    B --> C[Display Order List]
+    C --> D{Select Order?}
+    D -->|No| E[End]
+    D -->|Yes| F[Load Order Details]
+    F --> G[Load Order Items]
+    G --> H{Has Tracking?}
+    H -->|No| I[Show "Not Yet Shipped"]
+    H -->|Yes| J[Call Shipping API]
+    J --> K[Get Tracking Status]
+    K --> L[Display Tracking Map]
+    L --> M[Show Delivery ETA]
+    M --> N{Status Update?}
+    N -->|Yes| O[Update Status Display]
+    O --> N
+    N -->|No| P[End]

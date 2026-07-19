@@ -1,0 +1,31 @@
+@startuml
+title Refund and Return Flow
+
+actor  User       as user
+participant "Order API"  as order
+participant "Payment API" as pay
+participant "Inventory API" as inv
+participant "Notification API" as notif
+
+== Request Return ==
+
+user -> order : POST /orders/{id}/return {reason}
+order -> order : validateReturnWindow()
+order -> pay : refund(orderId, amount)
+alt Refund successful
+    pay --> order : refundId
+    order -> inv : restockItems(items[])
+    inv --> order : restocked
+    order -> notif : sendReturnConfirmation(userId, orderId)
+    order --> user : 200 OK {refundId, status: "processing"}
+else Refund failed
+    pay --> order : error
+    order --> user : 500 Internal Server Error
+end
+
+== Refund Completed ==
+
+pay -> order : POST /webhooks/refund {refundId, status: "completed"}
+order -> order : updateStatus("REFUNDED")
+order -> notif : sendRefundReceipt(userId, refundId)
+@enduml

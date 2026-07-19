@@ -1,0 +1,12 @@
+sequenceDiagram
+    title User Login
+
+    actor User
+    participant Auth as Auth API
+    participant DB as Users DB
+
+    User->>Auth: POST /login {email, password}
+    Auth->>DB: findUser(email)
+    DB-->>Auth: user record
+    Auth->>Auth: verifyPassword()
+    Auth-->>User: 200 OK {token}

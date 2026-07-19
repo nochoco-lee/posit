@@ -1,0 +1,32 @@
+sequenceDiagram
+    title Refund and Return Flow
+
+    actor User
+    participant Order as Order API
+    participant Pay as Payment API
+    participant Inv as Inventory API
+    participant Notif as Notification API
+
+    rect rgb(240, 248, 255)
+        Note over User,Notif: Request Return
+        User->>Order: POST /orders/{id}/return {reason}
+        Order->>Order: validateReturnWindow()
+        Order->>Pay: refund(orderId, amount)
+        alt Refund successful
+            Pay-->>Order: refundId
+            Order->>Inv: restockItems(items[])
+            Inv-->>Order: restocked
+            Order->>Notif: sendReturnConfirmation(userId, orderId)
+            Order-->>User: 200 OK {refundId, status: "processing"}
+        else Refund failed
+            Pay-->>Order: error
+            Order-->>User: 500 Internal Server Error
+        end
+    end
+
+    rect rgb(255, 248, 240)
+        Note over Pay,Notif: Refund Completed
+        Pay->>Order: POST /webhooks/refund {refundId, status: "completed"}
+        Order->>Order: updateStatus("REFUNDED")
+        Order->>Notif: sendRefundReceipt(userId, refundId)
+    end

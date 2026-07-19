@@ -1,0 +1,18 @@
+flowchart TD
+    title User Registration Flow
+
+    A[Enter Name, Email, Password] --> B{All Fields Valid?}
+    B -->|No| C[Show Validation Errors]
+    B -->|Yes| D[Check Email Format]
+    D --> E{Email Valid?}
+    E -->|No| F[Show "Invalid Email"]
+    E -->|Yes| G[Check Password Strength]
+    G --> H{Strong Enough?}
+    H -->|No| I[Show "Weak Password"]
+    H -->|Yes| J[Check Email Availability]
+    J --> K{Email Taken?}
+    K -->|Yes| L[Show "Email Already Registered"]
+    K -->|No| M[Hash Password]
+    M --> N[Create User Record]
+    N --> O[Send Welcome Email]
+    O --> P[Return Success]

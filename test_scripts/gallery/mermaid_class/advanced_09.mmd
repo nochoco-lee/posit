@@ -1,0 +1,70 @@
+classDiagram
+    title Service Layer Architecture
+
+    class UserDTO {
+        -Long id
+        -String name
+        -String email
+    }
+    class ProductDTO {
+        -Long id
+        -String name
+        -Double price
+        -Int stock
+    }
+    class OrderDTO {
+        -Long id
+        -List~OrderItemDTO~ items
+        -Double total
+        -String status
+    }
+    class OrderItemDTO {
+        -Long productId
+        -String productName
+        -Int quantity
+        -Double unitPrice
+    }
+
+    class UserService {
+        -UserRepository userRepo
+        -EventBus eventBus
+        +register(dto UserDTO) UserDTO
+        +getProfile(userId Long) UserDTO
+        +updateProfile(userId Long, dto UserDTO) void
+    }
+    class ProductService {
+        -ProductRepository productRepo
+        +search(query String) List~ProductDTO~
+        +getProduct(id Long) ProductDTO
+        +updateStock(id Long, delta Int) void
+    }
+    class OrderService {
+        -OrderRepository orderRepo
+        -ProductService productService
+        -PaymentService paymentService
+        -EventBus eventBus
+        +createOrder(userId Long, items List~OrderItemDTO~) OrderDTO
+        +getOrder(orderId Long) OrderDTO
+        +cancelOrder(orderId Long) void
+    }
+    class PaymentService {
+        +charge(userId Long, amount Double) String
+        +refund(paymentId String) void
+    }
+
+    class UserMapper {
+        +toDTO(user User) UserDTO
+        +toEntity(dto UserDTO) User
+    }
+    class OrderMapper {
+        +toDTO(order Order) OrderDTO
+        +toEntity(dto OrderDTO) Order
+    }
+
+    UserService ..> UserDTO
+    UserService ..> UserMapper
+    ProductService ..> ProductDTO
+    OrderService ..> OrderDTO
+    OrderService ..> OrderMapper
+    OrderService --> ProductService
+    OrderService --> PaymentService

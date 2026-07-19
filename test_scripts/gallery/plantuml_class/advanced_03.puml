@@ -1,0 +1,49 @@
+@startuml
+title Product Hierarchy
+
+interface Searchable {
+  +matches(query: String): Boolean
+}
+
+interface Pricable {
+  +getPrice(): Money
+  +applyDiscount(pct: Double): Money
+}
+
+abstract class Product implements Searchable, Pricable {
+  #id: Long
+  #name: String
+  #description: String
+  #price: Money
+  #status: ProductStatus
+  +matches(query: String): Boolean
+  +getPrice(): Money
+}
+
+class PhysicalProduct extends Product {
+  -weight: Double
+  -dimensions: Dimensions
+  +applyDiscount(pct: Double): Money
+}
+
+class DigitalProduct extends Product {
+  -fileSize: Long
+  -downloadUrl: String
+  +applyDiscount(pct: Double): Money
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+class Money {
+  -amount: BigDecimal
+  -currency: String
+  +add(other: Money): Money
+}
+
+Product --> ProductStatus
+Product --> Money
+@enduml

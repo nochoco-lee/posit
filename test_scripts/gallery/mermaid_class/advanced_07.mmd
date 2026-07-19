@@ -1,0 +1,63 @@
+classDiagram
+    title Event-Driven Notification System
+
+    class EventHandler {
+        <<interface>>
+        +handle(event DomainEvent) void
+    }
+
+    class DomainEvent {
+        <<abstract>>
+        #String eventId
+        #DateTime timestamp
+        #Long aggregateId
+        +getEventId() String
+    }
+
+    class OrderPlacedEvent {
+        -Long orderId
+        -Long userId
+        -Money total
+    }
+
+    class PaymentReceivedEvent {
+        -String paymentId
+        -Long orderId
+        -Money amount
+    }
+
+    class ItemShippedEvent {
+        -String trackingNumber
+        -Long orderId
+    }
+
+    class EventBus {
+        -Map~String,List~EventHandler~~ handlers
+        +subscribe(eventType String, handler EventHandler) void
+        +publish(event DomainEvent) void
+    }
+
+    class EmailNotificationHandler {
+        -EmailService emailService
+        +handle(event DomainEvent) void
+    }
+
+    class PushNotificationHandler {
+        -PushService pushService
+        +handle(event DomainEvent) void
+    }
+
+    class SmsNotificationHandler {
+        -SmsService smsService
+        +handle(event DomainEvent) void
+    }
+
+    EventBus --> EventHandler : dispatches to
+    EventBus ..> DomainEvent : processes
+    EventHandler ..> DomainEvent : handles
+    DomainEvent <|-- OrderPlacedEvent
+    DomainEvent <|-- PaymentReceivedEvent
+    DomainEvent <|-- ItemShippedEvent
+    EmailNotificationHandler ..|> EventHandler
+    PushNotificationHandler ..|> EventHandler
+    SmsNotificationHandler ..|> EventHandler

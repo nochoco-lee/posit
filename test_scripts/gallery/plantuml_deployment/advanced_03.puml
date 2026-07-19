@@ -1,0 +1,27 @@
+@startuml
+title Load Balancer + Multiple App Servers
+
+cloud "Internet" as inet
+
+node "Load Balancer" as lb {
+  artifact "Nginx" as nginx
+}
+
+node "App Server 1" as app1 {
+  artifact "ShopStream" as s1
+}
+
+node "App Server 2" as app2 {
+  artifact "ShopStream" as s2
+}
+
+database "PostgreSQL Primary" as db_primary
+database "PostgreSQL Replica" as db_replica
+
+inet --> lb : HTTPS
+lb --> app1 : HTTP
+lb --> app2 : HTTP
+s1 --> db_primary : JDBC
+s2 --> db_primary : JDBC
+db_primary --> db_replica : WAL Replication
+@enduml

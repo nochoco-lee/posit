@@ -1,0 +1,32 @@
+classDiagram
+    title User and Role Hierarchy
+
+    class User {
+        -Long id
+        -String name
+        -String email
+        +getRoles() List~Role~
+    }
+
+    class Role {
+        <<abstract>>
+        #String name
+        +getPermissions() List~String~
+    }
+
+    class AdminRole {
+        +getPermissions() List~String~
+    }
+
+    class CustomerRole {
+        +getPermissions() List~String~
+    }
+
+    class SellerRole {
+        +getPermissions() List~String~
+    }
+
+    User "1" --> "*" Role : has
+    Role <|-- AdminRole
+    Role <|-- CustomerRole
+    Role <|-- SellerRole

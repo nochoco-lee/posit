@@ -1,0 +1,35 @@
+flowchart TD
+    title Admin Dashboard Flow
+
+    A[Admin Login] --> B{Is Admin?}
+    B -->|No| C[Access Denied]
+    B -->|Yes| D[Load Dashboard]
+
+    D --> E{Admin Action?}
+    E -->|View Users| F[Load User List]
+    F --> G[Display Users Table]
+    G --> H{User Action?}
+    H -->|Edit| I[Load User Form]
+    H -->|Deactivate| J[Confirm Deactivation]
+    H -->|Back| D
+
+    E -->|Manage Products| K[Load Product List]
+    K --> L[Display Products Table]
+    L --> M{Product Action?}
+    M -->|Edit| N[Load Product Form]
+    M -->|Archive| O[Confirm Archive]
+    M -->|Add New| P[Empty Product Form]
+    M -->|Back| D
+
+    E -->|View Orders| Q[Load Order List]
+    Q --> R[Filter by Status]
+    R --> S[Display Orders Table]
+    S --> T{Order Action?}
+    T -->|View Details| U[Load Order Detail]
+    T -->|Update Status| V[Status Dropdown]
+    T -->|Back| D
+
+    E -->|Analytics| W[Load Analytics]
+    W --> X[Revenue Chart]
+    W --> Y[Order Trends]
+    W --> Z[Top Products]

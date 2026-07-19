@@ -1,0 +1,29 @@
+flowchart TD
+    title Checkout and Payment Flow
+
+    A[Start Checkout] --> B[Select Shipping Address]
+    B --> C{Address Valid?}
+    C -->|No| D[Add New Address]
+    D --> C
+    C -->|Yes| E[Select Payment Method]
+    E --> F{Payment Type?}
+    F -->|Credit Card| G[Enter Card Details]
+    F -->|PayPal| H[Redirect to PayPal]
+    F -->|Crypto| I[Show Wallet Address]
+    G --> J[Validate Card]
+    J -->|Invalid| K[Show Card Error]
+    J -->|Valid| L[Tokenize Card]
+    H --> M[PayPal Auth]
+    I --> N[Wait for Confirmation]
+    L --> O[Reserve Inventory]
+    M --> O
+    N --> O
+    O --> P{Stock Available?}
+    P -->|No| Q[Show "Out of Stock"]
+    P -->|Yes| R[Process Payment]
+    R --> S{Payment Success?}
+    S -->|No| T[Release Inventory]
+    T --> U[Show Payment Error]
+    S -->|Yes| V[Create Order]
+    V --> W[Send Confirmation Email]
+    W --> X[Return Order Confirmation]

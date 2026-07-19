@@ -1,0 +1,221 @@
+@startuml
+title Complete System Architecture
+
+skinparam packageStyle rectangle
+hide empty members
+
+package "Auth Module" {
+  class User {
+    -id: Long
+    -name: String
+    -email: String
+    -passwordHash: String
+    -roles: List<Role>
+    +verifyPassword(pw: String): Boolean
+    +hasRole(name: String): Boolean
+  }
+  class Role {
+    -name: String
+    -permissions: Set<String>
+  }
+  interface Authenticator {
+    +authenticate(email: String, pw: String): Token
+    +validate(token: String): Boolean
+  }
+  class JwtAuthenticator implements Authenticator {
+    -secret: String
+    -expiryMs: Long
+  }
+}
+
+package "Catalog Module" {
+  abstract class Product {
+    #id: Long
+    #name: String
+    #description: String
+    #price: Money
+    #stock: Int
+    #status: ProductStatus
+    +isAvailable(): Boolean
+    +reduceStock(qty: Int): void
+  }
+  class PhysicalProduct extends Product {
+    -weight: Double
+    -dimensions: Dimensions
+  }
+  class DigitalProduct extends Product {
+    -downloadUrl: String
+    -fileSize: Long
+  }
+  class Category {
+    -id: Long
+    -name: String
+    -parent: Category
+  }
+  class Money {
+    -amount: BigDecimal
+    -currency: String
+    +add(other: Money): Money
+    +multiply(qty: Int): Money
+  }
+  enum ProductStatus { DRAFT, ACTIVE, ARCHIVED }
+  interface SearchEngine {
+    +search(query: String, filters: Map): List<Product>
+  }
+}
+
+package "Cart Module" {
+  class Cart {
+    -id: Long
+    -userId: Long
+    -items: Map<Long, CartItem>
+    +addItem(product: Product, qty: Int): void
+    +removeItem(productId: Long): void
+    +getTotal(): Money
+    +clear(): void
+  }
+  class CartItem {
+    -product: Product
+    -quantity: Int
+    +getSubtotal(): Money
+  }
+}
+
+package "Order Module" {
+  class Order {
+    -id: Long
+    -userId: Long
+    -items: List<OrderItem>
+    -status: OrderStatus
+    -total: Money
+    -createdAt: DateTime
+    -updatedAt: DateTime
+    +submit(): void
+    +cancel(): void
+    +markShipped(tracking: String): void
+    +deliver(): void
+  }
+  class OrderItem {
+    -product: Product
+    -quantity: Int
+    -unitPrice: Money
+    +getSubtotal(): Money
+  }
+  enum OrderStatus {
+    PENDING
+    CONFIRMED
+    PROCESSING
+    SHIPPED
+    DELIVERED
+    CANCELLED
+    REFUNDED
+  }
+}
+
+package "Payment Module" {
+  interface PaymentProvider {
+    +charge(amount: Money, token: String): Transaction
+    +refund(txnId: String): Transaction
+  }
+  class StripeProvider implements PaymentProvider {
+    -apiKey: String
+  }
+  class PayPalProvider implements PaymentProvider {
+    -clientId: String
+    -secret: String
+  }
+  class Transaction {
+    -id: String
+    -orderId: Long
+    -amount: Money
+    -status: TxnStatus
+    -provider: String
+    -createdAt: DateTime
+  }
+  enum TxnStatus { PENDING, SUCCESS, FAILED, REFUNDED }
+}
+
+package "Inventory Module" {
+  class InventoryManager {
+    -reservationTTL: Long
+    +reserve(orderId: Long, items: Map<Long, Int>): Reservation
+    +confirm(reservationId: String): void
+    +release(reservationId: String): void
+    +getStock(productId: Long): Int
+  }
+  class Reservation {
+    -id: String
+    -orderId: Long
+    -items: Map<Long, Int>
+    -expiresAt: DateTime
+    +isExpired(): Boolean
+  }
+}
+
+package "Notification Module" {
+  interface NotificationChannel {
+    +send(userId: Long, template: String, data: Map): void
+  }
+  class EmailChannel implements NotificationChannel {
+    -smtpHost: String
+    -fromAddress: String
+  }
+  class PushChannel implements NotificationChannel {
+    -firebaseKey: String
+  }
+  class SmsChannel implements NotificationChannel {
+    -twilioSid: String
+    -twilioToken: String
+  }
+  class NotificationService {
+    -channels: List<NotificationChannel>
+    +notify(userId: Long, event: String, data: Map): void
+  }
+}
+
+package "Shipping Module" {
+  class ShippingService {
+    +createShipment(orderId: Long, address: Address): Shipment
+    +getRates(address: Address, weight: Double): List<ShippingRate>
+    +track(trackingNumber: String): ShipmentStatus
+  }
+  class Shipment {
+    -trackingNumber: String
+    -carrier: String
+    -status: ShipmentStatus
+    -estimatedDelivery: Date
+  }
+  class Address {
+    -street: String
+    -city: String
+    -state: String
+    -zip: String
+    -country: String
+  }
+  class ShippingRate {
+    -carrier: String
+    -service: String
+    -cost: Money
+    -days: Int
+  }
+  enum ShipmentStatus { PREPARING, IN_TRANSIT, DELIVERED, RETURNED }
+}
+
+User "1" -- "*" Order : places >
+User "1" *-- "*" Role
+User "1" -- "0..1" Cart : owns >
+Product "1" -- "*" OrderItem : referenced in >
+Product "*" -- "*" Category : in >
+Cart "1" *-- "0..*" CartItem : contains >
+CartItem --> Product
+Order "1" *-- "1..*" OrderItem : contains >
+OrderItem --> Money
+Order --> OrderStatus
+Order "1" -- "0..1" Transaction : paid by >
+Order "1" -- "0..1" Shipment : fulfilled by >
+Shipment --> Address
+Shipment --> ShipmentStatus
+InventoryManager ..> Reservation
+Reservation --> Order
+NotificationService --> NotificationChannel
+@enduml

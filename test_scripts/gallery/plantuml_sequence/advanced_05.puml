@@ -1,0 +1,21 @@
+@startuml
+title Checkout with Payment
+
+actor       User        as user
+participant "Order API"  as order
+participant "Payment API" as pay
+participant "Inventory API" as inv
+participant "Email Svc"  as email
+database    "Orders DB"  as db
+
+user -> order : POST /checkout {cartId, address}
+order -> inv : reserveItems(cartItems)
+inv --> order : reserved
+order -> pay : charge(userId, total)
+pay --> order : paymentId
+order -> db : createOrder(record)
+db --> order : orderId
+order -> email : sendConfirmation(userId, orderId)
+email --> order : sent
+order --> user : 200 OK {orderId, status: "confirmed"}
+@enduml

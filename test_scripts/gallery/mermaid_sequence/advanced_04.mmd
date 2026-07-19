@@ -1,0 +1,17 @@
+sequenceDiagram
+    title Shopping Cart Operations
+
+    actor User
+    participant Cart as Cart API
+    participant Catalog as Catalog API
+    participant DB as Cart DB
+
+    User->>Cart: POST /cart/items {productId, qty}
+    Cart->>Catalog: getProduct(productId)
+    Catalog-->>Cart: {name, price, stock}
+    Cart->>Cart: validateStock(qty)
+    Cart->>DB: upsertItem(userId, productId, qty)
+    DB-->>Cart: ok
+    Cart->>DB: recalculateTotal(userId)
+    DB-->>Cart: total
+    Cart-->>User: 200 OK {item, total}

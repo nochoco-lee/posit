@@ -1,0 +1,21 @@
+sequenceDiagram
+    title Order Status Tracking
+
+    actor User
+    participant Order as Order API
+    participant Ship as Shipping API
+    participant DB as Orders DB
+
+    User->>Order: GET /orders/{id}
+    Order->>DB: findOrder(id)
+    DB-->>Order: order record
+    Order->>Ship: getTracking(trackingNumber)
+    Ship-->>Order: {status, location, eta}
+    Order-->>User: 200 OK {order, tracking}
+
+    Note over Ship,Order: Status Update via Webhook
+
+    Ship->>Order: POST /webhooks/shipping {trackingNumber, status}
+    Order->>DB: updateStatus(orderId, status)
+    DB-->>Order: ok
+    Order-->>User: WebSocket: statusChanged

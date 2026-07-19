@@ -1,0 +1,36 @@
+@startuml
+title Docker Compose Local Development
+
+node "Developer Machine" {
+  node "Docker Network: shopstream-net" {
+    node "app" as app_container {
+      artifact "shopstream:dev" as app
+    }
+    node "db" as db_container {
+      artifact "postgres:16-alpine" as pg
+    }
+    node "cache" as cache_container {
+      artifact "redis:7-alpine" as redis
+    }
+    node "mq" as mq_container {
+      artifact "rabbitmq:3-management" as mq
+    }
+    node "mailhog" as mail_container {
+      artifact "mailhog/mailhog" as mailhog
+    }
+  }
+
+  artifact "docker-compose.yml" as compose
+}
+
+compose ..> app_container : defines
+compose ..> db_container : defines
+compose ..> cache_container : defines
+compose ..> mq_container : defines
+compose ..> mail_container : defines
+
+app --> pg : JDBC :5432
+app --> redis : Redis :6379
+app --> mq : AMQP :5672
+app --> mailhog : SMTP :1025
+@enduml

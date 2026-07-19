@@ -1,0 +1,31 @@
+@startuml
+title Microservice Order Orchestration
+
+actor       User         as user
+participant "API Gateway" as gw
+participant "Order Svc"   as order
+participant "Cart Svc"    as cart
+participant "Inventory Svc" as inv
+participant "Payment Svc" as pay
+participant "Notification Svc" as notif
+participant "Shipping Svc" as ship
+
+user -> gw : POST /checkout
+gw -> order : createOrder(cartId, userId)
+
+order -> cart : getCart(cartId)
+cart --> order : items[]
+
+order -> inv : reserveItems(items[])
+inv --> order : reservationId
+
+order -> pay : processPayment(userId, amount)
+pay --> order : paymentId
+
+order -> ship : createShipment(address, items[])
+ship --> order : trackingNumber
+
+order -> notif : sendConfirmation(userId, orderId, tracking)
+order --> gw : 201 {orderId, tracking}
+gw --> user : 201 Created
+@enduml

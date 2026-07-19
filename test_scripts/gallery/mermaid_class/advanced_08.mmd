@@ -1,0 +1,74 @@
+classDiagram
+    title Full Domain Model
+
+    class User {
+        -Long id
+        -String name
+        -String email
+        -String passwordHash
+        +verifyPassword(pw String) Boolean
+    }
+    class Role {
+        -String name
+        -List~String~ permissions
+    }
+    class Product {
+        -Long id
+        -String name
+        -Money price
+        -Int stock
+        -ProductStatus status
+    }
+    class Category {
+        -Long id
+        -String name
+        -Category parent
+    }
+    class Money {
+        -BigDecimal amount
+        -String currency
+    }
+    class Order {
+        -Long id
+        -OrderStatus status
+        -Money total
+        -DateTime createdAt
+    }
+    class OrderItem {
+        -Int quantity
+        -Money unitPrice
+    }
+    class Payment {
+        -String id
+        -Money amount
+        -String method
+        -PaymentStatus status
+    }
+    class Refund {
+        -String id
+        -String paymentId
+        -Money amount
+    }
+    class Shipment {
+        -String trackingNumber
+        -String carrier
+        -ShipmentStatus status
+        -Date estimatedDelivery
+    }
+    class Address {
+        -String street
+        -String city
+        -String state
+        -String zip
+        -String country
+    }
+
+    User "1" --> "*" Order : places
+    User "1" --> "*" Role : has
+    Order "1" *-- "1..*" OrderItem : contains
+    Order "1" --> "1" Shipment : ships via
+    Order "1" --> "0..1" Payment : paid by
+    Product "1" --> "*" OrderItem : referenced in
+    Product "*" --> "*" Category : categorized
+    Shipment --> Address : delivers to
+    Payment "1" --> "0..*" Refund : may have

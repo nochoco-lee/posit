@@ -1,0 +1,61 @@
+@startuml
+title Multi-Region Deployment
+
+cloud "CloudFront CDN" as cdn
+
+node "Region: us-east-1" as us {
+  node "ALB US" as alb_us
+
+  node "EKS US" as eks_us {
+    node "Auth Pods" as auth_us
+    node "Catalog Pods" as cat_us
+    node "Order Pods" as order_us
+  }
+
+  database "RDS Primary" as rds_us
+  database "ElastiCache" as cache_us
+  message_queue "SQS US" as sqs_us
+}
+
+node "Region: eu-west-1" as eu {
+  node "ALB EU" as alb_eu
+
+  node "EKS EU" as eks_eu {
+    node "Auth Pods" as auth_eu
+    node "Catalog Pods" as cat_eu
+    node "Order Pods" as order_eu
+  }
+
+  database "RDS Read Replica" as rds_eu
+  database "ElastiCache" as cache_eu
+  message_queue "SQS EU" as sqs_eu
+}
+
+database "Global DynamoDB" as dynamo
+message_queue "EventBridge" as eb
+
+cdn --> alb_us : US users
+cdn --> alb_eu : EU users
+
+alb_us --> auth_us
+alb_us --> cat_us
+alb_us --> order_us
+alb_eu --> auth_eu
+alb_eu --> cat_eu
+alb_eu --> order_eu
+
+auth_us --> rds_us : write
+auth_eu --> rds_us : read
+cat_us --> rds_us : write
+cat_eu --> rds_us : read
+order_us --> rds_us : write
+order_eu --> rds_us : read
+
+rds_us --> rds_eu : Cross-Region Replication
+
+order_us --> sqs_us
+order_eu --> sqs_eu
+sqs_us --> eb : events
+sqs_eu --> eb : events
+eb --> dynamo : analytics
+@enduml

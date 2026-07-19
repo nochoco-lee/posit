@@ -1,0 +1,18 @@
+sequenceDiagram
+    title User Registration with Validation
+
+    actor User
+    participant Auth as Auth API
+    participant Email as Email Svc
+    participant DB as Users DB
+
+    User->>Auth: POST /register {name, email, password}
+    Auth->>DB: findUser(email)
+    DB-->>Auth: null
+    Auth->>Auth: validateInput()
+    Auth->>Auth: hashPassword()
+    Auth->>DB: createUser(record)
+    DB-->>Auth: userId
+    Auth->>Email: sendWelcome(email, name)
+    Email-->>Auth: sent
+    Auth-->>User: 201 Created {userId}

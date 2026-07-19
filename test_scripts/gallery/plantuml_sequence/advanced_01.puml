@@ -1,0 +1,13 @@
+@startuml
+title User Login
+
+actor       User      as user
+participant "Auth API" as auth
+database    "Users DB" as db
+
+user -> auth : POST /login {email, password}
+auth -> db : findUser(email)
+db --> auth : user record
+auth -> auth : verifyPassword()
+auth --> user : 200 OK {token}
+@enduml

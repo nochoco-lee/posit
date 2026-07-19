@@ -1,0 +1,29 @@
+flowchart TD
+    title Shopping Cart Flow
+
+    A[View Cart] --> B[Load Cart Items]
+    B --> C[Calculate Subtotal]
+    C --> D[Apply Coupons]
+    D --> E[Calculate Tax]
+    E --> F[Calculate Shipping]
+    F --> G[Show Cart Total]
+
+    G --> H{User Action?}
+    H -->|Update Qty| I[Validate Stock]
+    I -->|In Stock| J[Update Cart Item]
+    I -->|Out of Stock| K[Show Error]
+    J --> G
+    K --> G
+
+    H -->|Remove Item| L[Remove from Cart]
+    L --> G
+
+    H -->|Add Coupon| M[Validate Coupon]
+    M -->|Valid| N[Apply Discount]
+    M -->|Invalid| O[Show Error]
+    N --> G
+    O --> G
+
+    H -->|Checkout| P{Cart Empty?}
+    P -->|Yes| Q[Show "Cart is Empty"]
+    P -->|No| R[Proceed to Checkout]

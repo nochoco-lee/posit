@@ -1,0 +1,41 @@
+classDiagram
+    title Order and OrderItem
+
+    class Order {
+        -Long id
+        -Long userId
+        -OrderStatus status
+        -Money total
+        -DateTime createdAt
+        +addItem(product Product, qty Int) void
+        +removeItem(productId Long) void
+        +getTotal() Money
+        +submit() void
+        +cancel() void
+    }
+
+    class OrderItem {
+        -Long id
+        -Product product
+        -Int quantity
+        -Money unitPrice
+        +getSubtotal() Money
+    }
+
+    class OrderStatus {
+        <<enumeration>>
+        PENDING
+        CONFIRMED
+        SHIPPED
+        DELIVERED
+        CANCELLED
+    }
+
+    class Money {
+        -BigDecimal amount
+        -String currency
+    }
+
+    Order "1" *-- "1..*" OrderItem : contains
+    Order --> OrderStatus
+    OrderItem --> Money

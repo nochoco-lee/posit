@@ -1,0 +1,51 @@
+classDiagram
+    title Repository Pattern with Generics
+
+    class Repository {
+        <<interface>>
+        +findById(id ID) Optional~T~
+        +findAll() List~T~
+        +save(entity T) T
+        +deleteById(id ID) void
+        +count() Long
+    }
+
+    class UserRepository {
+        +findByEmail(email String) Optional~User~
+        +findById(id Long) Optional~User~
+        +save(user User) User
+    }
+
+    class ProductRepository {
+        +findByName(name String) List~Product~
+        +findByCategory(cat String) List~Product~
+        +findById(id Long) Optional~Product~
+    }
+
+    class OrderRepository {
+        +findByUserId(userId Long) List~Order~
+        +findByStatus(status OrderStatus) List~Order~
+        +findById(id Long) Optional~Order~
+    }
+
+    class User {
+        -Long id
+        -String email
+    }
+
+    class Product {
+        -Long id
+        -String name
+    }
+
+    class Order {
+        -Long id
+        -OrderStatus status
+    }
+
+    UserRepository --|> Repository
+    ProductRepository --|> Repository
+    OrderRepository --|> Repository
+    UserRepository ..> User
+    ProductRepository ..> Product
+    OrderRepository ..> Order

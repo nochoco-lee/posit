@@ -1,0 +1,52 @@
+@startuml
+title CI/CD Pipeline with Stages
+
+node "GitHub" as gh {
+  artifact "source" as src
+  artifact "Dockerfile" as dockerfile
+  artifact "k8s manifests" as k8s
+}
+
+node "GitHub Actions" as ci {
+  node "Build Stage" as build {
+    artifact "compile" as compile
+    artifact "test" as test
+  }
+  node "Image Stage" as img {
+    artifact "docker build" as docker_build
+    artifact "push to ECR" as push_ecr
+  }
+  node "Deploy Stage" as deploy {
+    artifact "staging" as staging
+    artifact "production" as prod
+  }
+}
+
+node "AWS ECR" as ecr {
+  artifact "shopstream:latest" as latest
+  artifact "shopstream:v1.2.3" as tagged
+}
+
+node "Staging Cluster" as staging_cluster {
+  node "EKS Staging" as eks_staging
+  database "RDS Staging" as rds_staging
+}
+
+node "Production Cluster" as prod_cluster {
+  node "EKS Production" as eks_prod
+  database "RDS Production" as rds_prod
+}
+
+src --> compile : push
+compile --> test : pass?
+test --> docker_build : green
+docker_build --> push_ecr : tag
+push_ecr --> latest
+push_ecr --> tagged
+tagged --> staging : deploy
+staging --> eks_staging : rollout
+eks_staging --> rds_staging : migrate
+staging --> prod : manual gate
+prod --> eks_prod : canary rollout
+eks_prod --> rds_prod : migrate
+@enduml

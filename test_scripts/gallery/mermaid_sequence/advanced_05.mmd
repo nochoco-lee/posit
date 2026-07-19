@@ -1,0 +1,20 @@
+sequenceDiagram
+    title Checkout with Payment
+
+    actor User
+    participant Order as Order API
+    participant Pay as Payment API
+    participant Inv as Inventory API
+    participant Email as Email Svc
+    participant DB as Orders DB
+
+    User->>Order: POST /checkout {cartId, address}
+    Order->>Inv: reserveItems(cartItems)
+    Inv-->>Order: reserved
+    Order->>Pay: charge(userId, total)
+    Pay-->>Order: paymentId
+    Order->>DB: createOrder(record)
+    DB-->>Order: orderId
+    Order->>Email: sendConfirmation(userId, orderId)
+    Email-->>Order: sent
+    Order-->>User: 200 OK {orderId, status: "confirmed"}
