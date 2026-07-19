@@ -75,7 +75,8 @@ import {
     Namespace,
     Callback,
     Style,
-    ClassDef
+    ClassDef,
+    Title
 } from "./lexer";
 
 class MermaidParser extends CstParser {
@@ -203,7 +204,8 @@ class MermaidParser extends CstParser {
             { ALT: () => this.CONSUME(Ampersand) },
             { ALT: () => this.CONSUME(Click) },
             { ALT: () => this.CONSUME(Link) },
-            { ALT: () => this.CONSUME(Links) }
+            { ALT: () => this.CONSUME(Links) },
+            { ALT: () => this.CONSUME(Title) }
         ]);
         this.MANY(() => this.SUBRULE(this.anyToken));
     });

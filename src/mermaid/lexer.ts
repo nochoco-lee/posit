@@ -53,6 +53,7 @@ export const Namespace = createToken({ name: "Namespace", pattern: /namespace\b/
 export const Callback = createToken({ name: "Callback", pattern: /callback\b/i, categories: [Keyword] });
 export const Style = createToken({ name: "Style", pattern: /style\b/i, categories: [Keyword] });
 export const ClassDef = createToken({ name: "ClassDef", pattern: /classDef\b/i, categories: [Keyword] });
+export const Title = createToken({ name: "Title", pattern: /title\b/i, categories: [Keyword] });
 
 // Arrows
 export const Arrow = createToken({
@@ -123,7 +124,7 @@ export const allMeTokens = [
     
     Arrow,
     
-    As, End, Participant, Actor, Activate, Deactivate, Note, RightOf, LeftOf, Over, Loop, Alt, Else, Opt, Par, Critical, Option, And, Rect, Autonumber, Box, Create, Destroy, Break, Class, Interface, Subgraph, Click, Links, Link, Direction, DirType, Namespace, Callback, Style, ClassDef,
+    As, End, Participant, Actor, Activate, Deactivate, Note, RightOf, LeftOf, Over, Loop, Alt, Else, Opt, Par, Critical, Option, And, Rect, Autonumber, Box, Create, Destroy, Break, Class, Interface, Subgraph, Click, Links, Link, Direction, DirType, Namespace, Callback, Style, ClassDef, Title,
     
     StringLiteral,
     BacktickIdentifier,
