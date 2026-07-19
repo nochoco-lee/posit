@@ -102,6 +102,9 @@ export class ClassRenderer {
             for (const group of map.groups) {
                 this.cascadeGroupResize(group);
             }
+
+            // Update all connection arrows to match final group sizes/bounds
+            this.connectionArrows.forEach(c => this.updateSingleConnection(c));
         } finally {
             Konva.autoDrawEnabled = prevAutoDraw;
         }
@@ -369,6 +372,55 @@ export class ClassRenderer {
         });
     }
 
+    private updateSingleConnection(conn: any) {
+        if (!this.map) return;
+        const originBase = this.map.nodes[conn.originId] || this.map.groups.find(g => g.id === conn.originId);
+        const originGroup = this.nodeGroups[safeId(conn.originId)] || this.groupVisuals.find(v => v.def.id === conn.originId)?.group;
+        const targetBase = this.map.nodes[conn.targetId] || this.map.groups.find(g => g.id === conn.targetId);
+        const targetGroup = this.nodeGroups[safeId(conn.targetId)] || this.groupVisuals.find(v => v.def.id === conn.targetId)?.group;
+
+        if (!originGroup || !originBase || !targetGroup || !targetBase) return;
+
+        const originCenterX = originGroup.x() + (originBase.size.width / 2);
+        const originCenterY = originGroup.y() + (originBase.size.height / 2);
+        const targetCenterX = targetGroup.x() + (targetBase.size.width / 2);
+        const targetCenterY = targetGroup.y() + (targetBase.size.height / 2);
+
+        const originRect = { x: originGroup.x(), y: originGroup.y(), width: originBase.size.width, height: originBase.size.height };
+        const targetRect = { x: targetGroup.x(), y: targetGroup.y(), width: targetBase.size.width, height: targetBase.size.height };
+
+        const startPt = getIntersection({ x: targetCenterX, y: targetCenterY }, { x: originCenterX, y: originCenterY }, originRect);
+        const endPt = getIntersection({ x: originCenterX, y: originCenterY }, { x: targetCenterX, y: targetCenterY }, targetRect);
+
+        (conn.konvaObj as Konva.Arrow).points([startPt.x, startPt.y, endPt.x, endPt.y]);
+
+        if (conn.labelObj) {
+            const midX = (startPt.x + endPt.x) / 2;
+            const midY = (startPt.y + endPt.y) / 2;
+            conn.labelObj.position({ x: midX + 5, y: midY - 15 });
+        }
+
+        if (conn.fromLabelObj) {
+            const cardX = startPt.x + (endPt.x - startPt.x) * 0.1;
+            const cardY = startPt.y + (endPt.y - startPt.y) * 0.1;
+            const dx = endPt.x - startPt.x;
+            const dy = endPt.y - startPt.y;
+            let offsetX = 5; let offsetY = -15;
+            if (Math.abs(dy) > Math.abs(dx)) { offsetX = 10; offsetY = -10; }
+            conn.fromLabelObj.position({ x: cardX + offsetX, y: cardY + offsetY });
+        }
+
+        if (conn.toLabelObj) {
+            const cardX = startPt.x + (endPt.x - startPt.x) * 0.9;
+            const cardY = startPt.y + (endPt.y - startPt.y) * 0.9;
+            const dx = endPt.x - startPt.x;
+            const dy = endPt.y - startPt.y;
+            let offsetX = 5; let offsetY = -15;
+            if (Math.abs(dy) > Math.abs(dx)) { offsetX = 10; offsetY = -10; }
+            conn.toLabelObj.position({ x: cardX + offsetX, y: cardY + offsetY });
+        }
+    }
+
     private updateConnections(nodeId: string) {
         if (!this.map) return;
         const draggedNodeBase = this.map.nodes[nodeId] || this.map.groups.find(g => g.id === nodeId);
@@ -377,52 +429,8 @@ export class ClassRenderer {
         if (!draggedGroup || !draggedNodeBase) return;
 
         this.connectionArrows.forEach(conn => {
-            if (conn.originId !== nodeId && conn.targetId !== nodeId) return;
-
-            const originBase = this.map!.nodes[conn.originId] || this.map!.groups.find(g => g.id === conn.originId);
-            const originGroup = this.nodeGroups[safeId(conn.originId)] || this.groupVisuals.find(v => v.def.id === conn.originId)?.group;
-            const targetBase = this.map!.nodes[conn.targetId] || this.map!.groups.find(g => g.id === conn.targetId);
-            const targetGroup = this.nodeGroups[safeId(conn.targetId)] || this.groupVisuals.find(v => v.def.id === conn.targetId)?.group;
-
-            if (!originGroup || !originBase || !targetGroup || !targetBase) return;
-
-            const originCenterX = originGroup.x() + (originBase.size.width / 2);
-            const originCenterY = originGroup.y() + (originBase.size.height / 2);
-            const targetCenterX = targetGroup.x() + (targetBase.size.width / 2);
-            const targetCenterY = targetGroup.y() + (targetBase.size.height / 2);
-
-            const originRect = { x: originGroup.x(), y: originGroup.y(), width: originBase.size.width, height: originBase.size.height };
-            const targetRect = { x: targetGroup.x(), y: targetGroup.y(), width: targetBase.size.width, height: targetBase.size.height };
-
-            const startPt = getIntersection({ x: targetCenterX, y: targetCenterY }, { x: originCenterX, y: originCenterY }, originRect);
-            const endPt = getIntersection({ x: originCenterX, y: originCenterY }, { x: targetCenterX, y: targetCenterY }, targetRect);
-
-            (conn.konvaObj as Konva.Arrow).points([startPt.x, startPt.y, endPt.x, endPt.y]);
-
-            if (conn.labelObj) {
-                const midX = (startPt.x + endPt.x) / 2;
-                const midY = (startPt.y + endPt.y) / 2;
-                conn.labelObj.position({ x: midX + 5, y: midY - 15 });
-            }
-
-            if (conn.fromLabelObj) {
-                const cardX = startPt.x + (endPt.x - startPt.x) * 0.1;
-                const cardY = startPt.y + (endPt.y - startPt.y) * 0.1;
-                const dx = endPt.x - startPt.x;
-                const dy = endPt.y - startPt.y;
-                let offsetX = 5; let offsetY = -15;
-                if (Math.abs(dy) > Math.abs(dx)) { offsetX = 10; offsetY = -10; }
-                conn.fromLabelObj.position({ x: cardX + offsetX, y: cardY + offsetY });
-            }
-
-            if (conn.toLabelObj) {
-                const cardX = startPt.x + (endPt.x - startPt.x) * 0.9;
-                const cardY = startPt.y + (endPt.y - startPt.y) * 0.9;
-                const dx = endPt.x - startPt.x;
-                const dy = endPt.y - startPt.y;
-                let offsetX = 5; let offsetY = -15;
-                if (Math.abs(dy) > Math.abs(dx)) { offsetX = 10; offsetY = -10; }
-                conn.toLabelObj.position({ x: cardX + offsetX, y: cardY + offsetY });
+            if (conn.originId === nodeId || conn.targetId === nodeId) {
+                this.updateSingleConnection(conn);
             }
         });
 

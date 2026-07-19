@@ -84,6 +84,9 @@ export class DeploymentRenderer {
             for (const group of map.groups) {
                 this.cascadeGroupResize(group);
             }
+
+            // Update all connection arrows to match final group sizes/bounds
+            this.connectionArrows.forEach(c => this.updateSingleConnection(c));
         } finally {
             Konva.autoDrawEnabled = prevAutoDraw;
         }
