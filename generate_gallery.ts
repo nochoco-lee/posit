@@ -63,7 +63,7 @@ for (const dirInfo of testDirs) {
             const filePath = path.join(pdir, file);
             const content = fs.readFileSync(filePath, "utf-8");
             
-            const baseName = `puml_${dirInfo.name.replace(/\s+/g, '_')}_${file.replace(".puml", "")}`;
+            const baseName = `puml_${dirInfo.name.replace(/\s+/g, '_')}_${path.basename(pdir)}_${file.replace(".puml", "")}`;
             const officialPngName = `${baseName}_official.png`;
             const ourSvgName = `${baseName}_our.svg`;
             
@@ -125,7 +125,7 @@ for (const dirInfo of testDirs) {
             const filePath = path.join(mdir, file);
             const content = fs.readFileSync(filePath, "utf-8");
             
-            const baseName = `mermaid_${dirInfo.name.replace(/\s+/g, '_')}_${file.replace(".mmd", "")}`;
+            const baseName = `mermaid_${dirInfo.name.replace(/\s+/g, '_')}_${path.basename(mdir)}_${file.replace(".mmd", "")}`;
             const ourSvgName = `${baseName}_our.svg`;
             const localOurPath = path.join(ourRenderDir, ourSvgName);
 

@@ -47,7 +47,7 @@ export class PlantUmlScanner {
             // 3. Medium Keywords (+100)
             if (/\b(?:participant|actor|boundary|control|entity|collections|queue)\b/i.test(trimmed)) scores.sequence += 150;
             if (/\b(?:class|interface|enum|struct|annotation|abstract|metaclass|protocol|record|stereotype|object)\b/i.test(trimmed)) scores.class += 150;
-            if (/\b(?:artifact|cloud|component|storage|rectangle|node|stack|frame|folder|database|actor|interface|label|boundary|control|entity|usecase|agent|person|process|collections|queue)\b/i.test(trimmed)) scores.deployment += 150;
+            if (/\b(?:artifact|cloud|component|storage|rectangle|node|stack|frame|folder|database|interface|label|usecase|agent|person|process)\b/i.test(trimmed)) scores.deployment += 150;
 
             // 4. Weak Indicators (+20)
             if (/\w+\s*[-=.]+>\s*\w+/.test(trimmed)) {
