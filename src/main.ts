@@ -15,6 +15,7 @@ const svgButton = document.getElementById('download-svg') as HTMLButtonElement;
 const syncButton = document.getElementById('sync-btn') as HTMLButtonElement;
 const diagramTypeSelect = document.getElementById('diagram-type') as HTMLSelectElement;
 const themeSelect = document.getElementById('theme-select') as HTMLSelectElement;
+const loadExampleSelect = document.getElementById('load-example') as HTMLSelectElement;
 
 const renderer = new LayoutPumlRenderer('canvas-container');
 const svgRenderer = new LayoutPumlSvgRenderer();
@@ -35,6 +36,23 @@ themeSelect.addEventListener('change', () => {
     if (currentLayoutMap) {
         renderer.render(currentLayoutMap);
     }
+});
+
+// Load example from gallery
+const RAW_BASE = 'https://raw.githubusercontent.com/nochoco-lee/posit/main/';
+loadExampleSelect.addEventListener('change', async () => {
+    const path = loadExampleSelect.value;
+    if (!path) return;
+    try {
+        const resp = await fetch(RAW_BASE + path);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const text = await resp.text();
+        editor.value = text;
+        editor.dispatchEvent(new Event('input'));
+    } catch (e: any) {
+        showError('Failed to load example: ' + e.message);
+    }
+    loadExampleSelect.value = '';
 });
 
 let currentAst: any = null;
