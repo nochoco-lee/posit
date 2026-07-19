@@ -1,14 +1,30 @@
 @startuml
 title Product Search with Filters
 
-actor       User       as user
+actor       User        as user
 participant "Search API" as search
 database    "Products DB" as db
+participant "Redis Cache" as cache
 
 user -> search : GET /products?q=phone&cat=electronics&sort=price
-search -> db : query(q, category, sort)
-db --> search : results[0..20]
-search -> search : enrichWithRatings()
-search -> search : applyPagination()
-search --> user : 200 OK {products, total, page}
+activate search
+  search -> cache : get("search:phone:electronics")
+  activate cache
+  alt cache hit
+    cache --> search : cached results
+  else cache miss
+    search -> db : query(q, category, sort)
+    activate db
+    db --> search : results[0..20]
+    deactivate db
+    search -> cache : set("search:phone:electronics", results, TTL=300)
+  end
+  deactivate cache
+
+  search -> search : enrichWithRatings()
+  note right: Fetch ratings from\nreview service for\neach product
+
+  search -> search : applyPagination(page=1, size=20)
+  search --> user : 200 OK {products, total, page}
+deactivate search
 @enduml

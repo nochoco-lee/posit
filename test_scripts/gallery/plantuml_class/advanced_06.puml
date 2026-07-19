@@ -1,45 +1,59 @@
 @startuml
 title Repository Pattern with Generics
 
-interface Repository<T, ID> {
-  +findById(id: ID): Optional<T>
-  +findAll(): List<T>
-  +save(entity: T): T
-  +deleteById(id: ID): void
-  +count(): Long
-}
+hide empty members
 
-class UserRepository implements Repository<User, Long> {
-  +findByEmail(email: String): Optional<User>
-  +findById(id: Long): Optional<User>
-  +save(user: User): User
-}
+package "Repository Module" {
+  interface Repository<T, ID> {
+    +findById(id: ID): Optional<T>
+    +findAll(): List<T>
+    +save(entity: T): T
+    +deleteById(id: ID): void
+    +count(): Long
+    +existsById(id: ID): Boolean
+  }
 
-class ProductRepository implements Repository<Product, Long> {
-  +findByName(name: String): List<Product>
-  +findByCategory(cat: String): List<Product>
-  +findById(id: Long): Optional<Product>
-}
+  class UserRepository implements Repository<User, Long> {
+    -jdbcTemplate: JdbcTemplate
+    +findByEmail(email: String): Optional<User>
+    +findByRole(role: String): List<User>
+    +findById(id: Long): Optional<User>
+    +save(user: User): User
+  }
 
-class OrderRepository implements Repository<Order, Long> {
-  +findByUserId(userId: Long): List<Order>
-  +findByStatus(status: OrderStatus): List<Order>
-  +findById(id: Long): Optional<Order>
-}
+  class ProductRepository implements Repository<Product, Long> {
+    -jdbcTemplate: JdbcTemplate
+    +findByName(name: String): List<Product>
+    +findByCategory(cat: String): List<Product>
+    +findInStock(): List<Product>
+    +findById(id: Long): Optional<Product>
+  }
 
-class User {
-  -id: Long
-  -email: String
-}
+  class OrderRepository implements Repository<Order, Long> {
+    -jdbcTemplate: JdbcTemplate
+    +findByUserId(userId: Long): List<Order>
+    +findByStatus(status: OrderStatus): List<Order>
+    +findByDateRange(start: Date, end: Date): List<Order>
+    +findById(id: Long): Optional<Order>
+  }
 
-class Product {
-  -id: Long
-  -name: String
-}
+  class User {
+    -id: Long
+    -email: String
+    -name: String
+  }
 
-class Order {
-  -id: Long
-  -status: OrderStatus
+  class Product {
+    -id: Long
+    -name: String
+    -price: Money
+  }
+
+  class Order {
+    -id: Long
+    -status: OrderStatus
+    -total: Money
+  }
 }
 
 UserRepository ..> User

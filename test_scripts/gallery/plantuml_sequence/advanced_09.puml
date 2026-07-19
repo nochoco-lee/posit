@@ -10,22 +10,43 @@ participant "Notification API" as notif
 == Request Return ==
 
 user -> order : POST /orders/{id}/return {reason}
-order -> order : validateReturnWindow()
-order -> pay : refund(orderId, amount)
-alt Refund successful
-    pay --> order : refundId
-    order -> inv : restockItems(items[])
-    inv --> order : restocked
-    order -> notif : sendReturnConfirmation(userId, orderId)
-    order --> user : 200 OK {refundId, status: "processing"}
-else Refund failed
-    pay --> order : error
-    order --> user : 500 Internal Server Error
-end
+activate order
+  order -> order : validateReturnWindow()
+  note right: Check if within\n30-day return window
 
-== Refund Completed ==
+  order -> pay : refund(orderId, amount)
+  activate pay
+  alt refund successful
+    pay --> order : refundId
+    deactivate pay
+
+    order -> inv : restockItems(items[])
+    activate inv
+    inv --> order : restocked
+    deactivate inv
+
+    order -> notif : sendReturnConfirmation(userId, orderId)
+    activate notif
+    notif --> order : sent
+    deactivate notif
+
+    order --> user : 200 OK {refundId, status: "processing"}
+  else refund failed
+    pay --> order : error
+    deactivate pay
+
+    order --> user : 500 Internal Server Error
+  end
+deactivate order
+
+== Refund Completed (Webhook) ==
 
 pay -> order : POST /webhooks/refund {refundId, status: "completed"}
-order -> order : updateStatus("REFUNDED")
-order -> notif : sendRefundReceipt(userId, refundId)
+activate order
+  order -> order : updateStatus("REFUNDED")
+  order -> notif : sendRefundReceipt(userId, refundId)
+  activate notif
+  notif --> order : sent
+  deactivate notif
+deactivate order
 @enduml

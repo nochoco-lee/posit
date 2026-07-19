@@ -1,17 +1,23 @@
 @startuml
 title Full Domain Model
 
+hide empty members
+
 package "Auth" {
   class User {
     -id: Long
     -name: String
     -email: String
     -passwordHash: String
+    --
     +verifyPassword(pw: String): Boolean
+    +hasRole(name: String): Boolean
   }
   class Role {
     -name: String
-    -permissions: List<String>
+    -permissions: Set<String>
+    --
+    +hasPermission(perm: String): Boolean
   }
 }
 
@@ -22,16 +28,28 @@ package "Catalog" {
     -price: Money
     -stock: Int
     -status: ProductStatus
+    --
+    +isAvailable(): Boolean
+    +reduceStock(qty: Int): void
+    +getDiscountPrice(pct: Double): Money
   }
   class Category {
     -id: Long
     -name: String
     -parent: Category
+    --
+    +getAncestors(): List<Category>
+    +getChildren(): List<Category>
   }
   class Money {
     -amount: BigDecimal
     -currency: String
+    --
+    +add(other: Money): Money
+    +multiply(qty: Int): Money
+    +format(): String
   }
+  enum ProductStatus { DRAFT, ACTIVE, ARCHIVED }
 }
 
 package "Order" {
@@ -40,11 +58,21 @@ package "Order" {
     -status: OrderStatus
     -total: Money
     -createdAt: DateTime
+    -updatedAt: DateTime
+    --
+    +submit(): void
+    +cancel(): void
+    +markShipped(tracking: String): void
+    +deliver(): void
   }
   class OrderItem {
     -quantity: Int
     -unitPrice: Money
+    --
+    +getSubtotal(): Money
+    +updateQuantity(qty: Int): void
   }
+  enum OrderStatus { PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED }
 }
 
 package "Payment" {
@@ -53,12 +81,19 @@ package "Payment" {
     -amount: Money
     -method: String
     -status: PaymentStatus
+    --
+    +confirm(): void
+    +fail(reason: String): void
   }
   class Refund {
     -id: String
     -paymentId: String
     -amount: Money
+    --
+    +process(): void
+    +getStatus(): String
   }
+  enum PaymentStatus { PENDING, COMPLETED, FAILED, REFUNDED }
 }
 
 package "Shipping" {
@@ -67,6 +102,9 @@ package "Shipping" {
     -carrier: String
     -status: ShipmentStatus
     -estimatedDelivery: Date
+    --
+    +updateStatus(status: String): void
+    +getTrackingUrl(): String
   }
   class Address {
     -street: String
@@ -74,7 +112,11 @@ package "Shipping" {
     -state: String
     -zip: String
     -country: String
+    --
+    +getFullAddress(): String
+    +validate(): Boolean
   }
+  enum ShipmentStatus { PREPARING, IN_TRANSIT, DELIVERED, RETURNED }
 }
 
 User "1" -- "*" Order : places >
@@ -86,4 +128,8 @@ Product "1" -- "*" OrderItem : references >
 Product "*" -- "*" Category : categorized >
 Shipment --> Address : delivers to >
 Payment "1" -- "0..*" Refund : may have >
+Order --> OrderStatus
+Payment --> PaymentStatus
+Shipment --> ShipmentStatus
+Product --> ProductStatus
 @enduml

@@ -6,46 +6,57 @@ classDiagram
         +pay(amount Money) PaymentResult
         +refund(transactionId String) RefundResult
         +supports(currency String) Boolean
+        +getProviderName() String
     }
 
     class CreditCardPayment {
         -String cardNumber
         -String expiry
+        -String cvv
         +pay(amount Money) PaymentResult
         +refund(transactionId String) RefundResult
         +supports(currency String) Boolean
+        +getProviderName() String
     }
 
     class PayPalPayment {
         -String email
+        -String clientId
         +pay(amount Money) PaymentResult
         +refund(transactionId String) RefundResult
         +supports(currency String) Boolean
+        +getProviderName() String
     }
 
     class CryptoPayment {
         -String walletAddress
+        -String network
         +pay(amount Money) PaymentResult
         +refund(transactionId String) RefundResult
         +supports(currency String) Boolean
+        +getProviderName() String
     }
 
     class PaymentContext {
         -PaymentStrategy strategy
+        -List~PaymentResult~ history
         +setStrategy(s PaymentStrategy) void
         +processPayment(amount Money) PaymentResult
         +processRefund(txnId String) RefundResult
+        +getHistory() List~PaymentResult~
     }
 
     class PaymentResult {
         -Boolean success
         -String transactionId
         -String message
+        -DateTime timestamp
     }
 
     class RefundResult {
         -Boolean success
         -String refundId
+        -String message
     }
 
     PaymentContext --> PaymentStrategy : uses

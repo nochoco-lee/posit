@@ -1,41 +1,63 @@
 @startuml
 title Order and OrderItem
 
-class Order {
-  -id: Long
-  -userId: Long
-  -status: OrderStatus
-  -total: Money
-  -createdAt: DateTime
-  +addItem(product: Product, qty: Int): void
-  +removeItem(productId: Long): void
-  +getTotal(): Money
-  +submit(): void
-  +cancel(): void
-}
+hide empty members
 
-class OrderItem {
-  -id: Long
-  -product: Product
-  -quantity: Int
-  -unitPrice: Money
-  +getSubtotal(): Money
-}
+package "Order Module" {
+  class Order {
+    -id: Long
+    -userId: Long
+    -items: List<OrderItem>
+    -status: OrderStatus
+    -total: Money
+    -createdAt: DateTime
+    -updatedAt: DateTime
+    --
+    +addItem(product: Product, qty: Int): void
+    +removeItem(productId: Long): void
+    +getTotal(): Money
+    +submit(): void
+    +cancel(): void
+    +markShipped(tracking: String): void
+    +deliver(): void
+  }
 
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  SHIPPED
-  DELIVERED
-  CANCELLED
-}
+  class OrderItem {
+    -id: Long
+    -product: Product
+    -quantity: Int
+    -unitPrice: Money
+    --
+    +getSubtotal(): Money
+    +updateQuantity(qty: Int): void
+  }
 
-class Money {
-  -amount: BigDecimal
-  -currency: String
+  enum OrderStatus {
+    PENDING
+    CONFIRMED
+    PROCESSING
+    SHIPPED
+    DELIVERED
+    CANCELLED
+    REFUNDED
+  }
+
+  class Money {
+    -amount: BigDecimal
+    -currency: String
+    +add(other: Money): Money
+    +format(): String
+  }
+
+  class Product {
+    -id: Long
+    -name: String
+    -price: Money
+  }
 }
 
 Order "1" *-- "1..*" OrderItem : contains >
-Order --> OrderStatus
+Order "1" --> "1" OrderStatus
 OrderItem --> Money
+OrderItem --> Product
 @enduml

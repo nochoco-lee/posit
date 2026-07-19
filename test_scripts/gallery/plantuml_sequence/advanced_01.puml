@@ -6,8 +6,17 @@ participant "Auth API" as auth
 database    "Users DB" as db
 
 user -> auth : POST /login {email, password}
-auth -> db : findUser(email)
-db --> auth : user record
-auth -> auth : verifyPassword()
-auth --> user : 200 OK {token}
+activate auth
+  auth -> db : findUser(email)
+  activate db
+  db --> auth : user record
+  deactivate db
+
+  auth -> auth : verifyPassword()
+  alt password valid
+    auth --> user : 200 OK {token}
+  else invalid credentials
+    auth --> user : 401 Unauthorized
+  end
+deactivate auth
 @enduml

@@ -4,10 +4,26 @@ sequenceDiagram
     actor User
     participant Search as Search API
     participant DB as Products DB
+    participant Cache as Redis Cache
 
     User->>Search: GET /products?q=phone&cat=electronics&sort=price
-    Search->>DB: query(q, category, sort)
-    DB-->>Search: results[0..20]
+    activate Search
+    Search->>Cache: get("search:phone:electronics")
+    activate Cache
+    alt cache hit
+        Cache-->>Search: cached results
+    else cache miss
+        Search->>DB: query(q, category, sort)
+        activate DB
+        DB-->>Search: results[0..20]
+        deactivate DB
+        Search->>Cache: set("search:phone:electronics", results, TTL=300)
+    end
+    deactivate Cache
+
     Search->>Search: enrichWithRatings()
-    Search->>Search: applyPagination()
+    Note right: Fetch ratings from<br/>review service for<br/>each product
+
+    Search->>Search: applyPagination(page=1, size=20)
     Search-->>User: 200 OK {products, total, page}
+    deactivate Search

@@ -1,50 +1,65 @@
 @startuml
 title Payment Strategy Pattern
 
-interface PaymentStrategy {
-  +pay(amount: Money): PaymentResult
-  +refund(transactionId: String): RefundResult
-  +supports(currency: String): Boolean
-}
+hide empty members
 
-class CreditCardPayment implements PaymentStrategy {
-  -cardNumber: String
-  -expiry: String
-  +pay(amount: Money): PaymentResult
-  +refund(transactionId: String): RefundResult
-  +supports(currency: String): Boolean
-}
+package "Payment Module" {
+  interface PaymentStrategy {
+    +pay(amount: Money): PaymentResult
+    +refund(transactionId: String): RefundResult
+    +supports(currency: String): Boolean
+    +getProviderName(): String
+  }
 
-class PayPalPayment implements PaymentStrategy {
-  -email: String
-  +pay(amount: Money): PaymentResult
-  +refund(transactionId: String): RefundResult
-  +supports(currency: String): Boolean
-}
+  class CreditCardPayment implements PaymentStrategy {
+    -cardNumber: String
+    -expiry: String
+    -cvv: String
+    +pay(amount: Money): PaymentResult
+    +refund(transactionId: String): RefundResult
+    +supports(currency: String): Boolean
+    +getProviderName(): String
+  }
 
-class CryptoPayment implements PaymentStrategy {
-  -walletAddress: String
-  +pay(amount: Money): PaymentResult
-  +refund(transactionId: String): RefundResult
-  +supports(currency: String): Boolean
-}
+  class PayPalPayment implements PaymentStrategy {
+    -email: String
+    -clientId: String
+    +pay(amount: Money): PaymentResult
+    +refund(transactionId: String): RefundResult
+    +supports(currency: String): Boolean
+    +getProviderName(): String
+  }
 
-class PaymentContext {
-  -strategy: PaymentStrategy
-  +setStrategy(s: PaymentStrategy): void
-  +processPayment(amount: Money): PaymentResult
-  +processRefund(txnId: String): RefundResult
-}
+  class CryptoPayment implements PaymentStrategy {
+    -walletAddress: String
+    -network: String
+    +pay(amount: Money): PaymentResult
+    +refund(transactionId: String): RefundResult
+    +supports(currency: String): Boolean
+    +getProviderName(): String
+  }
 
-class PaymentResult {
-  -success: Boolean
-  -transactionId: String
-  -message: String
-}
+  class PaymentContext {
+    -strategy: PaymentStrategy
+    -history: List<PaymentResult>
+    +setStrategy(s: PaymentStrategy): void
+    +processPayment(amount: Money): PaymentResult
+    +processRefund(txnId: String): RefundResult
+    +getHistory(): List<PaymentResult>
+  }
 
-class RefundResult {
-  -success: Boolean
-  -refundId: String
+  class PaymentResult {
+    -success: Boolean
+    -transactionId: String
+    -message: String
+    -timestamp: DateTime
+  }
+
+  class RefundResult {
+    -success: Boolean
+    -refundId: String
+    -message: String
+  }
 }
 
 PaymentContext --> PaymentStrategy : uses >

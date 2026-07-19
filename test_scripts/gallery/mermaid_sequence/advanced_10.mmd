@@ -15,55 +15,91 @@ sequenceDiagram
     rect rgb(240, 248, 255)
         Note over User,Auth: Authentication
         User->>GW: POST /auth/login
+        activate GW
         GW->>Auth: authenticate(email, pass)
+        activate Auth
         Auth-->>GW: token
+        deactivate Auth
         GW-->>User: {token}
+        deactivate GW
     end
 
     rect rgb(240, 255, 240)
         Note over User,Cart: Browse and Add to Cart
         User->>GW: GET /products?q=laptop
+        activate GW
         GW->>Cat: search(query)
+        activate Cat
         Cat-->>GW: products[]
+        deactivate Cat
         GW-->>User: products[]
+        deactivate GW
 
         User->>GW: POST /cart {productId: 42, qty: 1}
+        activate GW
         GW->>Cart: addItem(userId, productId, qty)
+        activate Cart
         Cart->>Cat: getProduct(42)
+        activate Cat
         Cat-->>Cart: {price, stock}
+        deactivate Cat
         Cart-->>GW: {cartTotal: 999.99}
+        deactivate Cart
         GW-->>User: cart updated
+        deactivate GW
     end
 
     rect rgb(255, 248, 240)
         Note over User,Notif: Checkout
         User->>GW: POST /checkout {addressId: 7}
+        activate GW
         GW->>Order: createOrder(cartId, userId, addressId)
+        activate Order
 
         Order->>Cart: getCart(cartId)
+        activate Cart
         Cart-->>Order: items[]
+        deactivate Cart
 
         Order->>Inv: reserve(items[])
+        activate Inv
         Inv-->>Order: reservationId
+        deactivate Inv
 
         Order->>Pay: charge(userId, 999.99)
+        activate Pay
         Pay-->>Order: paymentId
+        deactivate Pay
 
         Order->>Ship: createShipment(address, items[])
+        activate Ship
         Ship-->>Order: trackingNumber
+        deactivate Ship
 
         Order->>Notif: sendConfirmation(userId, orderId, tracking)
+        activate Notif
+        Notif-->>Order: sent
+        deactivate Notif
 
         Order-->>GW: {orderId: 1001, tracking}
+        deactivate Order
+
         GW-->>User: Order confirmed
+        deactivate GW
     end
 
     rect rgb(248, 240, 255)
         Note over User,Ship: Track Order
         User->>GW: GET /orders/1001
+        activate GW
         GW->>Order: getOrder(1001)
+        activate Order
         Order->>Ship: getTracking(trackingNumber)
+        activate Ship
         Ship-->>Order: {status: "in_transit", eta: "2026-07-22"}
+        deactivate Ship
         Order-->>GW: {order, tracking}
+        deactivate Order
         GW-->>User: order details
+        deactivate GW
     end

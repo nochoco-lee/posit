@@ -1,29 +1,35 @@
 @startuml
 title Service Layer Architecture
 
+hide empty members
+
 package "DTOs" {
   class UserDTO {
     -id: Long
     -name: String
     -email: String
+    -roles: List<String>
   }
   class ProductDTO {
     -id: Long
     -name: String
     -price: Double
     -stock: Int
+    -category: String
   }
   class OrderDTO {
     -id: Long
     -items: List<OrderItemDTO>
     -total: Double
     -status: String
+    -createdAt: String
   }
   class OrderItemDTO {
     -productId: Long
     -productName: String
     -quantity: Int
     -unitPrice: Double
+    -subtotal: Double
   }
 }
 
@@ -31,28 +37,41 @@ package "Services" {
   class UserService {
     -userRepo: UserRepository
     -eventBus: EventBus
+    -passwordEncoder: PasswordEncoder
+    --
     +register(dto: UserDTO): UserDTO
     +getProfile(userId: Long): UserDTO
     +updateProfile(userId: Long, dto: UserDTO): void
+    +changePassword(userId: Long, oldPw: String, newPw: String): void
   }
   class ProductService {
     -productRepo: ProductRepository
+    -cacheManager: CacheManager
+    --
     +search(query: String): List<ProductDTO>
     +getProduct(id: Long): ProductDTO
     +updateStock(id: Long, delta: Int): void
+    +getLowStockProducts(): List<ProductDTO>
   }
   class OrderService {
     -orderRepo: OrderRepository
     -productService: ProductService
     -paymentService: PaymentService
+    -inventoryService: InventoryService
     -eventBus: EventBus
+    --
     +createOrder(userId: Long, items: List<OrderItemDTO>): OrderDTO
     +getOrder(orderId: Long): OrderDTO
     +cancelOrder(orderId: Long): void
+    +getOrderHistory(userId: Long): List<OrderDTO>
   }
   class PaymentService {
+    -strategy: PaymentStrategy
+    -transactionRepo: TransactionRepository
+    --
     +charge(userId: Long, amount: Double): String
     +refund(paymentId: String): void
+    +getPaymentStatus(paymentId: String): String
   }
 }
 
@@ -60,10 +79,12 @@ package "Mappers" {
   class UserMapper {
     +toDTO(user: User): UserDTO
     +toEntity(dto: UserDTO): User
+    +toDTOList(users: List<User>): List<UserDTO>
   }
   class OrderMapper {
     +toDTO(order: Order): OrderDTO
     +toEntity(dto: OrderDTO): Order
+    +toItemDTO(item: OrderItem): OrderItemDTO
   }
 }
 

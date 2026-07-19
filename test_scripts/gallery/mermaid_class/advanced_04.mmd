@@ -7,11 +7,14 @@ classDiagram
         -OrderStatus status
         -Money total
         -DateTime createdAt
+        -DateTime updatedAt
         +addItem(product Product, qty Int) void
         +removeItem(productId Long) void
         +getTotal() Money
         +submit() void
         +cancel() void
+        +markShipped(tracking String) void
+        +deliver() void
     }
 
     class OrderItem {
@@ -20,22 +23,34 @@ classDiagram
         -Int quantity
         -Money unitPrice
         +getSubtotal() Money
+        +updateQuantity(qty Int) void
     }
 
     class OrderStatus {
         <<enumeration>>
         PENDING
         CONFIRMED
+        PROCESSING
         SHIPPED
         DELIVERED
         CANCELLED
+        REFUNDED
     }
 
     class Money {
         -BigDecimal amount
         -String currency
+        +add(other Money) Money
+        +format() String
+    }
+
+    class Product {
+        -Long id
+        -String name
+        -Money price
     }
 
     Order "1" *-- "1..*" OrderItem : contains
     Order --> OrderStatus
     OrderItem --> Money
+    OrderItem --> Product

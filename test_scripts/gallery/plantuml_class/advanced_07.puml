@@ -1,56 +1,75 @@
 @startuml
 title Event-Driven Notification System
 
-interface EventHandler {
-  +handle(event: DomainEvent): void
-}
+hide empty members
 
-abstract class DomainEvent {
-  #eventId: String
-  #timestamp: DateTime
-  #aggregateId: Long
-  +getEventId(): String
-}
+package "Event Module" {
+  interface EventHandler {
+    +handle(event: DomainEvent): void
+    +getSupportedEvents(): List<String>
+  }
 
-class OrderPlacedEvent extends DomainEvent {
-  -orderId: Long
-  -userId: Long
-  -total: Money
-}
+  abstract class DomainEvent {
+    #eventId: String
+    #timestamp: DateTime
+    #aggregateId: Long
+    #version: Int
+    +getEventId(): String
+    +getAggregateId(): Long
+  }
 
-class PaymentReceivedEvent extends DomainEvent {
-  -paymentId: String
-  -orderId: Long
-  -amount: Money
-}
+  class OrderPlacedEvent extends DomainEvent {
+    -orderId: Long
+    -userId: Long
+    -total: Money
+    -items: List<OrderItem>
+  }
 
-class ItemShippedEvent extends DomainEvent {
-  -trackingNumber: String
-  -orderId: Long
-}
+  class PaymentReceivedEvent extends DomainEvent {
+    -paymentId: String
+    -orderId: Long
+    -amount: Money
+    -provider: String
+  }
 
-class EventBus {
-  -handlers: Map<String, List<EventHandler>>
-  +subscribe(eventType: String, handler: EventHandler): void
-  +publish(event: DomainEvent): void
-}
+  class ItemShippedEvent extends DomainEvent {
+    -trackingNumber: String
+    -orderId: Long
+    -carrier: String
+    -estimatedDelivery: Date
+  }
 
-class EmailNotificationHandler implements EventHandler {
-  -emailService: EmailService
-  +handle(event: DomainEvent): void
-}
+  class EventBus {
+    -handlers: Map<String, List<EventHandler>>
+    -history: List<DomainEvent>
+    +subscribe(eventType: String, handler: EventHandler): void
+    +unsubscribe(eventType: String, handler: EventHandler): void
+    +publish(event: DomainEvent): void
+    +getHistory(): List<DomainEvent>
+  }
 
-class PushNotificationHandler implements EventHandler {
-  -pushService: PushService
-  +handle(event: DomainEvent): void
-}
+  class EmailNotificationHandler implements EventHandler {
+    -emailService: EmailService
+    +handle(event: DomainEvent): void
+    +getSupportedEvents(): List<String>
+  }
 
-class SmsNotificationHandler implements EventHandler {
-  -smsService: SmsService
-  +handle(event: DomainEvent): void
+  class PushNotificationHandler implements EventHandler {
+    -pushService: PushService
+    +handle(event: DomainEvent): void
+    +getSupportedEvents(): List<String>
+  }
+
+  class SmsNotificationHandler implements EventHandler {
+    -smsService: SmsService
+    +handle(event: DomainEvent): void
+    +getSupportedEvents(): List<String>
+  }
 }
 
 EventBus --> EventHandler : dispatches to >
 EventBus ..> DomainEvent : processes >
+EventHandler ..> DomainEvent : handles >
+EventHandler ..> DomainEvent : handles >
 EventHandler ..> DomainEvent : handles >
 @enduml

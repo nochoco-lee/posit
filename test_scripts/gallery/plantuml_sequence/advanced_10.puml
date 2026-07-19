@@ -15,52 +15,88 @@ participant "Notification Svc" as notif
 == Authentication ==
 
 user -> gw : POST /auth/login
-gw -> auth : authenticate(email, pass)
-auth --> gw : token
-gw --> user : {token}
+activate gw
+  gw -> auth : authenticate(email, pass)
+  activate auth
+  auth --> gw : token
+  deactivate auth
+  gw --> user : {token}
+deactivate gw
 
 == Browse & Add to Cart ==
 
 user -> gw : GET /products?q=laptop
-gw -> cat : search(query)
-cat --> gw : products[]
-gw --> user : products[]
+activate gw
+  gw -> cat : search(query)
+  activate cat
+  cat --> gw : products[]
+  deactivate cat
+  gw --> user : products[]
+deactivate gw
 
 user -> gw : POST /cart {productId: 42, qty: 1}
-gw -> cart : addItem(userId, productId, qty)
-cart -> cat : getProduct(42)
-cat --> cart : {price, stock}
-cart --> gw : {cartTotal: 999.99}
-gw --> user : cart updated
+activate gw
+  gw -> cart : addItem(userId, productId, qty)
+  activate cart
+  cart -> cat : getProduct(42)
+  activate cat
+  cat --> cart : {price, stock}
+  deactivate cat
+  cart --> gw : {cartTotal: 999.99}
+  deactivate cart
+  gw --> user : cart updated
+deactivate gw
 
 == Checkout ==
 
 user -> gw : POST /checkout {addressId: 7}
-gw -> order : createOrder(cartId, userId, addressId)
+activate gw
+  gw -> order : createOrder(cartId, userId, addressId)
+  activate order
 
-order -> cart : getCart(cartId)
-cart --> order : items[]
+  order -> cart : getCart(cartId)
+  activate cart
+  cart --> order : items[]
+  deactivate cart
 
-order -> inv : reserve(items[])
-inv --> order : reservationId
+  order -> inv : reserve(items[])
+  activate inv
+  inv --> order : reservationId
+  deactivate inv
 
-order -> pay : charge(userId, 999.99)
-pay --> order : paymentId
+  order -> pay : charge(userId, 999.99)
+  activate pay
+  pay --> order : paymentId
+  deactivate pay
 
-order -> ship : createShipment(address, items[])
-ship --> order : trackingNumber
+  order -> ship : createShipment(address, items[])
+  activate ship
+  ship --> order : trackingNumber
+  deactivate ship
 
-order -> notif : sendConfirmation(userId, orderId, tracking)
+  order -> notif : sendConfirmation(userId, orderId, tracking)
+  activate notif
+  notif --> order : sent
+  deactivate notif
 
-order --> gw : {orderId: 1001, tracking}
-gw --> user : Order confirmed
+  order --> gw : {orderId: 1001, tracking}
+  deactivate order
+
+  gw --> user : Order confirmed
+deactivate gw
 
 == Track Order ==
 
 user -> gw : GET /orders/1001
-gw -> order : getOrder(1001)
-order -> ship : getTracking(trackingNumber)
-ship --> order : {status: "in_transit", eta: "2026-07-22"}
-order --> gw : {order, tracking}
-gw --> user : order details
+activate gw
+  gw -> order : getOrder(1001)
+  activate order
+  order -> ship : getTracking(trackingNumber)
+  activate ship
+  ship --> order : {status: "in_transit", eta: "2026-07-22"}
+  deactivate ship
+  order --> gw : {order, tracking}
+  deactivate order
+  gw --> user : order details
+deactivate gw
 @enduml

@@ -9,22 +9,47 @@ sequenceDiagram
     participant DB as Orders DB
 
     User->>Order: POST /orders {cartId, address}
+    activate Order
+
     Order->>Inv: checkStock(cartItems)
+    activate Inv
     Inv-->>Order: inStock
+    deactivate Inv
 
     Order->>Inv: reserveItems(cartItems)
+    activate Inv
+    alt reservation successful
+        Inv-->>Order: reservationId
+        deactivate Inv
 
-    alt Reservation successful
         Order->>Pay: charge(userId, total)
-        alt Payment successful
+        activate Pay
+        alt payment successful
+            Pay-->>Order: paymentId
+            deactivate Pay
+
             Order->>DB: createOrder(status: CONFIRMED)
+            activate DB
             DB-->>Order: orderId
+            deactivate DB
+
             Order->>Notif: sendOrderConfirmation(userId, orderId)
+            activate Notif
+            Notif-->>Order: sent
+            deactivate Notif
+
             Order-->>User: 201 Created {orderId}
-        else Payment failed
+        else payment failed
+            Pay-->>Order: error
+            deactivate Pay
+
             Order->>Inv: releaseReservation(cartItems)
             Order-->>User: 402 Payment Required
         end
-    else Out of stock
+    else out of stock
+        Inv-->>Order: error
+        deactivate Inv
+
         Order-->>User: 409 Conflict {unavailable: [...]}
     end
+    deactivate Order

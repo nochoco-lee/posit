@@ -6,13 +6,39 @@ participant "Cart API"  as cart
 participant "Catalog API" as catalog
 database    "Cart DB"   as db
 
+== Add Item ==
+
 user -> cart : POST /cart/items {productId, qty}
-cart -> catalog : getProduct(productId)
-catalog --> cart : {name, price, stock}
-cart -> cart : validateStock(qty)
-cart -> db : upsertItem(userId, productId, qty)
-db --> cart : ok
-cart -> db : recalculateTotal(userId)
-db --> cart : total
-cart --> user : 200 OK {item, total}
+activate cart
+  cart -> catalog : getProduct(productId)
+  activate catalog
+  catalog --> cart : {name, price, stock}
+  deactivate catalog
+
+  cart -> cart : validateStock(qty)
+  note right: Check available stock\nbefore adding
+
+  cart -> db : upsertItem(userId, productId, qty)
+  activate db
+  db --> cart : ok
+  deactivate db
+
+  cart -> db : recalculateTotal(userId)
+  activate db
+  db --> cart : total
+  deactivate db
+
+  cart --> user : 200 OK {item, total}
+deactivate cart
+
+== Remove Item ==
+
+user -> cart : DELETE /cart/items/{productId}
+activate cart
+  cart -> db : removeItem(userId, productId)
+  activate db
+  db --> cart : ok
+  deactivate db
+  cart --> user : 200 OK
+deactivate cart
 @enduml

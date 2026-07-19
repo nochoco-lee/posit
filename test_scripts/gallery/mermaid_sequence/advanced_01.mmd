@@ -6,7 +6,16 @@ sequenceDiagram
     participant DB as Users DB
 
     User->>Auth: POST /login {email, password}
+    activate Auth
     Auth->>DB: findUser(email)
+    activate DB
     DB-->>Auth: user record
+    deactivate DB
+
     Auth->>Auth: verifyPassword()
-    Auth-->>User: 200 OK {token}
+    alt password valid
+        Auth-->>User: 200 OK {token}
+    else invalid credentials
+        Auth-->>User: 401 Unauthorized
+    end
+    deactivate Auth

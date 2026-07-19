@@ -6,12 +6,40 @@ sequenceDiagram
     participant Catalog as Catalog API
     participant DB as Cart DB
 
-    User->>Cart: POST /cart/items {productId, qty}
-    Cart->>Catalog: getProduct(productId)
-    Catalog-->>Cart: {name, price, stock}
-    Cart->>Cart: validateStock(qty)
-    Cart->>DB: upsertItem(userId, productId, qty)
-    DB-->>Cart: ok
-    Cart->>DB: recalculateTotal(userId)
-    DB-->>Cart: total
-    Cart-->>User: 200 OK {item, total}
+    rect rgb(240, 248, 255)
+        Note over User,DB: Add Item
+        User->>Cart: POST /cart/items {productId, qty}
+        activate Cart
+        Cart->>Catalog: getProduct(productId)
+        activate Catalog
+        Catalog-->>Cart: {name, price, stock}
+        deactivate Catalog
+
+        Cart->>Cart: validateStock(qty)
+        Note right: Check available stock<br/>before adding
+
+        Cart->>DB: upsertItem(userId, productId, qty)
+        activate DB
+        DB-->>Cart: ok
+        deactivate DB
+
+        Cart->>DB: recalculateTotal(userId)
+        activate DB
+        DB-->>Cart: total
+        deactivate DB
+
+        Cart-->>User: 200 OK {item, total}
+        deactivate Cart
+    end
+
+    rect rgb(255, 248, 240)
+        Note over User,DB: Remove Item
+        User->>Cart: DELETE /cart/items/{productId}
+        activate Cart
+        Cart->>DB: removeItem(userId, productId)
+        activate DB
+        DB-->>Cart: ok
+        deactivate DB
+        Cart-->>User: 200 OK
+        deactivate Cart
+    end

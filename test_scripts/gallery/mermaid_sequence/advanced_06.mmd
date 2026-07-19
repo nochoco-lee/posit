@@ -6,16 +6,35 @@ sequenceDiagram
     participant Ship as Shipping API
     participant DB as Orders DB
 
-    User->>Order: GET /orders/{id}
-    Order->>DB: findOrder(id)
-    DB-->>Order: order record
-    Order->>Ship: getTracking(trackingNumber)
-    Ship-->>Order: {status, location, eta}
-    Order-->>User: 200 OK {order, tracking}
+    rect rgb(240, 248, 255)
+        Note over User,DB: View Order
+        User->>Order: GET /orders/{id}
+        activate Order
+        Order->>DB: findOrder(id)
+        activate DB
+        DB-->>Order: order record
+        deactivate DB
 
-    Note over Ship,Order: Status Update via Webhook
+        Order->>Ship: getTracking(trackingNumber)
+        activate Ship
+        Ship-->>Order: {status, location, eta}
+        deactivate Ship
 
-    Ship->>Order: POST /webhooks/shipping {trackingNumber, status}
-    Order->>DB: updateStatus(orderId, status)
-    DB-->>Order: ok
-    Order-->>User: WebSocket: statusChanged
+        Order-->>User: 200 OK {order, tracking}
+        deactivate Order
+    end
+
+    rect rgb(255, 248, 240)
+        Note over Ship,DB: Status Update via Webhook
+        Ship->>Order: POST /webhooks/shipping {trackingNumber, status}
+        activate Order
+        Order->>DB: updateStatus(orderId, status)
+        activate DB
+        DB-->>Order: ok
+        deactivate DB
+
+        Note right: Notify user via<br/>WebSocket push
+
+        Order-->>User: WebSocket: statusChanged
+        deactivate Order
+    end

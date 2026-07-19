@@ -4,6 +4,7 @@ classDiagram
     class EventHandler {
         <<interface>>
         +handle(event DomainEvent) void
+        +getSupportedEvents() List~String~
     }
 
     class DomainEvent {
@@ -11,45 +12,57 @@ classDiagram
         #String eventId
         #DateTime timestamp
         #Long aggregateId
+        #Int version
         +getEventId() String
+        +getAggregateId() Long
     }
 
     class OrderPlacedEvent {
         -Long orderId
         -Long userId
         -Money total
+        -List~OrderItem~ items
     }
 
     class PaymentReceivedEvent {
         -String paymentId
         -Long orderId
         -Money amount
+        -String provider
     }
 
     class ItemShippedEvent {
         -String trackingNumber
         -Long orderId
+        -String carrier
+        -Date estimatedDelivery
     }
 
     class EventBus {
         -Map~String,List~EventHandler~~ handlers
+        -List~DomainEvent~ history
         +subscribe(eventType String, handler EventHandler) void
+        +unsubscribe(eventType String, handler EventHandler) void
         +publish(event DomainEvent) void
+        +getHistory() List~DomainEvent~
     }
 
     class EmailNotificationHandler {
         -EmailService emailService
         +handle(event DomainEvent) void
+        +getSupportedEvents() List~String~
     }
 
     class PushNotificationHandler {
         -PushService pushService
         +handle(event DomainEvent) void
+        +getSupportedEvents() List~String~
     }
 
     class SmsNotificationHandler {
         -SmsService smsService
         +handle(event DomainEvent) void
+        +getSupportedEvents() List~String~
     }
 
     EventBus --> EventHandler : dispatches to

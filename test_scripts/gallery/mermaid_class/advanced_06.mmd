@@ -8,39 +8,49 @@ classDiagram
         +save(entity T) T
         +deleteById(id ID) void
         +count() Long
+        +existsById(id ID) Boolean
     }
 
     class UserRepository {
+        -JdbcTemplate jdbcTemplate
         +findByEmail(email String) Optional~User~
+        +findByRole(role String) List~User~
         +findById(id Long) Optional~User~
         +save(user User) User
     }
 
     class ProductRepository {
+        -JdbcTemplate jdbcTemplate
         +findByName(name String) List~Product~
         +findByCategory(cat String) List~Product~
+        +findInStock() List~Product~
         +findById(id Long) Optional~Product~
     }
 
     class OrderRepository {
+        -JdbcTemplate jdbcTemplate
         +findByUserId(userId Long) List~Order~
         +findByStatus(status OrderStatus) List~Order~
+        +findByDateRange(start Date, end Date) List~Order~
         +findById(id Long) Optional~Order~
     }
 
     class User {
         -Long id
         -String email
+        -String name
     }
 
     class Product {
         -Long id
         -String name
+        -Money price
     }
 
     class Order {
         -Long id
         -OrderStatus status
+        -Money total
     }
 
     UserRepository --|> Repository

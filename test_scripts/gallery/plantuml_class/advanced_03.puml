@@ -1,49 +1,73 @@
 @startuml
 title Product Hierarchy
 
-interface Searchable {
-  +matches(query: String): Boolean
-}
+hide empty members
 
-interface Pricable {
-  +getPrice(): Money
-  +applyDiscount(pct: Double): Money
-}
+package "Catalog Module" {
+  interface Searchable {
+    +matches(query: String): Boolean
+    +getRelevanceScore(): Double
+  }
 
-abstract class Product implements Searchable, Pricable {
-  #id: Long
-  #name: String
-  #description: String
-  #price: Money
-  #status: ProductStatus
-  +matches(query: String): Boolean
-  +getPrice(): Money
-}
+  interface Pricable {
+    +getPrice(): Money
+    +applyDiscount(pct: Double): Money
+    +isOnSale(): Boolean
+  }
 
-class PhysicalProduct extends Product {
-  -weight: Double
-  -dimensions: Dimensions
-  +applyDiscount(pct: Double): Money
-}
+  abstract class Product implements Searchable, Pricable {
+    #id: Long
+    #name: String
+    #description: String
+    #price: Money
+    #status: ProductStatus
+    #createdAt: DateTime
+    --
+    +matches(query: String): Boolean
+    +getPrice(): Money
+    +isAvailable(): Boolean
+  }
 
-class DigitalProduct extends Product {
-  -fileSize: Long
-  -downloadUrl: String
-  +applyDiscount(pct: Double): Money
-}
+  class PhysicalProduct extends Product {
+    -weight: Double
+    -dimensions: Dimensions
+    -shippingClass: String
+    +applyDiscount(pct: Double): Money
+    +getShippingCost(distance: Double): Money
+  }
 
-enum ProductStatus {
-  DRAFT
-  ACTIVE
-  ARCHIVED
-}
+  class DigitalProduct extends Product {
+    -fileSize: Long
+    -downloadUrl: String
+    -licenseKey: String
+    +applyDiscount(pct: Double): Money
+    +getDownloadUrl(): String
+  }
 
-class Money {
-  -amount: BigDecimal
-  -currency: String
-  +add(other: Money): Money
+  enum ProductStatus {
+    DRAFT
+    ACTIVE
+    ARCHIVED
+    OUT_OF_STOCK
+  }
+
+  class Money {
+    -amount: BigDecimal
+    -currency: String
+    +add(other: Money): Money
+    +multiply(qty: Int): Money
+    +format(): String
+  }
+
+  class Dimensions {
+    -width: Double
+    -height: Double
+    -depth: Double
+    +getVolume(): Double
+  }
 }
 
 Product --> ProductStatus
 Product --> Money
+PhysicalProduct --> Dimensions
 @enduml

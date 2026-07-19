@@ -1,19 +1,32 @@
 @startuml
 title User Registration with Validation
 
-actor       User      as user
-participant "Auth API" as auth
+actor       User       as user
+participant "Auth API"  as auth
 participant "Email Svc" as email
-database    "Users DB" as db
+database    "Users DB"  as db
 
 user -> auth : POST /register {name, email, password}
-auth -> db : findUser(email)
-db --> auth : null
-auth -> auth : validateInput()
-auth -> auth : hashPassword()
-auth -> db : createUser(record)
-db --> auth : userId
-auth -> email : sendWelcome(email, name)
-email --> auth : sent
-auth --> user : 201 Created {userId}
+activate auth
+  auth -> auth : validateInput()
+  note right: Check email format,\npassword strength,\nname length
+
+  auth -> db : findUser(email)
+  activate db
+  db --> auth : null
+  deactivate db
+
+  auth -> auth : hashPassword()
+  auth -> db : createUser(record)
+  activate db
+  db --> auth : userId
+  deactivate db
+
+  auth -> email : sendWelcome(email, name)
+  activate email
+  email --> auth : sent
+  deactivate email
+
+  auth --> user : 201 Created {userId}
+deactivate auth
 @enduml

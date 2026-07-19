@@ -1,28 +1,35 @@
 @startuml
 title User and Role Hierarchy
 
-class User {
-  -id: Long
-  -name: String
-  -email: String
-  +getRoles(): List<Role>
-}
+hide empty members
 
-abstract class Role {
-  #name: String
-  +getPermissions(): List<String>
-}
+package "Auth Module" {
+  abstract class Role {
+    #name: String
+    #permissions: List<String>
+    +getPermissions(): List<String>
+    +hasPermission(perm: String): Boolean
+  }
 
-class AdminRole extends Role {
-  +getPermissions(): List<String>
-}
+  class AdminRole extends Role {
+    +getPermissions(): List<String>
+  }
 
-class CustomerRole extends Role {
-  +getPermissions(): List<String>
-}
+  class CustomerRole extends Role {
+    +getPermissions(): List<String>
+  }
 
-class SellerRole extends Role {
-  +getPermissions(): List<String>
+  class SellerRole extends Role {
+    +getPermissions(): List<String>
+  }
+
+  class User {
+    -id: Long
+    -name: String
+    -email: String
+    +getRoles(): List<Role>
+    +hasRole(name: String): Boolean
+  }
 }
 
 User "1" *-- "*" Role : has >

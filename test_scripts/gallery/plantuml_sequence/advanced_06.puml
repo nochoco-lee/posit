@@ -6,17 +6,34 @@ participant "Order API"  as order
 participant "Shipping API" as ship
 database    "Orders DB"  as db
 
-user -> order : GET /orders/{id}
-order -> db : findOrder(id)
-db --> order : order record
-order -> ship : getTracking(trackingNumber)
-ship --> order : {status, location, eta}
-order --> user : 200 OK {order, tracking}
+== View Order ==
 
-== Status Update ==
+user -> order : GET /orders/{id}
+activate order
+  order -> db : findOrder(id)
+  activate db
+  db --> order : order record
+  deactivate db
+
+  order -> ship : getTracking(trackingNumber)
+  activate ship
+  ship --> order : {status, location, eta}
+  deactivate ship
+
+  order --> user : 200 OK {order, tracking}
+deactivate order
+
+== Status Update via Webhook ==
 
 ship -> order : POST /webhooks/shipping {trackingNumber, status}
-order -> db : updateStatus(orderId, status)
-db --> order : ok
-order --> user : WebSocket: statusChanged
+activate order
+  order -> db : updateStatus(orderId, status)
+  activate db
+  db --> order : ok
+  deactivate db
+
+  note right: Notify user via\nWebSocket push
+
+  order --> user : WebSocket: statusChanged
+deactivate order
 @enduml

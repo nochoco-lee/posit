@@ -1,13 +1,17 @@
 @startuml
 title User Profile
 
+hide empty members
+
 class User {
   -id: Long
   -name: String
   -email: String
   -passwordHash: String
   -createdAt: DateTime
+  --
   +getEmail(): String
   +verifyPassword(pw: String): Boolean
+  +updateProfile(name: String, email: String): void
 }
 @enduml

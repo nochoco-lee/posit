@@ -9,19 +9,23 @@ classDiagram
         -List~Role~ roles
         +verifyPassword(pw String) Boolean
         +hasRole(name String) Boolean
+        +getPermissions() Set~String~
     }
     class Role {
         -String name
         -Set~String~ permissions
+        +hasPermission(perm String) Boolean
     }
     class Authenticator {
         <<interface>>
         +authenticate(email String, pw String) Token
         +validate(token String) Boolean
+        +refresh(token String) Token
     }
     class JwtAuthenticator {
         -String secret
         -Long expiryMs
+        -Long refreshExpiryMs
     }
 
     class Product {
@@ -32,27 +36,36 @@ classDiagram
         #Money price
         #Int stock
         #ProductStatus status
+        #DateTime createdAt
         +isAvailable() Boolean
         +reduceStock(qty Int) void
+        +getDiscountPrice(pct Double) Money
     }
     class PhysicalProduct {
         -Double weight
         -Dimensions dimensions
+        -String shippingClass
+        +getShippingCost(dist Double) Money
     }
     class DigitalProduct {
         -String downloadUrl
         -Long fileSize
+        -String licenseKey
+        +getDownloadUrl() String
     }
     class Category {
         -Long id
         -String name
         -Category parent
+        +getAncestors() List~Category~
+        +getChildren() List~Category~
     }
     class Money {
         -BigDecimal amount
         -String currency
         +add(other Money) Money
         +multiply(qty Int) Money
+        +format() String
     }
     class ProductStatus {
         <<enumeration>>
@@ -63,21 +76,26 @@ classDiagram
     class SearchEngine {
         <<interface>>
         +search(query String, filters Map) List~Product~
+        +autocomplete(prefix String) List~String~
     }
 
     class Cart {
         -Long id
         -Long userId
         -Map~Long,CartItem~ items
+        -String couponCode
         +addItem(product Product, qty Int) void
         +removeItem(productId Long) void
         +getTotal() Money
+        +applyCoupon(code String) Money
         +clear() void
     }
     class CartItem {
         -Product product
         -Int quantity
+        -DateTime addedAt
         +getSubtotal() Money
+        +updateQuantity(qty Int) void
     }
 
     class Order {
@@ -86,18 +104,26 @@ classDiagram
         -List~OrderItem~ items
         -OrderStatus status
         -Money total
+        -Address shippingAddress
         -DateTime createdAt
-        -DateTime updatedAt
         +submit() void
         +cancel() void
         +markShipped(tracking String) void
         +deliver() void
+        +getStatusHistory() List~StatusChange~
     }
     class OrderItem {
         -Product product
         -Int quantity
         -Money unitPrice
         +getSubtotal() Money
+        +updateQuantity(qty Int) void
+    }
+    class StatusChange {
+        -OrderStatus from
+        -OrderStatus to
+        -DateTime timestamp
+        -String reason
     }
     class OrderStatus {
         <<enumeration>>
@@ -114,9 +140,11 @@ classDiagram
         <<interface>>
         +charge(amount Money, token String) Transaction
         +refund(txnId String) Transaction
+        +getTransaction(txnId String) Transaction
     }
     class StripeProvider {
         -String apiKey
+        -String webhookSecret
     }
     class PayPalProvider {
         -String clientId
@@ -129,6 +157,8 @@ classDiagram
         -TxnStatus status
         -String provider
         -DateTime createdAt
+        +confirm() void
+        +fail(reason String) void
     }
     class TxnStatus {
         <<enumeration>>
@@ -140,10 +170,12 @@ classDiagram
 
     class InventoryManager {
         -Long reservationTTL
+        -Int lowStockThreshold
         +reserve(orderId Long, items Map~Long,Int~) Reservation
         +confirm(reservationId String) void
         +release(reservationId String) void
         +getStock(productId Long) Int
+        +getLowStockProducts() List~Product~
     }
     class Reservation {
         -String id
@@ -151,11 +183,13 @@ classDiagram
         -Map~Long,Int~ items
         -DateTime expiresAt
         +isExpired() Boolean
+        +extend(ttl Long) void
     }
 
     class NotificationChannel {
         <<interface>>
         +send(userId Long, template String, data Map) void
+        +getChannelName() String
     }
     class EmailChannel {
         -String smtpHost
@@ -170,19 +204,25 @@ classDiagram
     }
     class NotificationService {
         -List~NotificationChannel~ channels
+        -TemplateEngine templateEngine
         +notify(userId Long, event String, data Map) void
+        +notifyAll(userIds List~Long~, event String, data Map) void
     }
 
     class ShippingService {
         +createShipment(orderId Long, address Address) Shipment
         +getRates(address Address, weight Double) List~ShippingRate~
         +track(trackingNumber String) ShipmentStatus
+        +calculateInsurance(value Double) Money
     }
     class Shipment {
         -String trackingNumber
         -String carrier
         -ShipmentStatus status
         -Date estimatedDelivery
+        -Double weight
+        +updateStatus(status String) void
+        +getTrackingUrl() String
     }
     class Address {
         -String street
@@ -190,17 +230,23 @@ classDiagram
         -String state
         -String zip
         -String country
+        +getFullAddress() String
+        +validate() Boolean
+        +isResidential() Boolean
     }
     class ShippingRate {
         -String carrier
         -String service
         -Money cost
         -Int days
+        +getEstimatedDelivery() Date
     }
     class ShipmentStatus {
         <<enumeration>>
         PREPARING
+        PICKED_UP
         IN_TRANSIT
+        OUT_FOR_DELIVERY
         DELIVERED
         RETURNED
     }

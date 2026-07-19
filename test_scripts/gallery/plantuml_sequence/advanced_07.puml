@@ -9,22 +9,48 @@ participant "Notification API" as notif
 database    "Orders DB"  as db
 
 user -> order : POST /orders {cartId, address}
-order -> inv : checkStock(cartItems)
-inv --> order : inStock
+activate order
 
-order -> inv : reserveItems(cartItems)
-alt Reservation successful
+  order -> inv : checkStock(cartItems)
+  activate inv
+  inv --> order : inStock
+  deactivate inv
+
+  order -> inv : reserveItems(cartItems)
+  activate inv
+  alt reservation successful
+    inv --> order : reservationId
+    deactivate inv
+
     order -> pay : charge(userId, total)
-    alt Payment successful
-        order -> db : createOrder(status: CONFIRMED)
-        db --> order : orderId
-        order -> notif : sendOrderConfirmation(userId, orderId)
-        order --> user : 201 Created {orderId}
-    else Payment failed
-        order -> inv : releaseReservation(cartItems)
-        order --> user : 402 Payment Required
+    activate pay
+    alt payment successful
+      pay --> order : paymentId
+      deactivate pay
+
+      order -> db : createOrder(status: CONFIRMED)
+      activate db
+      db --> order : orderId
+      deactivate db
+
+      order -> notif : sendOrderConfirmation(userId, orderId)
+      activate notif
+      notif --> order : sent
+      deactivate notif
+
+      order --> user : 201 Created {orderId}
+    else payment failed
+      pay --> order : error
+      deactivate pay
+
+      order -> inv : releaseReservation(cartItems)
+      order --> user : 402 Payment Required
     end
-else Out of stock
-    order -> user : 409 Conflict {unavailable: [...]}
-end
+  else out of stock
+    inv --> order : error
+    deactivate inv
+
+    order --> user : 409 Conflict {unavailable: [...]}
+  end
+deactivate order
 @enduml

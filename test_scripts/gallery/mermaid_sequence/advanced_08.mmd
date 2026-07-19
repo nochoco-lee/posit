@@ -11,20 +11,37 @@ sequenceDiagram
     participant Ship as Shipping Svc
 
     User->>GW: POST /checkout
+    activate GW
     GW->>Order: createOrder(cartId, userId)
+    activate Order
 
     Order->>Cart: getCart(cartId)
+    activate Cart
     Cart-->>Order: items[]
+    deactivate Cart
 
     Order->>Inv: reserveItems(items[])
+    activate Inv
     Inv-->>Order: reservationId
+    deactivate Inv
 
     Order->>Pay: processPayment(userId, amount)
+    activate Pay
     Pay-->>Order: paymentId
+    deactivate Pay
 
     Order->>Ship: createShipment(address, items[])
+    activate Ship
     Ship-->>Order: trackingNumber
+    deactivate Ship
 
     Order->>Notif: sendConfirmation(userId, orderId, tracking)
+    activate Notif
+    Notif-->>Order: sent
+    deactivate Notif
+
     Order-->>GW: 201 {orderId, tracking}
+    deactivate Order
+
     GW-->>User: 201 Created
+    deactivate GW

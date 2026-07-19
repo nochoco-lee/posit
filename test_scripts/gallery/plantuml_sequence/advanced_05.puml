@@ -1,21 +1,49 @@
 @startuml
 title Checkout with Payment
 
-actor       User        as user
-participant "Order API"  as order
+actor       User         as user
+participant "Order API"   as order
 participant "Payment API" as pay
 participant "Inventory API" as inv
-participant "Email Svc"  as email
-database    "Orders DB"  as db
+participant "Email Svc"   as email
+database    "Orders DB"   as db
 
 user -> order : POST /checkout {cartId, address}
-order -> inv : reserveItems(cartItems)
-inv --> order : reserved
-order -> pay : charge(userId, total)
-pay --> order : paymentId
-order -> db : createOrder(record)
-db --> order : orderId
-order -> email : sendConfirmation(userId, orderId)
-email --> order : sent
-order --> user : 200 OK {orderId, status: "confirmed"}
+activate order
+
+  order -> inv : reserveItems(cartItems)
+  activate inv
+  alt reservation successful
+    inv --> order : reservationId
+  else insufficient stock
+    inv --> order : error
+    order --> user : 409 Conflict {unavailable}
+    stop
+  end
+  deactivate inv
+
+  order -> pay : charge(userId, total)
+  activate pay
+  alt payment successful
+    pay --> order : paymentId
+  else payment declined
+    pay --> order : error
+    order -> inv : releaseReservation(cartItems)
+    order --> user : 402 Payment Required
+    stop
+  end
+  deactivate pay
+
+  order -> db : createOrder(record)
+  activate db
+  db --> order : orderId
+  deactivate db
+
+  order -> email : sendConfirmation(userId, orderId)
+  activate email
+  email --> order : sent
+  deactivate email
+
+  order --> user : 200 OK {orderId, status: "confirmed"}
+deactivate order
 @enduml

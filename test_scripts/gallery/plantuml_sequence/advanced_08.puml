@@ -11,21 +11,38 @@ participant "Notification Svc" as notif
 participant "Shipping Svc" as ship
 
 user -> gw : POST /checkout
-gw -> order : createOrder(cartId, userId)
+activate gw
+  gw -> order : createOrder(cartId, userId)
+  activate order
 
-order -> cart : getCart(cartId)
-cart --> order : items[]
+  order -> cart : getCart(cartId)
+  activate cart
+  cart --> order : items[]
+  deactivate cart
 
-order -> inv : reserveItems(items[])
-inv --> order : reservationId
+  order -> inv : reserveItems(items[])
+  activate inv
+  inv --> order : reservationId
+  deactivate inv
 
-order -> pay : processPayment(userId, amount)
-pay --> order : paymentId
+  order -> pay : processPayment(userId, amount)
+  activate pay
+  pay --> order : paymentId
+  deactivate pay
 
-order -> ship : createShipment(address, items[])
-ship --> order : trackingNumber
+  order -> ship : createShipment(address, items[])
+  activate ship
+  ship --> order : trackingNumber
+  deactivate ship
 
-order -> notif : sendConfirmation(userId, orderId, tracking)
-order --> gw : 201 {orderId, tracking}
-gw --> user : 201 Created
+  order -> notif : sendConfirmation(userId, orderId, tracking)
+  activate notif
+  notif --> order : sent
+  deactivate notif
+
+  order --> gw : 201 {orderId, tracking}
+  deactivate order
+
+  gw --> user : 201 Created
+deactivate gw
 @enduml

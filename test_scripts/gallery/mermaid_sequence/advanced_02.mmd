@@ -7,12 +7,25 @@ sequenceDiagram
     participant DB as Users DB
 
     User->>Auth: POST /register {name, email, password}
-    Auth->>DB: findUser(email)
-    DB-->>Auth: null
+    activate Auth
     Auth->>Auth: validateInput()
+    Note right: Check email format,<br/>password strength,<br/>name length
+
+    Auth->>DB: findUser(email)
+    activate DB
+    DB-->>Auth: null
+    deactivate DB
+
     Auth->>Auth: hashPassword()
     Auth->>DB: createUser(record)
+    activate DB
     DB-->>Auth: userId
+    deactivate DB
+
     Auth->>Email: sendWelcome(email, name)
+    activate Email
     Email-->>Auth: sent
+    deactivate Email
+
     Auth-->>User: 201 Created {userId}
+    deactivate Auth

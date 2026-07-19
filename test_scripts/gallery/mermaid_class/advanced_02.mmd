@@ -6,12 +6,15 @@ classDiagram
         -String name
         -String email
         +getRoles() List~Role~
+        +hasRole(name String) Boolean
     }
 
     class Role {
         <<abstract>>
         #String name
+        #List~String~ permissions
         +getPermissions() List~String~
+        +hasPermission(perm String) Boolean
     }
 
     class AdminRole {

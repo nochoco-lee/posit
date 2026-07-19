@@ -5,60 +5,75 @@ classDiagram
         -Long id
         -String name
         -String email
+        -List~String~ roles
     }
     class ProductDTO {
         -Long id
         -String name
         -Double price
         -Int stock
+        -String category
     }
     class OrderDTO {
         -Long id
         -List~OrderItemDTO~ items
         -Double total
         -String status
+        -String createdAt
     }
     class OrderItemDTO {
         -Long productId
         -String productName
         -Int quantity
         -Double unitPrice
+        -Double subtotal
     }
 
     class UserService {
         -UserRepository userRepo
         -EventBus eventBus
+        -PasswordEncoder passwordEncoder
         +register(dto UserDTO) UserDTO
         +getProfile(userId Long) UserDTO
         +updateProfile(userId Long, dto UserDTO) void
+        +changePassword(userId Long, oldPw String, newPw String) void
     }
     class ProductService {
         -ProductRepository productRepo
+        -CacheManager cacheManager
         +search(query String) List~ProductDTO~
         +getProduct(id Long) ProductDTO
         +updateStock(id Long, delta Int) void
+        +getLowStockProducts() List~ProductDTO~
     }
     class OrderService {
         -OrderRepository orderRepo
         -ProductService productService
         -PaymentService paymentService
+        -InventoryService inventoryService
         -EventBus eventBus
         +createOrder(userId Long, items List~OrderItemDTO~) OrderDTO
         +getOrder(orderId Long) OrderDTO
         +cancelOrder(orderId Long) void
+        +getOrderHistory(userId Long) List~OrderDTO~
     }
     class PaymentService {
+        -PaymentStrategy strategy
+        -TransactionRepository transactionRepo
         +charge(userId Long, amount Double) String
         +refund(paymentId String) void
+        +getPaymentStatus(paymentId String) String
     }
 
     class UserMapper {
         +toDTO(user User) UserDTO
         +toEntity(dto UserDTO) User
+        +toDTOList(users List~User~) List~UserDTO~
     }
     class OrderMapper {
         +toDTO(order Order) OrderDTO
         +toEntity(dto OrderDTO) Order
+        +toItemDTO(item OrderItem) OrderItemDTO
     }
 
     UserService ..> UserDTO

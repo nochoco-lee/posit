@@ -4,12 +4,14 @@ classDiagram
     class Searchable {
         <<interface>>
         +matches(query String) Boolean
+        +getRelevanceScore() Double
     }
 
     class Pricable {
         <<interface>>
         +getPrice() Money
         +applyDiscount(pct Double) Money
+        +isOnSale() Boolean
     }
 
     class Product {
@@ -19,20 +21,26 @@ classDiagram
         #String description
         #Money price
         #ProductStatus status
+        #DateTime createdAt
         +matches(query String) Boolean
         +getPrice() Money
+        +isAvailable() Boolean
     }
 
     class PhysicalProduct {
         -Double weight
         -Dimensions dimensions
+        -String shippingClass
         +applyDiscount(pct Double) Money
+        +getShippingCost(dist Double) Money
     }
 
     class DigitalProduct {
-        -Long fileSize
         -String downloadUrl
+        -Long fileSize
+        -String licenseKey
         +applyDiscount(pct Double) Money
+        +getDownloadUrl() String
     }
 
     class ProductStatus {
@@ -40,12 +48,22 @@ classDiagram
         DRAFT
         ACTIVE
         ARCHIVED
+        OUT_OF_STOCK
     }
 
     class Money {
         -BigDecimal amount
         -String currency
         +add(other Money) Money
+        +multiply(qty Int) Money
+        +format() String
+    }
+
+    class Dimensions {
+        -Double width
+        -Double height
+        -Double depth
+        +getVolume() Double
     }
 
     Product ..|> Searchable
@@ -54,3 +72,4 @@ classDiagram
     DigitalProduct --|> Product
     Product --> ProductStatus
     Product --> Money
+    PhysicalProduct --> Dimensions

@@ -11,20 +11,26 @@ package "Auth Module" {
     -email: String
     -passwordHash: String
     -roles: List<Role>
+    --
     +verifyPassword(pw: String): Boolean
     +hasRole(name: String): Boolean
+    +getPermissions(): Set<String>
   }
   class Role {
     -name: String
     -permissions: Set<String>
+    --
+    +hasPermission(perm: String): Boolean
   }
   interface Authenticator {
     +authenticate(email: String, pw: String): Token
     +validate(token: String): Boolean
+    +refresh(token: String): Token
   }
   class JwtAuthenticator implements Authenticator {
     -secret: String
     -expiryMs: Long
+    -refreshExpiryMs: Long
   }
 }
 
@@ -36,31 +42,44 @@ package "Catalog Module" {
     #price: Money
     #stock: Int
     #status: ProductStatus
+    #createdAt: DateTime
+    --
     +isAvailable(): Boolean
     +reduceStock(qty: Int): void
+    +getDiscountPrice(pct: Double): Money
   }
   class PhysicalProduct extends Product {
     -weight: Double
     -dimensions: Dimensions
+    -shippingClass: String
+    +getShippingCost(dist: Double): Money
   }
   class DigitalProduct extends Product {
     -downloadUrl: String
     -fileSize: Long
+    -licenseKey: String
+    +getDownloadUrl(): String
   }
   class Category {
     -id: Long
     -name: String
     -parent: Category
+    --
+    +getAncestors(): List<Category>
+    +getChildren(): List<Category>
   }
   class Money {
     -amount: BigDecimal
     -currency: String
+    --
     +add(other: Money): Money
     +multiply(qty: Int): Money
+    +format(): String
   }
   enum ProductStatus { DRAFT, ACTIVE, ARCHIVED }
   interface SearchEngine {
     +search(query: String, filters: Map): List<Product>
+    +autocomplete(prefix: String): List<String>
   }
 }
 
@@ -69,15 +88,21 @@ package "Cart Module" {
     -id: Long
     -userId: Long
     -items: Map<Long, CartItem>
+    -couponCode: String
+    --
     +addItem(product: Product, qty: Int): void
     +removeItem(productId: Long): void
     +getTotal(): Money
+    +applyCoupon(code: String): Money
     +clear(): void
   }
   class CartItem {
     -product: Product
     -quantity: Int
+    -addedAt: DateTime
+    --
     +getSubtotal(): Money
+    +updateQuantity(qty: Int): void
   }
 }
 
@@ -88,37 +113,42 @@ package "Order Module" {
     -items: List<OrderItem>
     -status: OrderStatus
     -total: Money
+    -shippingAddress: Address
     -createdAt: DateTime
     -updatedAt: DateTime
+    --
     +submit(): void
     +cancel(): void
     +markShipped(tracking: String): void
     +deliver(): void
+    +getStatusHistory(): List>StatusChange>
   }
   class OrderItem {
     -product: Product
     -quantity: Int
     -unitPrice: Money
+    --
     +getSubtotal(): Money
+    +updateQuantity(qty: Int): void
   }
-  enum OrderStatus {
-    PENDING
-    CONFIRMED
-    PROCESSING
-    SHIPPED
-    DELIVERED
-    CANCELLED
-    REFUNDED
+  class StatusChange {
+    -from: OrderStatus
+    -to: OrderStatus
+    -timestamp: DateTime
+    -reason: String
   }
+  enum OrderStatus { PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED, REFUNDED }
 }
 
 package "Payment Module" {
   interface PaymentProvider {
     +charge(amount: Money, token: String): Transaction
     +refund(txnId: String): Transaction
+    +getTransaction(txnId: String): Transaction
   }
   class StripeProvider implements PaymentProvider {
     -apiKey: String
+    -webhookSecret: String
   }
   class PayPalProvider implements PaymentProvider {
     -clientId: String
@@ -131,6 +161,9 @@ package "Payment Module" {
     -status: TxnStatus
     -provider: String
     -createdAt: DateTime
+    --
+    +confirm(): void
+    +fail(reason: String): void
   }
   enum TxnStatus { PENDING, SUCCESS, FAILED, REFUNDED }
 }
@@ -138,38 +171,50 @@ package "Payment Module" {
 package "Inventory Module" {
   class InventoryManager {
     -reservationTTL: Long
+    -lowStockThreshold: Int
+    --
     +reserve(orderId: Long, items: Map<Long, Int>): Reservation
     +confirm(reservationId: String): void
     +release(reservationId: String): void
     +getStock(productId: Long): Int
+    +getLowStockProducts(): List<Product>
   }
   class Reservation {
     -id: String
     -orderId: Long
     -items: Map<Long, Int>
     -expiresAt: DateTime
+    --
     +isExpired(): Boolean
+    +extend(ttl: Long): void
   }
 }
 
 package "Notification Module" {
   interface NotificationChannel {
     +send(userId: Long, template: String, data: Map): void
+    +getChannelName(): String
   }
   class EmailChannel implements NotificationChannel {
     -smtpHost: String
     -fromAddress: String
+    +send(userId: Long, template: String, data: Map): void
   }
   class PushChannel implements NotificationChannel {
     -firebaseKey: String
+    +send(userId: Long, template: String, data: Map): void
   }
   class SmsChannel implements NotificationChannel {
     -twilioSid: String
     -twilioToken: String
+    +send(userId: Long, template: String, data: Map): void
   }
   class NotificationService {
     -channels: List<NotificationChannel>
+    -templateEngine: TemplateEngine
+    --
     +notify(userId: Long, event: String, data: Map): void
+    +notifyAll(userIds: List<Long>, event: String, data: Map): void
   }
 }
 
@@ -178,12 +223,17 @@ package "Shipping Module" {
     +createShipment(orderId: Long, address: Address): Shipment
     +getRates(address: Address, weight: Double): List<ShippingRate>
     +track(trackingNumber: String): ShipmentStatus
+    +calculateInsurance(value: Double): Money
   }
   class Shipment {
     -trackingNumber: String
     -carrier: String
     -status: ShipmentStatus
     -estimatedDelivery: Date
+    -weight: Double
+    --
+    +updateStatus(status: String): void
+    +getTrackingUrl(): String
   }
   class Address {
     -street: String
@@ -191,14 +241,20 @@ package "Shipping Module" {
     -state: String
     -zip: String
     -country: String
+    --
+    +getFullAddress(): String
+    +validate(): Boolean
+    +isResidential(): Boolean
   }
   class ShippingRate {
     -carrier: String
     -service: String
     -cost: Money
     -days: Int
+    --
+    +getEstimatedDelivery(): Date
   }
-  enum ShipmentStatus { PREPARING, IN_TRANSIT, DELIVERED, RETURNED }
+  enum ShipmentStatus { PREPARING, PICKED_UP, IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED, RETURNED }
 }
 
 User "1" -- "*" Order : places >

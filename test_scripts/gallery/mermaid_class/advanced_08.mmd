@@ -7,10 +7,12 @@ classDiagram
         -String email
         -String passwordHash
         +verifyPassword(pw String) Boolean
+        +hasRole(name String) Boolean
     }
     class Role {
         -String name
-        -List~String~ permissions
+        -Set~String~ permissions
+        +hasPermission(perm String) Boolean
     }
     class Product {
         -Long id
@@ -18,42 +20,81 @@ classDiagram
         -Money price
         -Int stock
         -ProductStatus status
+        +isAvailable() Boolean
+        +reduceStock(qty Int) void
     }
     class Category {
         -Long id
         -String name
         -Category parent
+        +getAncestors() List~Category~
+        +getChildren() List~Category~
     }
     class Money {
         -BigDecimal amount
         -String currency
+        +add(other Money) Money
+        +multiply(qty Int) Money
+        +format() String
+    }
+    class ProductStatus {
+        <<enumeration>>
+        DRAFT
+        ACTIVE
+        ARCHIVED
     }
     class Order {
         -Long id
         -OrderStatus status
         -Money total
         -DateTime createdAt
+        +submit() void
+        +cancel() void
+        +markShipped(tracking String) void
+        +deliver() void
     }
     class OrderItem {
         -Int quantity
         -Money unitPrice
+        +getSubtotal() Money
+        +updateQuantity(qty Int) void
+    }
+    class OrderStatus {
+        <<enumeration>>
+        PENDING
+        CONFIRMED
+        SHIPPED
+        DELIVERED
+        CANCELLED
     }
     class Payment {
         -String id
         -Money amount
         -String method
         -PaymentStatus status
+        +confirm() void
+        +fail(reason String) void
     }
     class Refund {
         -String id
         -String paymentId
         -Money amount
+        +process() void
+    }
+    class PaymentStatus {
+        <<enumeration>>
+        PENDING
+        COMPLETED
+        FAILED
+        REFUNDED
     }
     class Shipment {
         -String trackingNumber
         -String carrier
         -ShipmentStatus status
         -Date estimatedDelivery
+        +updateStatus(status String) void
+        +getTrackingUrl() String
     }
     class Address {
         -String street
@@ -61,6 +102,15 @@ classDiagram
         -String state
         -String zip
         -String country
+        +getFullAddress() String
+        +validate() Boolean
+    }
+    class ShipmentStatus {
+        <<enumeration>>
+        PREPARING
+        IN_TRANSIT
+        DELIVERED
+        RETURNED
     }
 
     User "1" --> "*" Order : places
@@ -72,3 +122,7 @@ classDiagram
     Product "*" --> "*" Category : categorized
     Shipment --> Address : delivers to
     Payment "1" --> "0..*" Refund : may have
+    Order --> OrderStatus
+    Payment --> PaymentStatus
+    Shipment --> ShipmentStatus
+    Product --> ProductStatus
