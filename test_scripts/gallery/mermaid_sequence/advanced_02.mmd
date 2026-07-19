@@ -9,7 +9,7 @@ sequenceDiagram
     User->>Auth: POST /register {name, email, password}
     activate Auth
     Auth->>Auth: validateInput()
-    Note right: Check email format,<br/>password strength,<br/>name length
+    Note over Auth: Check email format,<br/>password strength,<br/>name length
 
     Auth->>DB: findUser(email)
     activate DB

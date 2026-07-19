@@ -12,7 +12,7 @@ sequenceDiagram
         User->>Order: POST /orders/{id}/return {reason}
         activate Order
         Order->>Order: validateReturnWindow()
-        Note right: Check if within<br/>30-day return window
+        Note over Order: Check if within<br/>30-day return window
 
         Order->>Pay: refund(orderId, amount)
         activate Pay

@@ -33,7 +33,7 @@ sequenceDiagram
         DB-->>Order: ok
         deactivate DB
 
-        Note right: Notify user via<br/>WebSocket push
+        Note over Order: Notify user via<br/>WebSocket push
 
         Order-->>User: WebSocket: statusChanged
         deactivate Order

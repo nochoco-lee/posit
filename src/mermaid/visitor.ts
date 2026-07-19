@@ -587,6 +587,12 @@ export class MermaidAstVisitor extends BaseVisitor {
         return parts.join(" ").trim().replace(/\s*<\s*br\s*\/?\s*>\s*/gi, '\n');
     }
 
+    linePayload(ctx: any): string {
+        if (!ctx.anyToken) return "";
+        const parts = ctx.anyToken.map((t: any) => this.visit(t));
+        return parts.join(" ").trim().replace(/\s*<\s*br\s*\/?\s*>\s*/gi, '\n');
+    }
+
     bracketContent(ctx: any): string {
         if (!ctx.anyToken) return "";
         const parts = ctx.anyToken.map((t: any) => this.visit(t));

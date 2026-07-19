@@ -293,6 +293,16 @@ class MermaidParser extends CstParser {
         });
     });
 
+    public linePayload = this.RULE("linePayload", () => {
+        this.MANY({
+            GATE: () => {
+                const t = this.LA(1).tokenType;
+                return t !== Newline && t !== EOF;
+            },
+            DEF: () => this.SUBRULE(this.anyToken)
+        });
+    });
+
     public noteDeclaration = this.RULE("noteDeclaration", () => {
         this.CONSUME(Note);
         this.OR([
@@ -533,7 +543,7 @@ class MermaidParser extends CstParser {
         });
         this.OPTION6(() => {
             this.OR5([
-                { ALT: () => { this.CONSUME(Colon); this.SUBRULE4(this.payload, { LABEL: "payload" }); } },
+                { ALT: () => { this.CONSUME(Colon); this.SUBRULE4(this.linePayload, { LABEL: "payload" }); } },
                 { ALT: () => { this.CONSUME2(VerticalBar); this.SUBRULE5(this.payload, { LABEL: "edgeLabel2" }); this.CONSUME3(VerticalBar); } }
             ]);
         });

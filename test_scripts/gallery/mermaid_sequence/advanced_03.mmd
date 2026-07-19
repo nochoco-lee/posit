@@ -22,7 +22,7 @@ sequenceDiagram
     deactivate Cache
 
     Search->>Search: enrichWithRatings()
-    Note right: Fetch ratings from<br/>review service for<br/>each product
+    Note over Search: Fetch ratings from<br/>review service for<br/>each product
 
     Search->>Search: applyPagination(page=1, size=20)
     Search-->>User: 200 OK {products, total, page}

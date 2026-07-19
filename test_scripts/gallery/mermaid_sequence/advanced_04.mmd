@@ -16,7 +16,7 @@ sequenceDiagram
         deactivate Catalog
 
         Cart->>Cart: validateStock(qty)
-        Note right: Check available stock<br/>before adding
+        Note over Cart: Check available stock<br/>before adding
 
         Cart->>DB: upsertItem(userId, productId, qty)
         activate DB
