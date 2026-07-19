@@ -122,6 +122,7 @@ export class SequenceParser extends CstParser {
             { ALT: () => this.CONSUME(lexer.Queue) },
             { ALT: () => this.CONSUME(lexer.Class) },
             { ALT: () => this.CONSUME(lexer.ObjectKeyword) },
+            { ALT: () => this.CONSUME(lexer.Order) },
             { ALT: () => this.CONSUME(lexer.Alt) },
             { ALT: () => this.CONSUME(lexer.Else) },
             { ALT: () => this.CONSUME(lexer.Opt) },
@@ -215,7 +216,7 @@ export class SequenceParser extends CstParser {
                 { GATE: () => { const next = this.LA(1).tokenType; return next === common.Identifier || next === common.StringLiteral || next === common.NumberToken || next === common.IdentifierLike; }, ALT: () => this.SUBRULE2(this.name, { LABEL: "alias" }) },
                 { ALT: () => this.CONSUME(common.Color, { LABEL: "color" }) },
                 { ALT: () => this.CONSUME(lexer.Stereotype, { LABEL: "stereo" }) },
-                { ALT: () => { this.CONSUME(lexer.Order); this.CONSUME(common.NumberToken, { LABEL: "order" }); } },
+                { GATE: () => this.LA(1).tokenType === lexer.Order && this.LA(2).tokenType === common.NumberToken, ALT: () => { this.CONSUME(lexer.Order); this.CONSUME(common.NumberToken, { LABEL: "order" }); } },
                 { ALT: () => { this.CONSUME(common.LBracket); this.SUBRULE(this.participantLabel, { LABEL: "multilineLabel" }); this.CONSUME(common.RBracket); } }
             ]);
         });
