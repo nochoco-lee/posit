@@ -7,9 +7,9 @@ import { LayoutManager } from "./src/layout/engine";
 import { LayoutPumlSvgRenderer } from "./src/renderer/svg_renderer";
 
 const testDirs = [
-    { name: "Sequence Diagrams", path: "test_scripts/plantuml_sequence", mpath: "test_scripts/mermaid_sequence", file: "gallery_sequence.html" },
-    { name: "Class Diagrams", path: "test_scripts/plantuml_class", mpath: "test_scripts/mermaid_class", file: "gallery_class.html" },
-    { name: "Deployment Diagrams", path: "test_scripts/plantuml_deployment", mpath: "test_scripts/mermaid_flowchart", file: "gallery_deployment.html" }
+    { name: "Sequence Diagrams", paths: ["test_scripts/plantuml_sequence", "test_scripts/gallery/plantuml_sequence"], mpaths: ["test_scripts/mermaid_sequence", "test_scripts/gallery/mermaid_sequence"], file: "gallery_sequence.html" },
+    { name: "Class Diagrams", paths: ["test_scripts/plantuml_class", "test_scripts/gallery/plantuml_class"], mpaths: ["test_scripts/mermaid_class", "test_scripts/gallery/mermaid_class"], file: "gallery_class.html" },
+    { name: "Deployment Diagrams", paths: ["test_scripts/plantuml_deployment", "test_scripts/gallery/plantuml_deployment"], mpaths: ["test_scripts/mermaid_flowchart", "test_scripts/gallery/mermaid_flowchart"], file: "gallery_deployment.html" }
 ];
 const localRenderDir = "local_renders";
 const ourRenderDir = path.join(localRenderDir, "our_renders");
@@ -48,8 +48,9 @@ for (const dirInfo of testDirs) {
     console.log(`Processing ${dirInfo.name}...`);
 
     // 1. Process PlantUML files
-    if (fs.existsSync(dirInfo.path)) {
-        const files = fs.readdirSync(dirInfo.path)
+    for (const pdir of dirInfo.paths) {
+    if (fs.existsSync(pdir)) {
+        const files = fs.readdirSync(pdir)
             .filter(f => f.endsWith(".puml"))
             .sort((a, b) => {
                 const numA = parseInt(a.match(/\d+/)?.at(0) || "0");
@@ -58,7 +59,7 @@ for (const dirInfo of testDirs) {
             });
 
         for (const file of files) {
-            const filePath = path.join(dirInfo.path, file);
+            const filePath = path.join(pdir, file);
             const content = fs.readFileSync(filePath, "utf-8");
             
             const baseName = `puml_${dirInfo.name.replace(/\s+/g, '_')}_${file.replace(".puml", "")}`;
@@ -106,10 +107,12 @@ for (const dirInfo of testDirs) {
             });
         }
     }
+    } // end for pdir
 
     // 2. Process Mermaid files
-    if (fs.existsSync(dirInfo.mpath)) {
-        const mfiles = fs.readdirSync(dirInfo.mpath)
+    for (const mdir of dirInfo.mpaths) {
+    if (fs.existsSync(mdir)) {
+        const mfiles = fs.readdirSync(mdir)
             .filter(f => f.endsWith(".mmd"))
             .sort((a, b) => {
                 const numA = parseInt(a.match(/\d+/)?.at(0) || "0");
@@ -118,7 +121,7 @@ for (const dirInfo of testDirs) {
             });
 
         for (const file of mfiles) {
-            const filePath = path.join(dirInfo.mpath, file);
+            const filePath = path.join(mdir, file);
             const content = fs.readFileSync(filePath, "utf-8");
             
             const baseName = `mermaid_${dirInfo.name.replace(/\s+/g, '_')}_${file.replace(".mmd", "")}`;
@@ -151,6 +154,7 @@ for (const dirInfo of testDirs) {
             });
         }
     }
+    } // end for mdir
 
     // Generate HTML for this category
     let casesHtml = "";
