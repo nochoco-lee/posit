@@ -507,6 +507,9 @@ export class DeploymentLayoutManager {
 
     private layoutStatementsPass2(statements: IRStatement[], map: LayoutMap) {
         const resolveGroupId = (id: string): string => {
+            // If a real node with this ID exists, always use it — don't redirect to group_center
+            // even if the ID also matches a group name (e.g. `node "X" as ingress` inside `package "ingress"`)
+            if (map.nodes[id]) return id;
             if (this.groupNames.has(id)) {
                 const group = map.groups.find(g => g.label === id || g.id === id);
                 if (group) {
