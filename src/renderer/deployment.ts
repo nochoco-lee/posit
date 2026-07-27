@@ -574,11 +574,10 @@ export class DeploymentRenderer {
 
     private resolveNodePos(id: string): { rect: { x: number; y: number; width: number; height: number }; cx: number; cy: number } | null {
         if (!this.map) return null;
-        const kg = this.nodeGroups[id];
         const base = this.map.nodes[id];
-        if (kg && base) {
-            return { rect: { x: kg.x(), y: kg.y(), width: base.size.width, height: base.size.height }, cx: kg.x() + base.size.width / 2, cy: kg.y() + base.size.height / 2 };
-        }
+        // group_center nodes must be resolved to the container's visual rect,
+        // NOT the zero-size placeholder. Check this BEFORE the kg+base branch
+        // because drawNode creates a Konva group for group_center nodes too.
         if (base && base.type === 'group_center') {
             const group = this.map.groups.find(g => g.label === base.origName || g.id === base.origName);
             if (group) {
@@ -587,6 +586,10 @@ export class DeploymentRenderer {
                 const labelH = (labelNode && 'height' in labelNode) ? (labelNode as any).height() : 24;
                 return { rect: { x: group.position.x, y: group.position.y + labelH, width: group.size.width, height: group.size.height - labelH }, cx: group.position.x + group.size.width / 2, cy: group.position.y + labelH + (group.size.height - labelH) / 2 };
             }
+        }
+        const kg = this.nodeGroups[id];
+        if (kg && base) {
+            return { rect: { x: kg.x(), y: kg.y(), width: base.size.width, height: base.size.height }, cx: kg.x() + base.size.width / 2, cy: kg.y() + base.size.height / 2 };
         }
         if (base) {
             return { rect: { x: base.position.x, y: base.position.y, width: base.size.width, height: base.size.height }, cx: base.position.x + base.size.width / 2, cy: base.position.y + base.size.height / 2 };
