@@ -137,6 +137,12 @@ export function getIntersection(
         return { x: p1.x + tMin * dx, y: p1.y + tMin * dy };
     }
 
+    // When p1 is inside the rect (tMin < 0), the line exits at tMax.
+    // Use the exit point so arrowheads terminate on the boundary, not at the center.
+    if (tMin <= tMax && tMax >= 0 && tMax <= 1) {
+        return { x: p1.x + tMax * dx, y: p1.y + tMax * dy };
+    }
+
     return p2;
 }
 
