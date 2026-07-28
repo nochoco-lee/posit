@@ -424,6 +424,10 @@ export class DeploymentRenderer {
     }
 
     private drawNode(nodeDef: LayoutNode) {
+        // group_center nodes are zero-size placeholders for arrow resolution only;
+        // they must not be drawn visually (their alias text would overlap group labels)
+        if (nodeDef.type === 'group_center') return;
+
         const group = new Konva.Group({
             x: nodeDef.position.x,
             y: nodeDef.position.y,
@@ -575,9 +579,8 @@ export class DeploymentRenderer {
     private resolveNodePos(id: string): { rect: { x: number; y: number; width: number; height: number }; cx: number; cy: number } | null {
         if (!this.map) return null;
         const base = this.map.nodes[id];
-        // group_center nodes must be resolved to the container's visual rect,
-        // NOT the zero-size placeholder. Check this BEFORE the kg+base branch
-        // because drawNode creates a Konva group for group_center nodes too.
+        // group_center nodes are zero-size placeholders; resolve them to the
+        // container's visual rect. They are not drawn (drawNode skips them).
         if (base && base.type === 'group_center') {
             const group = this.map.groups.find(g => g.label === base.origName || g.id === base.origName);
             if (group) {
